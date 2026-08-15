@@ -690,6 +690,8 @@
                        });                                             break;
         case 'bomb':   voice('sawtooth', 180,   40, 0.42, 0.20, 0);
                        voice('square',    90,   30, 0.34, 0.14, 0.02); break;
+        case 'burner': voice('sawtooth',  90,  180, 0.34, 0.09, 0);
+                       voice('square',  1200,  400, 0.22, 0.04, 0);  break;
         case 'level':  voice('square',   520,  520, 0.10, 0.13, 0);
                        voice('square',   700,  700, 0.10, 0.13, 0.1);
                        voice('square',   900,  900, 0.16, 0.13, 0.2);  break;

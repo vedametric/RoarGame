@@ -33,11 +33,46 @@
     <p class="tagline">2 players &bull; loudest beast wins</p>
 
     <button class="btn btn--huge btn--go" id="btn-begin" type="button">BEGIN GAME</button>
+    <button class="btn btn--ghost" id="btn-games" type="button">🎮 ALL GAMES</button>
 
     <p class="fineprint">
       Turn the volume up and put the phone between you.<br />
       Photos and voices never leave this phone.
     </p>
+  </section>
+
+  <!-- ═════════════════════ GAME LIST ═════════════════════ -->
+  <section class="screen" id="screen-games">
+    <h2 class="heading">Pick a game</h2>
+
+    <button class="mode-card mode-card--grab" id="game-grab" type="button">
+      <span class="mode-emoji" aria-hidden="true">🖐️</span>
+      <span class="mode-text">
+        <b>GRAB IT!</b>
+        <i>Phone flat between you. Tap to step your claw out and grab the treats — but never the bombs.</i>
+        <em>1 or 2 players &bull; 45 seconds</em>
+      </span>
+    </button>
+
+    <button class="mode-card mode-card--roar" id="game-roar" type="button">
+      <span class="mode-emoji" aria-hidden="true">📊</span>
+      <span class="mode-text">
+        <b>ROAR METER</b>
+        <i>Hold the phone up between you and push your bar to the sky.</i>
+        <em>1 or 2 players &bull; 20 seconds</em>
+      </span>
+    </button>
+
+    <button class="mode-card mode-card--balloon" id="game-balloon" type="button">
+      <span class="mode-emoji" aria-hidden="true">🎈</span>
+      <span class="mode-text">
+        <b>THE HOT AIR BALLOON</b>
+        <i>Fly over the mountains at sunset. Collect food, clouds and unicorns — but be gentle with the birds!</i>
+        <em class="by-sienna">a game by Sienna 🦄</em>
+      </span>
+    </button>
+
+    <button class="linkish" id="btn-games-back" type="button">Back</button>
   </section>
 
   <!-- ═════════════════════ HOW MANY PLAYERS ═════════════════════ -->
@@ -251,6 +286,44 @@
     <div class="tap-layer tap-layer--split-x" id="roar-tap" hidden></div>
   </section>
 
+  <!-- ═════════════════════ THE HOT AIR BALLOON ═════════════════════ -->
+  <section class="screen screen--flat" id="screen-balloon">
+    <canvas id="balloon-canvas"></canvas>
+
+    <div class="bl-top">
+      <div class="bl-score" id="bl-score">0</div>
+      <div class="bl-by">🎈 by Sienna 🦄</div>
+    </div>
+    <button class="bl-exit" id="bl-exit" type="button" aria-label="Finish the flight">✕</button>
+
+    <div class="bl-pad" id="bl-controls">
+      <div class="bl-dpad">
+        <button class="bl-btn bl-btn--up" data-dir="fwd" type="button" aria-label="Forward">▲</button>
+        <button class="bl-btn bl-btn--left" data-dir="left" type="button" aria-label="Left">◀</button>
+        <button class="bl-btn bl-btn--right" data-dir="right" type="button" aria-label="Right">▶</button>
+        <button class="bl-btn bl-btn--down" data-dir="back" type="button" aria-label="Back">▼</button>
+        <span class="bl-dpad-label">MOVE</span>
+      </div>
+      <div class="bl-lift">
+        <button class="bl-btn bl-btn--lift" data-dir="up" type="button" aria-label="Up">🔥</button>
+        <span class="bl-lift-label">UP / DOWN</span>
+        <button class="bl-btn bl-btn--lift" data-dir="down" type="button" aria-label="Down">⬇︎</button>
+      </div>
+    </div>
+
+    <div class="bl-end" id="bl-end" hidden>
+      <div class="bl-end-card">
+        <div class="bl-end-emoji">🎈</div>
+        <h2 class="heading">Flight complete!</h2>
+        <div class="bl-end-score" id="bl-end-score">0</div>
+        <p class="bl-end-tally" id="bl-end-tally"></p>
+        <button class="btn btn--go" id="bl-again" type="button">FLY AGAIN</button>
+        <button class="linkish" id="bl-menu" type="button">Back to games</button>
+        <p class="bl-credit">a game by Sienna 🦄</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ RESULT ═════════════════════ -->
   <section class="screen" id="screen-result">
     <div class="crown" aria-hidden="true">👑</div>
@@ -281,6 +354,7 @@
 <script src="audio.js"></script>
 <script src="fx.js"></script>
 <script src="game-grab.js"></script>
+<script src="game-balloon.js"></script>
 <script src="game-roar.js"></script>
 <script src="app.js"></script>
 </body>

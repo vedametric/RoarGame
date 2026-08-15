@@ -30,6 +30,7 @@
   ];
 
   var playerCount = 2;
+  var pendingGame = null;         // set when a game was chosen from the list
   var best = 0;                   // solo high score for this session
   var players = [newPlayer(0), newPlayer(1)];
   var current = 0;
@@ -59,7 +60,8 @@
 
   /* ── screens ──────────────────────────────────────────────── */
 
-  var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1, 'screen-sides': 1 };
+  var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
+                  'screen-sides': 1, 'screen-balloon': 1 };
 
   function show(id) {
     var all = document.querySelectorAll('.screen');
@@ -346,6 +348,14 @@
 
     applyMicPolicy();
     setInputMode(inputMode);
+
+    if (pendingGame) {
+      var go = pendingGame;
+      pendingGame = null;
+      if (go === 'grab') playGrab(); else playRoar();
+      return;
+    }
+
     show('screen-modes');
     say('Pick a game!');
   }
@@ -502,6 +512,45 @@
     setTimeout(function () { el.hidden = true; }, 1200);
   }
 
+  /* ── the hot air balloon ──────────────────────────────────── */
+
+  function startBalloon() {
+    $('bl-end').hidden = true;
+    $('bl-score').textContent = '0';
+    show('screen-balloon');
+    keepAwake();
+    RoarAudio.resume();
+    RoarAudio.releaseMic();       // the balloon never listens
+
+    BalloonGame.start({
+      canvas: $('balloon-canvas'),
+      controls: $('bl-controls'),
+      onScore: function (score) { $('bl-score').textContent = Math.round(score); }
+    });
+    say('The hot air balloon. A game by Sienna!');
+  }
+
+  function endBalloon() {
+    var g = BalloonGame;
+    var got = g.collected;
+    g.stop();
+    $('bl-end-score').textContent = Math.round(g.score);
+    $('bl-end-tally').textContent =
+      '🍎 ' + got.food + '   ☁️ ' + got.cloud + '   🦄 ' + got.unicorn +
+      (g.landedOnce ? '   🌱 landed' : '');
+    $('bl-end').hidden = false;
+    Confetti.start(['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff', '#ffffff']);
+    RoarAudio.sfx('win');
+  }
+
+  on('bl-exit', endBalloon);
+  on('bl-again', function () { Confetti.stop(); startBalloon(); });
+  on('bl-menu', function () {
+    Confetti.stop();
+    BalloonGame.stop();
+    show('screen-games');
+  });
+
   /* ── results ──────────────────────────────────────────────── */
 
   function finish(scores) {
@@ -576,8 +625,17 @@
 
   on('btn-begin', function () {
     RoarAudio.resume();          // unlock audio on the first real gesture
+    pendingGame = null;
     show('screen-count');
   });
+
+  on('btn-games', function () { RoarAudio.resume(); show('screen-games'); });
+  on('btn-games-back', function () { show('screen-splash'); });
+
+  // Picking from the list remembers the choice and skips the mode screen.
+  on('game-grab', function () { pendingGame = 'grab'; show('screen-count'); });
+  on('game-roar', function () { pendingGame = 'roar'; show('screen-count'); });
+  on('game-balloon', function () { RoarAudio.resume(); startBalloon(); });
 
   on('count-1', function () { playerCount = 1; show('screen-how'); });
   on('count-2', function () { playerCount = 2; show('screen-how'); });
@@ -689,6 +747,7 @@
     if (document.hidden) {
       if (GrabGame.running) GrabGame.stop();
       if (RoarGame.running) RoarGame.stop();
+      if (BalloonGame.running) BalloonGame.stop();
       RoarAudio.stopAllVoices();
     }
   });

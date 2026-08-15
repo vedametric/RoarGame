@@ -33,6 +33,34 @@ indicator goes away when the game isn't listening.
 
 ---
 
+## 🎈 THE HOT AIR BALLOON — *a game by Sienna 🦄*
+
+Reachable from **ALL GAMES** on the first screen. You are standing in the
+basket at sunset, the striped envelope above your head and the ropes running
+past your shoulders. Six buttons fly it: a move pad for **left / right /
+forward / back**, and a **🔥 burner / ⬇︎ vent** pair for altitude.
+
+Out over the mountains there is plenty to collect — fly into something, or just
+tap it:
+
+| | | |
+|---|---|---|
+| 🍎 | food | +10 |
+| ☁️ | clouds | +5 |
+| 🦄 | unicorns | +25 — they drift, so you have to chase them |
+| 🐦 | **birds** | **−10. Never collect a bird.** Bump one and it flaps away startled. |
+| 🌱 | landing | +50 the first time you set her down gently |
+
+There is no timer. Fly wherever you like, land whenever you like, and finish
+with ✕ when you have had enough.
+
+Everything you see is painted in code — the sunset gradient, the parallax
+mountain ridges with sunset catching their tops, the receding fields with
+animals grazing, the clouds with their shadowed undersides, the balloon and the
+wicker basket. There are no image assets. The world uses a plain perspective
+projection: every object has a world `(x, y, z)` and its screen position is
+that divided by depth.
+
 ## One player or two
 
 Choose at the start. **Two players** share the phone head to head; a
@@ -41,7 +69,7 @@ nobody has to guess. **One player** plays solo against their own best score.
 
 There is a 🔊 button in the corner to play with the sound off.
 
-## The two games
+## The tap games
 
 ### 🖐️ GRAB IT! — 45 seconds, 4 levels
 
@@ -199,6 +227,7 @@ audio.js        microphone, voice fingerprinting, speaker attribution
 fx.js           particle bursts + confetti
 game-grab.js    GRAB IT! — canvas game loop
 game-roar.js    ROAR METER — bar-graph game loop
+game-balloon.js THE HOT AIR BALLOON — by Sienna 🦄
 app.js          screen flow, photos, results
 ```
 
@@ -208,5 +237,7 @@ blank at first. There is a runtime probe that falls back to a large initial if
 emoji cannot be drawn into a canvas at all.
 
 ---
+
+**THE HOT AIR BALLOON is a game by Sienna 🦄.**
 
 Built by Kunal, Sienna, and Claude.
