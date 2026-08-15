@@ -16,6 +16,9 @@
   var players = [newPlayer(0), newPlayer(1)];
   var current = 0;
   var mode = 'grab';
+  var inputMode = 'tap';          // tap by default — kinder on small throats
+  var series = [0, 0];            // rounds won this session
+  var roundsPlayed = 0;
   var recording = false;
   var redoingVoices = false;
   var wakeLock = null;
@@ -159,6 +162,7 @@
     $('rec-status').innerHTML = '&nbsp;';
     $('btn-voice-next').hidden = true;
     $('btn-rerecord').hidden = true;
+    $('btn-hear').hidden = true;
     $('rec-meter-fill').style.width = '0%';
 
     say(p.name + ', make your sound!');
@@ -199,6 +203,10 @@
       $('rec-status').textContent = 'Got it! That sound is yours now. 🎉';
       $('btn-voice-next').hidden = false;
       $('btn-rerecord').hidden = false;
+      $('btn-hear').hidden = !res.profile.clip;
+      $('rec-status').textContent = res.profile.clip
+        ? 'Got it! Tap ▶️ to hear yourself. 🎉'
+        : 'Got it! That sound is yours now. 🎉';
       RoarAudio.sfx('go');
     });
   }
@@ -217,18 +225,47 @@
       $('vs-name-' + (i + 1)).textContent = players[i].name;
     }
 
-    var clash = RoarAudio.profileClash();
-    var warn = $('voice-warn');
-    if (clash > 0.55) {
-      warn.hidden = false;
-      warn.innerHTML = '⚠️ Your two sounds are <b>very</b> alike, so we might mix you up! ' +
-        'Tap <b>Re-record our sounds</b> and pick really different ones — one high MEOW, one deep ROAR.';
-    } else {
-      warn.hidden = true;
-    }
+    $('voice-warn').innerHTML = '⚠️ In <b>SHOUT</b> mode your two sounds are <b>very</b> alike, ' +
+      'so we might mix you up. Either use <b>TAP</b>, or re-record with really different sounds — ' +
+      'one high MEOW, one deep ROAR.';
 
+    setInputMode(inputMode);
     show('screen-modes');
     say('Pick a game!');
+  }
+
+  var MODE_COPY = {
+    grab: {
+      tap: 'Phone flat in the middle. Hold your own side to shoot your claw out and grab the treats — but never the bombs! Gets faster and faster.',
+      voice: 'Phone flat in the middle. Shout to shoot your claw out and grab the treats — but never the bombs! Gets faster and faster.'
+    },
+    roar: {
+      tap: 'Hold the phone up between you. Hold your own side and push your bar to the sky.',
+      voice: 'Hold the phone up between you. Roar your loudest and push your bar to the sky.'
+    }
+  };
+
+  function setInputMode(m) {
+    inputMode = m;
+    $('seg-tap').classList.toggle('is-on', m === 'tap');
+    $('seg-voice').classList.toggle('is-on', m === 'voice');
+    $('btn-mode-grab').querySelector('i').textContent = MODE_COPY.grab[m];
+    $('btn-mode-roar').querySelector('i').textContent = MODE_COPY.roar[m];
+    // The look-alike-voices warning only matters when we're listening.
+    $('voice-warn').hidden = m === 'tap' || RoarAudio.profileClash() <= 0.55;
+  }
+
+  function showCombo(i, mult) {
+    var el = $('grab-combo-' + (i + 1));
+    if (mult > 1) {
+      el.hidden = false;
+      el.textContent = 'x' + mult;
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    } else {
+      el.hidden = true;
+    }
   }
 
   /* ── countdown + play ─────────────────────────────────────── */
@@ -262,14 +299,20 @@
     $('grab-name-2').textContent = players[1].name;
     $('grab-score-1').textContent = '0';
     $('grab-score-2').textContent = '0';
+    $('grab-combo-1').hidden = true;
+    $('grab-combo-2').hidden = true;
+    $('grab-tap').hidden = inputMode !== 'tap';
 
     countdown(function () {
       show('screen-grab');
       GrabGame.start({
         canvas: $('grab-canvas'),
+        touchTarget: $('grab-tap'),
+        inputMode: inputMode,
         players: players,
         duration: 45,
-        onScore: function (i, total) {
+        onScore: function (i, total, mult) {
+          showCombo(i, mult);
           var el = $('grab-score-' + (i + 1));
           el.textContent = total;
           el.classList.remove('pop');
@@ -288,9 +331,15 @@
       $('bar-photo-' + (i + 1)).src = players[i].photo;
       $('bar-name-' + (i + 1)).textContent = players[i].name;
     }
+    $('roar-tap').hidden = inputMode !== 'tap';
     countdown(function () {
       show('screen-roar');
-      RoarGame.start({ duration: 20, onEnd: finish });
+      RoarGame.start({
+        duration: 20,
+        inputMode: inputMode,
+        touchTarget: $('roar-tap'),
+        onEnd: finish
+      });
     });
   }
 
@@ -323,6 +372,16 @@
       $('winner-line').textContent = mode === 'grab' ? 'is the FASTEST GRABBER!' : 'is the LOUDEST BEAST!';
     }
 
+    if (!tie) series[w]++;
+    roundsPlayed++;
+    var sEl = $('series');
+    if (roundsPlayed > 1) {
+      sEl.hidden = false;
+      sEl.innerHTML = '<b>' + series[0] + '</b> &ndash; <b>' + series[1] + '</b><span>rounds won</span>';
+    } else {
+      sEl.hidden = true;
+    }
+
     $('final-name-1').textContent = players[0].name;
     $('final-name-2').textContent = players[1].name;
     $('final-score-1').textContent = scores[0];
@@ -331,6 +390,7 @@
     show('screen-result');
     Confetti.start([SKINS[0].color, SKINS[0].glow, SKINS[1].color, SKINS[1].glow, '#ffffff']);
     RoarAudio.sfx('win');
+    if (!tie) setTimeout(function () { RoarAudio.playVoiceOnce(w, 1); }, 520);
     say(tie ? "It's a tie!" : winner.name + ' wins!');
   }
 
@@ -385,7 +445,11 @@
   on('btn-photo-next', toVoiceStep);
   on('btn-record', doRecord);
   on('btn-rerecord', doRecord);
+  on('btn-hear', function () { RoarAudio.playVoiceOnce(current, 1); });
   on('btn-voice-next', afterVoice);
+
+  on('seg-tap', function () { setInputMode('tap'); });
+  on('seg-voice', function () { setInputMode('voice'); });
 
   on('btn-mode-grab', playGrab);
   on('btn-mode-roar', playRoar);
@@ -405,6 +469,8 @@
   on('btn-new-players', function () {
     leaveResult();
     redoingVoices = false;
+    series = [0, 0];
+    roundsPlayed = 0;
     players = [newPlayer(0), newPlayer(1)];
     RoarAudio.profiles = [null, null];
     startSetup(0);
@@ -421,6 +487,7 @@
     if (document.hidden) {
       if (GrabGame.running) GrabGame.stop();
       if (RoarGame.running) RoarGame.stop();
+      RoarAudio.stopAllVoices();
     }
   });
 })();

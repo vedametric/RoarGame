@@ -519,3 +519,81 @@ body {
     transition-duration: .001s !important;
   }
 }
+
+/* ── input-mode toggle ──────────────────────────────────────── */
+
+.how-play { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.how-label { font-size: 13px; font-weight: 800; letter-spacing: .06em; color: var(--ink-soft); text-transform: uppercase; }
+
+.seg {
+  display: flex; gap: 6px; padding: 6px;
+  background: rgba(255,255,255,.08);
+  border: 2px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+}
+.seg-btn {
+  appearance: none; border: 0; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 9px 20px; border-radius: 999px;
+  font-family: inherit; font-size: 15px; font-weight: 900; letter-spacing: .03em;
+  color: var(--ink-soft); background: transparent;
+  transition: background .18s, color .18s, transform .1s;
+}
+.seg-btn i { font-style: normal; font-size: 10.5px; font-weight: 700; opacity: .75; }
+.seg-btn:active { transform: scale(.96); }
+.seg-btn.is-on {
+  color: #43210a;
+  background: linear-gradient(180deg, var(--go-a), var(--go-b));
+  box-shadow: 0 3px 0 rgba(0,0,0,.28);
+}
+
+.row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+
+/* ── press-and-hold surfaces ────────────────────────────────── */
+
+/* Full-bleed, transparent, and split down the middle: each player owns
+   one half so nobody has to aim at a small button. */
+.tap-layer {
+  position: absolute; inset: 0; z-index: 5;
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+}
+.tap-layer::before,
+.tap-layer::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 50%;
+  pointer-events: none;
+}
+.tap-layer::before { top: 0; }
+.tap-layer::after  { bottom: 0; }
+
+.tap-layer--split-x::before,
+.tap-layer--split-x::after {
+  top: 0; bottom: 0; height: auto; width: 50%; right: auto;
+}
+.tap-layer--split-x::before { left: 0; }
+.tap-layer--split-x::after  { left: 50%; }
+
+/* ── combo + series ─────────────────────────────────────────── */
+
+.hud-combo {
+  padding: 3px 12px; border-radius: 999px;
+  font-size: 15px; font-weight: 900; letter-spacing: .04em;
+  color: #43210a;
+  background: linear-gradient(180deg, #fff3b0, var(--go-a));
+  box-shadow: 0 0 18px rgba(255,210,76,.7);
+}
+.hud-combo.pop { animation: scorePop .4s cubic-bezier(.2,1.6,.4,1); }
+
+.series {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 8px 20px; border-radius: 999px;
+  background: rgba(255,255,255,.09);
+  border: 2px solid rgba(255,255,255,.16);
+  font-size: 26px; font-weight: 900;
+}
+.series b:first-of-type { color: var(--p1-glow); }
+.series b:last-of-type  { color: var(--p2); }
+.series span {
+  font-size: 11px; font-weight: 800; letter-spacing: .1em;
+  color: var(--ink-soft); text-transform: uppercase;
+}

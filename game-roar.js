@@ -1,10 +1,11 @@
 /*
  * game-roar.js — "ROAR METER"
  *
- * Hold the phone up between the two players. Everyone roars at once; every
- * frame of sound is split between the two voice fingerprints and each bar
- * climbs by its share. The bars rescale as the leader grows, so there is
- * always somewhere higher to go.
+ * Hold the phone up between the two players. In tap mode each player holds
+ * their own half of the screen and their recorded sound plays on repeat; in
+ * voice mode every frame of sound is split between the two voice fingerprints.
+ * Either way each bar climbs by its share, and the bars rescale as the leader
+ * grows so there is always somewhere higher to go.
  */
 (function (global) {
   'use strict';
@@ -20,9 +21,12 @@
       var self = this;
       self.cfg = cfg;
       self.duration = cfg.duration || 20;
+      self.tapMode = cfg.inputMode === 'tap';
       self.scores = [0, 0];
       self.shown = [0, 0];
       self.live = [0, 0];
+      self.held = [false, false];
+      self.kick = [0, 0];
       self.elapsed = 0;
       self.hypeIn = 0;
       self.running = true;
@@ -41,6 +45,8 @@
       self.el.score[0].textContent = '0';
       self.el.score[1].textContent = '0';
 
+      if (self.tapMode) self._bindTouch();
+
       self.last = performance.now();
       self.raf = requestAnimationFrame(function (t) { self._loop(t); });
     },
@@ -50,6 +56,59 @@
       cancelAnimationFrame(this.raf);
       this.el.lane[0].classList.remove('is-roaring');
       this.el.lane[1].classList.remove('is-roaring');
+      this._unbindTouch();
+      global.RoarAudio.stopAllVoices();
+    },
+
+    // Phone is held upright between the players here, so the split is
+    // left/right rather than the top/bottom used by GRAB IT.
+    _bindTouch: function () {
+      var self = this;
+      var el = this.cfg.touchTarget;
+      if (!el) return;
+      this.touchEl = el;
+      this.pointers = {};
+
+      var sideOf = function (x) {
+        var r = el.getBoundingClientRect();
+        return (x - r.left) < r.width / 2 ? 0 : 1;
+      };
+
+      this._down = function (e) {
+        var i = sideOf(e.clientX);
+        self.pointers[e.pointerId] = i;
+        self._press(i, true);
+        e.preventDefault();
+      };
+      this._up = function (e) {
+        var i = self.pointers[e.pointerId];
+        if (i === undefined) return;
+        delete self.pointers[e.pointerId];
+        for (var k in self.pointers) if (self.pointers[k] === i) return;
+        self._press(i, false);
+      };
+
+      el.addEventListener('pointerdown', this._down, { passive: false });
+      el.addEventListener('pointerup', this._up);
+      el.addEventListener('pointercancel', this._up);
+      el.addEventListener('pointerleave', this._up);
+    },
+
+    _unbindTouch: function () {
+      var el = this.touchEl;
+      if (!el) return;
+      el.removeEventListener('pointerdown', this._down);
+      el.removeEventListener('pointerup', this._up);
+      el.removeEventListener('pointercancel', this._up);
+      el.removeEventListener('pointerleave', this._up);
+      this.touchEl = null;
+    },
+
+    _press: function (i, on) {
+      if (this.held[i] === on) return;
+      this.held[i] = on;
+      if (on) { this.kick[i] = 1; global.RoarAudio.startVoice(i); }
+      else global.RoarAudio.stopVoice(i);
     },
 
     _loop: function (now) {
@@ -60,25 +119,33 @@
 
       self.elapsed += dt;
 
-      var f = global.RoarAudio.analyze();
-      var best = -1;
-      if (f.loud) {
-        var gate = global.RoarAudio.gate();
-        var strength = Math.pow(clamp((f.level - gate) / (1 - gate), 0, 1), 1.35);
-        var a = global.RoarAudio.attribute(f);
-        best = a.best;
+      var share = [0, 0], best = -1, active = false;
+
+      if (self.tapMode) {
         for (i = 0; i < 2; i++) {
-          self.scores[i] += a.w[i] * strength * 100 * dt;
-          self.live[i] = Math.max(self.live[i], a.w[i] * strength);
+          self.kick[i] = Math.max(0, self.kick[i] - dt * 4);
+          share[i] = (self.held[i] ? 0.9 : 0) + self.kick[i] * 0.6;
+          if (share[i] > 0) active = true;
+        }
+        best = share[0] === share[1] ? -1 : (share[0] > share[1] ? 0 : 1);
+      } else {
+        var f = global.RoarAudio.analyze();
+        var a = global.RoarAudio.attribute(f);
+        if (a.accepted) {
+          var gate = global.RoarAudio.gate();
+          var strength = Math.pow(clamp((f.level - gate) / (1 - gate), 0, 1), 1.35);
+          best = a.best;
+          active = true;
+          for (i = 0; i < 2; i++) share[i] = a.w[i] * strength;
         }
       }
 
       for (i = 0; i < 2; i++) {
-        self.live[i] = Math.max(0, self.live[i] - dt * 1.8);
-        self.el.lane[i].classList.toggle('is-roaring', best === i && f.loud);
+        self.scores[i] += share[i] * 100 * dt;
+        self.live[i] = Math.max(self.live[i] - dt * 1.8, Math.min(1, share[i]));
+        self.el.lane[i].classList.toggle('is-roaring', active && best === i);
       }
 
-      // Rescale so the leader always sits near the top of the track.
       var top = Math.max(60, self.scores[0], self.scores[1]) * 1.12;
       for (i = 0; i < 2; i++) {
         var want = (self.scores[i] / top) * 92 + self.live[i] * 6;

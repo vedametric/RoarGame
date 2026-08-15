@@ -81,7 +81,10 @@
       <p class="status" id="rec-status">&nbsp;</p>
 
       <button class="btn btn--go" id="btn-voice-next" type="button" hidden>NEXT</button>
-      <button class="linkish" id="btn-rerecord" type="button" hidden>Record it again 🔁</button>
+      <div class="row">
+        <button class="linkish" id="btn-hear" type="button" hidden>▶️ Hear it</button>
+        <button class="linkish" id="btn-rerecord" type="button" hidden>Record it again 🔁</button>
+      </div>
     </div>
   </section>
 
@@ -100,6 +103,15 @@
     </div>
 
     <p class="warn" id="voice-warn" hidden></p>
+
+    <div class="how-play">
+      <span class="how-label">How do you play?</span>
+      <div class="seg" role="group" aria-label="Input mode">
+        <button class="seg-btn is-on" id="seg-tap" type="button">👆 TAP<i>no shouting</i></button>
+        <button class="seg-btn" id="seg-voice" type="button">🎤 SHOUT<i>use your voice</i></button>
+      </div>
+    </div>
+
     <h2 class="heading heading--sm">Pick a game!</h2>
 
     <button class="mode-card mode-card--grab" id="btn-mode-grab" type="button">
@@ -132,13 +144,16 @@
   <!-- ═════════════════════ GAME: GRAB IT ═════════════════════ -->
   <section class="screen screen--flat" id="screen-grab">
     <canvas id="grab-canvas"></canvas>
+    <div class="tap-layer" id="grab-tap"></div>
     <div class="grab-hud grab-hud--top">
       <div class="hud-score hud-score--p2" id="grab-score-2">0</div>
       <div class="hud-name" id="grab-name-2">Player 2</div>
+      <div class="hud-combo" id="grab-combo-2" hidden></div>
     </div>
     <div class="grab-hud grab-hud--bottom">
       <div class="hud-score hud-score--p1" id="grab-score-1">0</div>
       <div class="hud-name" id="grab-name-1">Player 1</div>
+      <div class="hud-combo" id="grab-combo-1" hidden></div>
     </div>
     <div class="flash-banner" id="grab-flash" hidden></div>
   </section>
@@ -171,6 +186,7 @@
     </div>
 
     <p class="hype" id="hype">ROAAAR!</p>
+    <div class="tap-layer tap-layer--split-x" id="roar-tap" hidden></div>
   </section>
 
   <!-- ═════════════════════ RESULT ═════════════════════ -->
@@ -179,6 +195,7 @@
     <img class="winner-photo" id="winner-photo" alt="" />
     <h2 class="winner-name" id="winner-name">Player 1</h2>
     <p class="winner-line" id="winner-line">is the LOUDEST BEAST!</p>
+    <div class="series" id="series" hidden></div>
     <div class="final-scores">
       <div class="final final--p1"><span id="final-name-1">Player 1</span><b id="final-score-1">0</b></div>
       <div class="final final--p2"><span id="final-name-2">Player 2</span><b id="final-score-2">0</b></div>
