@@ -6,7 +6,19 @@
   'use strict';
 
   var RECORD_MS = 2500;
-  var ANIMALS = ['🦁', '🐯', '🐻', '🐸', '🦖', '🐵', '🦊', '🐺', '🐷', '🦄', '🐨', '🐔'];
+  // Ten to choose from, for players who would rather not use a photo.
+  var ANIMALS = [
+    { emoji: '🐰', name: 'Rabbit' },
+    { emoji: '🐮', name: 'Cow' },
+    { emoji: '🦁', name: 'Lion' },
+    { emoji: '🦒', name: 'Giraffe' },
+    { emoji: '🦭', name: 'Seal' },
+    { emoji: '🐧', name: 'Penguin' },
+    { emoji: '🦈', name: 'Shark' },
+    { emoji: '🐯', name: 'Tiger' },
+    { emoji: '🐘', name: 'Elephant' },
+    { emoji: '🦖', name: 'Dino' }
+  ];
 
   var SKINS = [
     { color: '#ff8a2b', glow: '#ffd24c', emoji: '🦁' },
@@ -121,6 +133,42 @@
     $('btn-photo-next').disabled = false;
   }
 
+  /* ── animal picker ────────────────────────────────────────── */
+
+  function buildAnimalGrid() {
+    var grid = $('animal-grid');
+    ANIMALS.forEach(function (a) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'animal';
+      b.setAttribute('aria-label', a.name);
+      b.innerHTML = '<span class="animal-face">' + a.emoji + '</span>' +
+                    '<span class="animal-name">' + a.name + '</span>';
+      b.addEventListener('click', function () { pickAnimal(a); });
+      grid.appendChild(b);
+    });
+  }
+
+  function openAnimals() {
+    var sheet = $('animal-sheet');
+    // Tint the picker with whichever player is choosing.
+    sheet.style.setProperty('--c', SKINS[current].color);
+    sheet.style.setProperty('--g', SKINS[current].glow);
+    sheet.hidden = false;
+  }
+
+  function closeAnimals() { $('animal-sheet').hidden = true; }
+
+  function pickAnimal(a) {
+    players[current].emoji = a.emoji;
+    // A kid who cannot type yet still ends up with a name they chose.
+    var nameEl = $('name-input');
+    if (!nameEl.value.trim()) nameEl.value = a.name;
+    animalPhoto(a.emoji, SKINS[current]).then(setPhoto);
+    RoarAudio.sfx('spawn');
+    closeAnimals();
+  }
+
   /* ── setup flow ───────────────────────────────────────────── */
 
   function startSetup(i, voicesOnly) {
@@ -141,6 +189,7 @@
     $('name-input').value = p.name.indexOf('Player ') === 0 ? '' : p.name;
     $('photo-input').value = '';
 
+    closeAnimals();
     show('screen-setup');
 
     // "Re-record our sounds" keeps the photos, so jump straight to the mic.
@@ -171,7 +220,6 @@
   function doRecord() {
     if (recording) return;
     recording = true;
-    RoarAudio.resume();
 
     var ring = $('orb-ring'), meter = $('rec-meter-fill');
     $('btn-record').classList.add('is-recording');
@@ -180,9 +228,11 @@
     $('btn-voice-next').hidden = true;
     $('btn-rerecord').hidden = true;
 
-    RoarAudio.recordProfile(RECORD_MS, function (progress, level) {
+    RoarAudio.ensureMic().then(function () {
+      return RoarAudio.recordProfile(RECORD_MS, function (progress, level) {
       ring.style.setProperty('--p', progress);
-      meter.style.width = Math.round(level * 100) + '%';
+        meter.style.width = Math.round(level * 100) + '%';
+      });
     }).then(function (res) {
       recording = false;
       $('btn-record').classList.remove('is-recording');
@@ -203,12 +253,23 @@
       $('rec-status').textContent = 'Got it! That sound is yours now. 🎉';
       $('btn-voice-next').hidden = false;
       $('btn-rerecord').hidden = false;
-      $('btn-hear').hidden = !res.profile.clip;
-      $('rec-status').textContent = res.profile.clip
+      $('btn-hear').hidden = false;
+      $('rec-status').textContent = res.profile.recorded
         ? 'Got it! Tap ▶️ to hear yourself. 🎉'
-        : 'Got it! That sound is yours now. 🎉';
+        : 'Got it! (We made you a growl to use.) 🎉';
       RoarAudio.sfx('go');
+    }, function () {
+      recording = false;
+      $('btn-record').classList.remove('is-recording');
+      $('rec-status').textContent = 'We need the microphone to record your sound.';
     });
+  }
+
+  // The mic must be live to hear the calibration, so play the preview back
+  // only after we have let it go — otherwise iOS keeps it on the earpiece.
+  function hearMyself() {
+    RoarAudio.releaseMic();
+    setTimeout(function () { RoarAudio.playVoiceOnce(current, 1); }, 120);
   }
 
   function afterVoice() {
@@ -229,6 +290,7 @@
       'so we might mix you up. Either use <b>TAP</b>, or re-record with really different sounds — ' +
       'one high MEOW, one deep ROAR.';
 
+    applyMicPolicy();
     setInputMode(inputMode);
     show('screen-modes');
     say('Pick a game!');
@@ -244,6 +306,16 @@
       voice: 'Hold the phone up between you. Roar your loudest and push your bar to the sky.'
     }
   };
+
+  // Exactly one input system is live at a time: TAP releases the microphone,
+  // SHOUT takes it back.
+  function applyMicPolicy() {
+    if (inputMode === 'tap') {
+      RoarAudio.releaseMic();
+      return Promise.resolve(true);
+    }
+    return RoarAudio.ensureMic().then(function () { return true; }, function () { return false; });
+  }
 
   function setInputMode(m) {
     inputMode = m;
@@ -401,6 +473,14 @@
   /* ── wiring ───────────────────────────────────────────────── */
 
   on('btn-begin', function () {
+    RoarAudio.resume();          // unlock audio on the first real gesture
+    show('screen-how');
+  });
+
+  on('how-tap', function () { setInputMode('tap'); askMic(); });
+  on('how-voice', function () { setInputMode('voice'); askMic(); });
+
+  function askMic() {
     show('screen-mic');
     $('btn-mic-retry').hidden = true;
     $('mic-title').textContent = 'Can we use the microphone?';
@@ -424,9 +504,9 @@
       $('mic-listening').hidden = true;
       $('btn-mic-retry').hidden = false;
     });
-  });
+  }
 
-  on('btn-mic-retry', function () { $('btn-begin').click(); });
+  on('btn-mic-retry', askMic);
 
   $('photo-input').addEventListener('change', function (e) {
     var file = e.target.files && e.target.files[0];
@@ -436,20 +516,28 @@
     });
   });
 
-  on('btn-surprise', function () {
-    var emoji = ANIMALS[(Math.random() * ANIMALS.length) | 0];
-    players[current].emoji = emoji;
-    animalPhoto(emoji, SKINS[current]).then(setPhoto);
+  on('btn-surprise', openAnimals);
+  on('btn-animal-cancel', closeAnimals);
+  $('animal-sheet').addEventListener('click', function (e) {
+    if (e.target === this) closeAnimals();     // tap the backdrop to dismiss
   });
+  buildAnimalGrid();
 
   on('btn-photo-next', toVoiceStep);
   on('btn-record', doRecord);
   on('btn-rerecord', doRecord);
-  on('btn-hear', function () { RoarAudio.playVoiceOnce(current, 1); });
+  on('btn-hear', hearMyself);
   on('btn-voice-next', afterVoice);
 
-  on('seg-tap', function () { setInputMode('tap'); });
-  on('seg-voice', function () { setInputMode('voice'); });
+  on('seg-tap', function () { setInputMode('tap'); applyMicPolicy(); });
+  on('seg-voice', function () {
+    setInputMode('voice');
+    applyMicPolicy().then(function (ok) {
+      if (ok) return;
+      setInputMode('tap');
+      alert("We couldn't get the microphone back, so let's stay on TAP.");
+    });
+  });
 
   on('btn-mode-grab', playGrab);
   on('btn-mode-roar', playRoar);

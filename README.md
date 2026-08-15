@@ -3,8 +3,16 @@
 Two-player voice games for kids, built for an iPhone. No app store, no install,
 no accounts — it's a static web page you open in Safari.
 
-Each player uploads a photo and records their own sound ("make your sound!" —
-a roar, a meow, a moo, anything). That recording is then used two ways:
+Each player picks a face — **either a photo** (camera or library) **or one of
+ten animals**: rabbit, cow, lion, giraffe, seal, penguin, shark, tiger,
+elephant or dino. Picking an animal also fills in the name, so a kid who can't
+type yet still ends up with one. That face rides on the end of their claw-arm
+during the game.
+
+Then each player records their own sound ("make your sound!" — a roar, a meow,
+a moo, anything). If the raw capture comes back unusable on some device, the
+game synthesises a growl around that player's own pitch instead, so a tap
+always makes a noise. That recording is used two ways:
 
 - **👆 TAP mode (default)** — hold your own half of the screen and your recorded
   sound plays back on repeat: *roar roar roar*. Nobody has to shout, so nobody
@@ -12,7 +20,16 @@ a roar, a meow, a moo, anything). That recording is then used two ways:
 - **🎤 SHOUT mode** — actually shout, and the game splits the microphone between
   the two saved voice fingerprints.
 
-You pick between them on the mode screen before each game.
+**You choose which one right after BEGIN GAME**, before anything else, and can
+switch on the mode screen later. Only one is ever active — they never run at
+the same time.
+
+That exclusivity is not just tidiness. While a `getUserMedia` capture is live,
+iOS puts the audio session into play-and-record and routes output to the
+**earpiece** at a fraction of the volume, which makes the tapped-back voices
+almost inaudible. So TAP hands the microphone back as soon as both sounds are
+recorded, and SHOUT takes it again if you switch. As a bonus the iOS recording
+indicator goes away when the game isn't listening.
 
 ---
 

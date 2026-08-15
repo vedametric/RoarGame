@@ -40,6 +40,7 @@
     stream: null,
     analyser: null,
     ready: false,
+    micLive: false,
     noiseFloor: 0.04,
     profiles: [null, null],
     voice: [null, null],
@@ -58,7 +59,7 @@
     // Must be called from inside a user gesture (iOS unlocks audio that way).
     init: function () {
       var self = this;
-      if (self.ready) return Promise.resolve();
+      if (self.ready && self.micLive) return Promise.resolve();
 
       var AC = global.AudioContext || global.webkitAudioContext;
       if (!AC) return Promise.reject(new Error('unsupported'));
@@ -100,7 +101,33 @@
           self._bands = new Float32Array(NBANDS);
           self._setupBands();
           self.ready = true;
+          self.micLive = true;
         });
+    },
+
+    // Hand the microphone back to the system.
+    //
+    // This is not just tidiness. While a getUserMedia capture is live, iOS puts
+    // the audio session into play-and-record and routes output to the earpiece
+    // at a fraction of the volume — so the recorded voices play back almost
+    // inaudibly. TAP mode never needs the mic during play, so we let it go and
+    // playback returns to the loudspeaker.
+    releaseMic: function () {
+      if (this.stream) {
+        this.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+        this.stream = null;
+      }
+      if (this.source) {
+        try { this.source.disconnect(); } catch (e) {}
+        this.source = null;
+      }
+      this.micLive = false;
+    },
+
+    // Re-acquire after a release (switching back to SHOUT, or re-recording).
+    ensureMic: function () {
+      this.resume();
+      return this.micLive ? Promise.resolve() : this.init();
     },
 
     // Bin ranges for each log-spaced band, plus a lookup table that undoes the
@@ -152,8 +179,12 @@
     /* ── per-frame analysis ────────────────────────────────────── */
 
     analyze: function () {
-      var out = { level: 0, rms: 0, pitch: 0, centroid: 0, rolloff: 0, loud: false };
-      if (!this.ready) return out;
+      // Always the same shape, so callers never have to null-check a field.
+      var out = {
+        level: 0, rms: 0, pitch: 0, centroid: 0, rolloff: 0,
+        flatness: 0, bands: null, loud: false
+      };
+      if (!this.ready || !this.micLive) return out;
 
       var an = this.analyser, time = this._time, sr = this.ctx.sampleRate;
       an.getFloatTimeDomainData(time);
@@ -379,11 +410,32 @@
       return buf;
     },
 
+    // If the raw capture came back unusable on some device, synthesise a growl
+    // around the player's own pitch. A tap must always make a noise.
+    _fallbackClip: function (profile) {
+      var sr = this.ctx.sampleRate;
+      var len = Math.floor(sr * 0.42);
+      var buf = this.ctx.createBuffer(1, len, sr);
+      var d = buf.getChannelData(0);
+      var f0 = profile.pitch > 0 ? profile.pitch : 170;
+      var phase = 0;
+
+      for (var i = 0; i < len; i++) {
+        var t = i / len;
+        phase += 6.2832 * (f0 * (1 - 0.32 * t)) / sr;
+        var saw = 2 * ((phase / 6.2832) % 1) - 1;
+        var env = Math.sin(Math.PI * Math.min(1, t * 1.12));
+        d[i] = (saw * 0.62 + (Math.random() * 2 - 1) * 0.22) * env * 0.85;
+      }
+      return buf;
+    },
+
     // Hold-to-play: repeats the clip back to back for as long as the player
     // holds their pad, which is what turns one roar into "roar roar roar".
     startVoice: function (i, vol) {
       var p = this.profiles[i];
       if (!p || !p.clip || this.voice[i] || !this.ctx) return;
+      this.resume();
 
       var self = this;
       var gain = this.ctx.createGain();
@@ -420,6 +472,7 @@
     playVoiceOnce: function (i, vol) {
       var p = this.profiles[i];
       if (!p || !p.clip || !this.ctx) return;
+      this.resume();
       var g = this.ctx.createGain();
       g.gain.value = vol == null ? 1 : vol;
       g.connect(this.ctx.destination);
@@ -471,18 +524,19 @@
           var tmpl = new Float32Array(NBANDS);
           for (k = 0; k < NBANDS; k++) tmpl[k] = bandSum[k] / norm;
 
-          resolve({
-            ok: true,
-            profile: {
-              pitch: median(pitches),
-              centroid: median(centroids),
-              rolloff: median(rolloffs),
-              bands: tmpl,
-              clip: self._makeClip(cap.chunks),
-              peak: peak,
-              voiced: pitches.length / loudFrames
-            }
-          });
+          var profile = {
+            pitch: median(pitches),
+            centroid: median(centroids),
+            rolloff: median(rolloffs),
+            bands: tmpl,
+            peak: peak,
+            voiced: pitches.length / loudFrames
+          };
+          profile.clip = self._makeClip(cap.chunks);
+          profile.recorded = !!profile.clip;
+          if (!profile.clip) profile.clip = self._fallbackClip(profile);
+
+          resolve({ ok: true, profile: profile });
         })();
       });
     },
