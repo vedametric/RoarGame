@@ -430,58 +430,41 @@
       return buf;
     },
 
-    // Hold-to-play: repeats the clip back to back for as long as the player
-    // holds their pad, which is what turns one roar into "roar roar roar".
-    startVoice: function (i, vol) {
+    // One sound per tap. A new tap cuts the previous one short so rapid
+    // tapping reads as "ro-ro-ro-roar" instead of a pile of overlapping roars.
+    playVoiceOnce: function (i, vol) {
       var p = this.profiles[i];
-      if (!p || !p.clip || this.voice[i] || !this.ctx) return;
+      if (!p || !p.clip || !this.ctx || this.muted) return;
       this.resume();
+      this.stopVoice(i);
+
+      var g = this.ctx.createGain();
+      g.gain.value = vol == null ? 1 : vol;
+      g.connect(this.ctx.destination);
+
+      var src = this.ctx.createBufferSource();
+      src.buffer = p.clip;
+      src.connect(g);
 
       var self = this;
-      var gain = this.ctx.createGain();
-      gain.gain.value = vol == null ? 0.95 : vol;
-      gain.connect(this.ctx.destination);
-
-      var h = { on: true, src: null, gain: gain };
-      h.stop = function () {
-        h.on = false;
-        try { if (h.src) h.src.stop(); } catch (e) {}
-        try { gain.disconnect(); } catch (e) {}
+      var h = { src: src, gain: g };
+      src.onended = function () {
+        try { g.disconnect(); } catch (e) {}
+        if (self.voice[i] === h) self.voice[i] = null;
       };
-
-      (function again() {
-        if (!h.on) return;
-        var src = self.ctx.createBufferSource();
-        src.buffer = p.clip;
-        src.connect(gain);
-        src.onended = function () { if (h.on) again(); };
-        src.start();
-        h.src = src;
-      })();
-
+      src.start();
       this.voice[i] = h;
     },
 
     stopVoice: function (i) {
-      if (this.voice[i]) { this.voice[i].stop(); this.voice[i] = null; }
+      var h = this.voice[i];
+      if (!h) return;
+      this.voice[i] = null;
+      try { h.src.onended = null; h.src.stop(); } catch (e) {}
+      try { h.gain.disconnect(); } catch (e) {}
     },
 
     stopAllVoices: function () { this.stopVoice(0); this.stopVoice(1); },
-
-    // One-shot, for celebrations.
-    playVoiceOnce: function (i, vol) {
-      var p = this.profiles[i];
-      if (!p || !p.clip || !this.ctx) return;
-      this.resume();
-      var g = this.ctx.createGain();
-      g.gain.value = vol == null ? 1 : vol;
-      g.connect(this.ctx.destination);
-      var src = this.ctx.createBufferSource();
-      src.buffer = p.clip;
-      src.connect(g);
-      src.onended = function () { try { g.disconnect(); } catch (e) {} };
-      src.start();
-    },
 
     // Listens for `ms`, keeps the frames that were actually loud, and boils
     // them down to one fingerprint. onTick(progress, level) drives the UI.
@@ -669,6 +652,11 @@
 
     /* ── little synthesised sound effects (no asset files) ─────── */
 
+    setMuted: function (on) {
+      this.muted = !!on;
+      if (this.muted) this.stopAllVoices();
+    },
+
     sfx: function (type) {
       if (!this.ctx || this.muted) return;
       var ctx = this.ctx, t = ctx.currentTime;
@@ -694,6 +682,9 @@
         case 'miss':   voice('sawtooth', 420,  120, 0.26, 0.10, 0);    break;
         case 'warn':   voice('square',   240,  180, 0.10, 0.11, 0);
                        voice('square',   240,  180, 0.10, 0.11, 0.16); break;
+        case 'step':   voice('square',   880,  880, 0.05, 0.07, 0);    break;
+        case 'bust':   voice('sawtooth', 300,   90, 0.30, 0.16, 0);
+                       voice('square',   150,   60, 0.24, 0.10, 0.04); break;
         case 'gold':   [784, 988, 1319, 1568].forEach(function (f, i) {
                          voice('triangle', f, f, 0.16, 0.14, i * 0.05);
                        });                                             break;

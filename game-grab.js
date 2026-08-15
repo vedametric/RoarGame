@@ -1,36 +1,39 @@
 /*
  * game-grab.js — "GRAB IT!"
  *
- * The phone lies flat between two players. Something pops up on the centre
- * line, exactly the same distance from each side. Hold your half of the screen
- * (or shout, in voice mode) and your claw-arm shoots out towards it; let go and
- * it springs back. First claw to touch it takes it.
+ * The phone lies flat between the players (or in front of one, in solo). An
+ * object pops up on the centre line, the same distance from every side.
  *
- * Not everything is worth grabbing:
- *   ⭐ star   — points
- *   🌟 golden — double points, but it does not hang around
- *   💣 bomb   — grab it and you lose points and your arm freezes solid
+ * Everything is driven by discrete taps — there is no holding anything down.
+ * Each tap walks your claw-arm one step closer. In SHOUT mode each separate
+ * burst of noise counts as one step, so "roar, roar, roar" does the same job.
  *
- * Four levels over 45 seconds: things appear faster, vanish sooner, shrink,
- * and the arms get heavier.
+ *   ⭐ treat   — a few steps, first claw there takes it
+ *   🌟 golden  — double points, gone quickly
+ *   💣 bomb    — do not touch it: points off and your arm freezes
+ *   🔢 number  — needs EXACTLY that many taps. One too many and you bust.
+ *
+ * The number objects are why mashing does not pay: reaching the object starts
+ * a short settle, and an extra tap during it overshoots.
  */
 (function (global) {
   'use strict';
 
   var LEVELS = [
-    { gap: 1.25, life: 2.50, reachTime: 0.55, radius: 46, bomb: 0.00, gold: 0.12 },
-    { gap: 0.95, life: 2.00, reachTime: 0.60, radius: 42, bomb: 0.16, gold: 0.16 },
-    { gap: 0.72, life: 1.60, reachTime: 0.66, radius: 37, bomb: 0.24, gold: 0.20 },
-    { gap: 0.52, life: 1.25, reachTime: 0.72, radius: 33, bomb: 0.30, gold: 0.24 }
+    { gap: 0.85, life: 3.2, radius: 46, need: 3, pNum: 0.16, pBomb: 0.00, pGold: 0.12 },
+    { gap: 0.70, life: 2.8, radius: 42, need: 4, pNum: 0.22, pBomb: 0.14, pGold: 0.15 },
+    { gap: 0.55, life: 2.4, radius: 38, need: 5, pNum: 0.26, pBomb: 0.20, pGold: 0.18 },
+    { gap: 0.42, life: 2.0, radius: 34, need: 6, pNum: 0.30, pBomb: 0.26, pGold: 0.20 }
   ];
 
-  var COMBO_STEPS = [1, 1, 1.5, 2, 2.5, 3];   // indexed by streak, last value repeats
-  var RETRACT_TIME = 0.75;
-  var IDLE_CAP = 0.80;       // you cannot camp on the spot with nothing to grab
-  var FREEZE_TIME = 1.15;    // bomb penalty
+  var COMBO_STEPS = [1, 1, 1.5, 2, 2.5, 3];
+  var SETTLE = 0.30;         // grace after arriving, during which a tap overshoots
+  var FREEZE_TIME = 1.15;
   var ICE = '#e8f6ff', ICE_RIM = '#8fd8ff';
   var BASE_INSET = 104;
   var TREATS = ['⭐', '🍎', '🍌', '🎈', '🍩', '💎', '🍭', '🐟'];
+  var EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif';
+  var BURST_GAP = 0.14;      // min silence before a new roar counts as a new step
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -40,25 +43,32 @@
 
     start: function (cfg) {
       var self = this;
+      var i;
+
       self.cfg = cfg;
       self.canvas = cfg.canvas;
       self.ctx = self.canvas.getContext('2d');
       self.players = cfg.players;
+      self.n = cfg.players.length;              // 1 or 2
       self.duration = cfg.duration || 45;
       self.tapMode = cfg.inputMode === 'tap';
 
-      self.scores = [0, 0];
-      self.streaks = [0, 0];
-      self.reach = [0, 0];
-      self.wobble = [0, 0];
-      self.pulse = [0, 0];
-      self.frozen = [0, 0];
-      self.held = [false, false];
-      self.tapKick = [0, 0];
+      self.scores = []; self.streaks = []; self.taps = [];
+      self.reach = []; self.shown = []; self.pulse = [];
+      self.frozen = []; self.busted = []; self.wasLoud = []; self.quietFor = [];
+      for (i = 0; i < self.n; i++) {
+        self.scores[i] = 0; self.streaks[i] = 0; self.taps[i] = 0;
+        self.reach[i] = 0; self.shown[i] = 0; self.pulse[i] = 0;
+        self.frozen[i] = 0; self.busted[i] = false;
+        self.wasLoud[i] = false; self.quietFor[i] = 1;
+      }
+
       self.level = 0;
       self.elapsed = 0;
       self.target = null;
       self.spawnIn = 1.1;
+      self.settle = -1;
+      self.settleBy = -1;
       self.shake = 0;
       self.hintFade = 1;
       self.floaters = [];
@@ -91,67 +101,92 @@
       this.canvas.width = Math.floor(this.W * d);
       this.canvas.height = Math.floor(this.H * d);
       this.ctx.setTransform(d, 0, 0, d, 0, 0);
-      this.bases = [
-        { x: this.W / 2, y: this.H - BASE_INSET },
-        { x: this.W / 2, y: BASE_INSET }
-      ];
+
+      // Solo plays up the screen from the bottom; two players face each other.
+      this.line = this.n === 1 ? this.H * 0.34 : this.H / 2;
+      this.bases = [{ x: this.W / 2, y: this.H - BASE_INSET }];
+      if (this.n === 2) this.bases.push({ x: this.W / 2, y: BASE_INSET });
     },
 
-    /* ── touch: each player owns their half of the screen ─────── */
+    /* ── input ────────────────────────────────────────────────── */
 
     _bindTouch: function () {
       var self = this;
       var el = this.cfg.touchTarget || this.canvas;
       this.touchEl = el;
-      this.pointers = {};
 
-      // Which half was touched decides who it belongs to — kids can press
-      // anywhere on their own side rather than hunting for a button.
+      // Solo owns the whole screen; otherwise your half is your button.
       var sideOf = function (y) {
+        if (self.n === 1) return 0;
         var r = el.getBoundingClientRect();
         return (y - r.top) > r.height / 2 ? 0 : 1;
       };
 
       this._down = function (e) {
-        var i = sideOf(e.clientY);
-        self.pointers[e.pointerId] = i;
-        self._press(i, true);
+        self._tap(sideOf(e.clientY));
         e.preventDefault();
       };
-      this._up = function (e) {
-        var i = self.pointers[e.pointerId];
-        if (i === undefined) return;
-        delete self.pointers[e.pointerId];
-        // Only release if this player has no other finger down.
-        for (var k in self.pointers) if (self.pointers[k] === i) return;
-        self._press(i, false);
-      };
-
       el.addEventListener('pointerdown', this._down, { passive: false });
-      el.addEventListener('pointerup', this._up);
-      el.addEventListener('pointercancel', this._up);
-      el.addEventListener('pointerleave', this._up);
     },
 
     _unbindTouch: function () {
-      var el = this.touchEl;
-      if (!el) return;
-      el.removeEventListener('pointerdown', this._down);
-      el.removeEventListener('pointerup', this._up);
-      el.removeEventListener('pointercancel', this._up);
-      el.removeEventListener('pointerleave', this._up);
+      if (this.touchEl) this.touchEl.removeEventListener('pointerdown', this._down);
       this.touchEl = null;
     },
 
-    _press: function (i, on) {
-      if (this.held[i] === on) return;
-      this.held[i] = on;
-      if (on) {
-        this.hintFade = 0;
-        this.tapKick[i] = 1;                 // rewards a fast press-press-press
-        if (this.frozen[i] <= 0) global.RoarAudio.startVoice(i);
+    // One step closer. Holding does nothing at all — only separate taps count.
+    _tap: function (i) {
+      if (i >= this.n) return;
+      this.hintFade = 0;
+      this.pulse[i] = 1;
+
+      // Always answer a press with their sound. A tap that happens to land
+      // between objects still counts for nothing, but silence would read as
+      // a broken button.
+      global.RoarAudio.playVoiceOnce(i, 0.9);
+
+      if (this.frozen[i] > 0 || this.busted[i]) return;
+      if (!this.target || this.grabbedBy >= 0) return;   // no pre-charging
+
+      var t = this.target;
+      this.taps[i]++;
+
+      if (t.kind === 'bomb') {
+        // Stepping onto a bomb is the player's own doing.
+        if (this.taps[i] >= t.need) this._bomb(i);
+        return;
+      }
+
+      if (this.taps[i] > t.need) { this._bust(i); return; }
+
+      if (this.taps[i] === t.need) {
+        if (t.kind === 'number') {
+          // Arrived — but an extra tap in the next moment overshoots.
+          if (this.settle < 0) { this.settle = SETTLE; this.settleBy = i; }
+        } else {
+          this._grab(i);
+        }
       } else {
-        global.RoarAudio.stopVoice(i);
+        global.RoarAudio.sfx('step');
+      }
+    },
+
+    // SHOUT mode: every fresh burst of noise is one step.
+    _listen: function (dt) {
+      var f = global.RoarAudio.analyze();
+      var a = global.RoarAudio.attribute(f);
+      var i;
+
+      for (i = 0; i < this.n; i++) {
+        var mine = a.accepted && (this.n === 1 || a.best === i) && a.w[i] > 0.5;
+        if (mine) {
+          if (!this.wasLoud[i] && this.quietFor[i] >= BURST_GAP) this._tap(i);
+          this.wasLoud[i] = true;
+          this.quietFor[i] = 0;
+        } else {
+          this.wasLoud[i] = false;
+          this.quietFor[i] += dt;
+        }
       }
     },
 
@@ -161,10 +196,8 @@
       var self = this;
       var dt = Math.min(0.05, (now - self.last) / 1000);
       self.last = now;
-
       self._update(dt);
       self._draw(dt);
-
       if (self.running) self.raf = requestAnimationFrame(function (t) { self._loop(t); });
     },
 
@@ -180,43 +213,34 @@
       }
       var L = LEVELS[this.level];
 
-      var push = this._input(dt);
+      if (!this.tapMode) this._listen(dt);
 
-      var cap = (this.target && this.grabbedBy < 0) ? 1.02 : IDLE_CAP;
-      for (i = 0; i < 2; i++) {
-        if (this.frozen[i] > 0) {
-          this.frozen[i] -= dt;
-          if (this.frozen[i] <= 0 && this.held[i]) global.RoarAudio.startVoice(i);
-          push[i] = 0;
-        }
-        this.tapKick[i] = Math.max(0, this.tapKick[i] - dt * 4);
+      for (i = 0; i < this.n; i++) {
+        if (this.frozen[i] > 0) this.frozen[i] -= dt;
+        this.pulse[i] = Math.max(0, this.pulse[i] - dt * 3.2);
 
-        var before = this.reach[i];
-        if (push[i] > 0.04 && this.grabbedBy < 0) {
-          this.reach[i] += (push[i] / L.reachTime) * dt;
-          this.pulse[i] = Math.min(1, this.pulse[i] + push[i] * dt * 5);
-        } else {
-          this.reach[i] -= dt / RETRACT_TIME;
-          this.pulse[i] = Math.max(0, this.pulse[i] - dt * 2.2);
+        // Position is a pure function of taps, so "exactly N" always holds.
+        var want = this.target ? clamp(this.taps[i] / this.target.need, 0, 1.16) : 0;
+        this.reach[i] = want;
+        this.shown[i] += (want - this.shown[i]) * Math.min(1, dt * 18);
+      }
+
+      if (this.settle > 0) {
+        this.settle -= dt;
+        if (this.settle <= 0 && this.settleBy >= 0) {
+          var who = this.settleBy;
+          this.settle = -1; this.settleBy = -1;
+          if (this.target && !this.busted[who]) this._grab(who);
         }
-        this.reach[i] = clamp(this.reach[i], 0, cap);
-        this.wobble[i] = this.wobble[i] * 0.88 + (this.reach[i] - before) * 26;
       }
 
       if (this.grabAnim > 0) {
         this.grabAnim -= dt;
-        if (this.grabAnim <= 0) { this.target = null; this.grabbedBy = -1; this.spawnIn = L.gap; }
+        if (this.grabAnim <= 0) this._clear(L.gap);
       } else if (this.target) {
         this.target.age += dt;
         this.target.bob += dt;
         if (this.target.age >= this.target.life) this._expire();
-        else {
-          var hit = -1;
-          if (this.reach[0] >= 1 && this.reach[1] >= 1) hit = this.reach[0] >= this.reach[1] ? 0 : 1;
-          else if (this.reach[0] >= 1) hit = 0;
-          else if (this.reach[1] >= 1) hit = 1;
-          if (hit >= 0) this._touch(hit);
-        }
       } else {
         this.spawnIn -= dt;
         if (this.spawnIn <= 0 && this.elapsed < this.duration - 0.4) this._spawn(L);
@@ -240,41 +264,38 @@
       }
     },
 
-    // How hard each player is pushing this frame, 0..1.
-    _input: function (dt) {
-      var push = [0, 0], i;
-
-      if (this.tapMode) {
-        for (i = 0; i < 2; i++) {
-          // Holding gives a steady push; each fresh press adds a little kick,
-          // so drumming out "roar-roar-roar" beats leaning on it.
-          push[i] = (this.held[i] ? 0.92 : 0) + this.tapKick[i] * 0.5;
-          push[i] = clamp(push[i], 0, 1.25);
-        }
-        return push;
+    _clear: function (gap) {
+      this.target = null;
+      this.grabbedBy = -1;
+      this.settle = -1;
+      this.settleBy = -1;
+      this.spawnIn = gap;
+      for (var i = 0; i < this.n; i++) {
+        this.taps[i] = 0;
+        this.busted[i] = false;
+        this.reach[i] = 0;
       }
-
-      var f = global.RoarAudio.analyze();
-      var a = global.RoarAudio.attribute(f);
-      if (!a.accepted) return push;
-
-      var gate = global.RoarAudio.gate();
-      var strength = Math.pow(clamp((f.level - gate) / (1 - gate), 0, 1), 0.7);
-      for (i = 0; i < 2; i++) push[i] = clamp(a.w[i] * 1.7, 0, 1) * strength;
-      return push;
     },
 
     _spawn: function (L) {
       var margin = Math.max(64, this.W * 0.24);
       var r = Math.random();
-      var kind = r < L.bomb ? 'bomb' : (r < L.bomb + L.gold ? 'gold' : 'star');
+      var kind = r < L.pNum ? 'number'
+        : r < L.pNum + L.pBomb ? 'bomb'
+        : r < L.pNum + L.pBomb + L.pGold ? 'gold' : 'star';
+
+      // Numbers go up with the level, so "exactly 10" shows up later on.
+      var need = kind === 'number'
+        ? 4 + Math.floor(Math.random() * (5 + this.level * 3))
+        : (kind === 'gold' ? Math.max(2, L.need - 1) : L.need);
 
       this.target = {
         kind: kind,
+        need: need,
         x: margin + Math.random() * (this.W - margin * 2),
-        y: this.H / 2,
+        y: this.line,
         r: kind === 'gold' ? L.radius * 0.88 : L.radius,
-        life: kind === 'gold' ? L.life * 0.72 : L.life,
+        life: kind === 'number' ? L.life * 1.7 : (kind === 'gold' ? L.life * 0.72 : L.life),
         age: 0,
         bob: Math.random() * 6.28,
         emoji: kind === 'bomb' ? '💣' : (kind === 'gold' ? '🌟' : TREATS[(Math.random() * TREATS.length) | 0]),
@@ -287,20 +308,19 @@
       return COMBO_STEPS[Math.min(this.streaks[i], COMBO_STEPS.length - 1)];
     },
 
-    _touch: function (i) {
-      if (this.target.kind === 'bomb') this._bomb(i);
-      else this._grab(i);
-    },
-
     _grab: function (i) {
-      var t = this.target, p = this.players[i];
+      var t = this.target;
+      if (!t || this.grabbedBy >= 0) return;
+      var p = this.players[i];
       var mult = this._combo(i);
-      var base = 10 * (this.level + 1) * (t.kind === 'gold' ? 2 : 1);
+      var base = 10 * (this.level + 1);
+      if (t.kind === 'gold') base *= 2;
+      if (t.kind === 'number') base += t.need * 5;      // bigger numbers pay more
       var pts = Math.round(base * mult);
 
       this.scores[i] += pts;
       this.streaks[i]++;
-      this.streaks[1 - i] = 0;
+      if (this.n === 2) this.streaks[1 - i] = 0;
       this.grabbedBy = i;
       this.grabAnim = 0.28;
       this.shake = t.kind === 'gold' ? 1.3 : 1;
@@ -314,13 +334,33 @@
       this.floaters.push({
         x: t.x, y: t.y, vy: i === 0 ? -150 : 150, age: 0, life: 0.9,
         text: '+' + pts, color: t.kind === 'gold' ? '#ffd24c' : p.glow, flip: i === 1,
-        sub: newMult > 1 ? 'COMBO x' + newMult : (t.kind === 'gold' ? 'GOLDEN!' : '')
+        sub: t.kind === 'number' ? 'PERFECT ' + t.need + '!'
+           : newMult > 1 ? 'COMBO x' + newMult
+           : (t.kind === 'gold' ? 'GOLDEN!' : '')
       });
 
-      global.RoarAudio.sfx(t.kind === 'gold' ? 'gold' : 'grab');
-      // Their own voice cheering the grab is the best part of tap mode.
-      if (this.tapMode && !this.held[i]) global.RoarAudio.playVoiceOnce(i, 0.85);
+      global.RoarAudio.sfx(t.kind === 'gold' || t.kind === 'number' ? 'gold' : 'grab');
       if (this.cfg.onScore) this.cfg.onScore(i, this.scores[i], newMult);
+    },
+
+    // Too many taps: out of the running for this object.
+    _bust: function (i) {
+      var t = this.target, p = this.players[i];
+      this.busted[i] = true;
+      this.streaks[i] = 0;
+      this.shake = Math.max(this.shake, 0.8);
+      this.taps[i] = t.need + 1;
+
+      this.burst.emit(t.x, t.y, 14, ['#ff4d6d', '#ffffff'], { speed: 220, size: 6, life: 0.5 });
+      this.floaters.push({
+        x: t.x, y: t.y, vy: i === 0 ? -120 : 120, age: 0, life: 1,
+        text: 'TOO MANY!', color: '#ff4d6d', flip: i === 1, sub: 'needed ' + t.need
+      });
+      global.RoarAudio.sfx('bust');
+
+      // In solo there is nobody else to take it, so the object is done.
+      if (this.n === 1) { this.grabAnim = 0.5; this.grabbedBy = -1; this.target.age = this.target.life; }
+      if (this.cfg.onScore) this.cfg.onScore(i, this.scores[i], 1);
     },
 
     _bomb: function (i) {
@@ -333,7 +373,6 @@
       this.grabbedBy = i;
       this.grabAnim = 0.28;
       this.shake = 1.6;
-      this.reach[i] = 0;
 
       global.RoarAudio.stopVoice(i);
       this.burst.emit(t.x, t.y, 34, ['#ff4d6d', '#ff9f1c', '#2b2b3d', '#ffffff'], { speed: 460, size: 10 });
@@ -349,15 +388,13 @@
     _expire: function () {
       var t = this.target;
       if (t.kind === 'bomb') {
-        // Letting a bomb go is the correct play, so it just fizzles out.
         this.burst.emit(t.x, t.y, 8, ['#6f6a8d'], { speed: 110, size: 4, life: 0.4 });
       } else {
         this.burst.emit(t.x, t.y, 10, ['#8b7fb0', '#5c4d86'], { speed: 130, size: 5, life: 0.5 });
-        this.streaks[0] = this.streaks[1] = 0;
+        for (var i = 0; i < this.n; i++) this.streaks[i] = 0;
         global.RoarAudio.sfx('miss');
       }
-      this.target = null;
-      this.spawnIn = LEVELS[this.level].gap * 0.75;
+      this._clear(LEVELS[this.level].gap * 0.75);
     },
 
     /* ── drawing ──────────────────────────────────────────────── */
@@ -374,7 +411,7 @@
       c.clearRect(-20, -20, W + 40, H + 40);
       this._drawField(c, W, H);
       if (!this.target) this._drawHint(c, W, H);
-      for (i = 0; i < 2; i++) this._drawArm(c, i);
+      for (i = 0; i < this.n; i++) this._drawArm(c, i);
       if (this.target) this._drawTarget(c, dt);
 
       this.burst.draw(c);
@@ -387,39 +424,37 @@
 
     _drawField: function (c, W, H) {
       var i;
-      var g1 = c.createLinearGradient(0, H, 0, H * 0.5);
-      g1.addColorStop(0, 'rgba(255,138,43,' + (0.20 + this.pulse[0] * 0.22) + ')');
+      var g1 = c.createLinearGradient(0, H, 0, this.line);
+      g1.addColorStop(0, 'rgba(255,138,43,' + (0.20 + this.pulse[0] * 0.25) + ')');
       g1.addColorStop(1, 'rgba(255,138,43,0)');
       c.fillStyle = g1;
-      c.fillRect(0, H * 0.5, W, H * 0.5);
+      c.fillRect(0, this.line, W, H - this.line);
 
-      var g2 = c.createLinearGradient(0, 0, 0, H * 0.5);
-      g2.addColorStop(0, 'rgba(49,216,255,' + (0.20 + this.pulse[1] * 0.22) + ')');
-      g2.addColorStop(1, 'rgba(49,216,255,0)');
-      c.fillStyle = g2;
-      c.fillRect(0, 0, W, H * 0.5);
+      if (this.n === 2) {
+        var g2 = c.createLinearGradient(0, 0, 0, H * 0.5);
+        g2.addColorStop(0, 'rgba(49,216,255,' + (0.20 + this.pulse[1] * 0.25) + ')');
+        g2.addColorStop(1, 'rgba(49,216,255,0)');
+        c.fillStyle = g2;
+        c.fillRect(0, 0, W, H * 0.5);
 
-      c.save();
-      c.setLineDash([10, 12]);
-      c.lineWidth = 2;
-      c.strokeStyle = 'rgba(255,255,255,0.18)';
-      c.beginPath();
-      c.moveTo(0, H / 2); c.lineTo(W, H / 2);
-      c.stroke();
-      c.restore();
+        c.save();
+        c.setLineDash([10, 12]);
+        c.lineWidth = 2;
+        c.strokeStyle = 'rgba(255,255,255,0.18)';
+        c.beginPath();
+        c.moveTo(0, H / 2); c.lineTo(W, H / 2);
+        c.stroke();
+        c.restore();
+      }
 
-      for (i = 0; i < 2; i++) {
+      for (i = 0; i < this.n; i++) {
         var b = this.bases[i], p = this.players[i];
         c.save();
         c.globalAlpha = 0.9;
         c.fillStyle = this.frozen[i] > 0 ? ICE : p.color;
-        c.beginPath();
-        c.arc(b.x, b.y, 30, 0, 6.2832);
-        c.fill();
+        c.beginPath(); c.arc(b.x, b.y, 30, 0, 6.2832); c.fill();
         c.globalAlpha = 0.35;
-        c.beginPath();
-        c.arc(b.x, b.y, 30 + this.pulse[i] * 16, 0, 6.2832);
-        c.fill();
+        c.beginPath(); c.arc(b.x, b.y, 30 + this.pulse[i] * 20, 0, 6.2832); c.fill();
         c.restore();
       }
     },
@@ -432,24 +467,23 @@
       c.lineWidth = 3;
       c.setLineDash([6, 10]);
       c.beginPath();
-      c.arc(W / 2, H / 2, 26 + beat * 12, 0, 6.2832);
+      c.arc(W / 2, this.line, 26 + beat * 12, 0, 6.2832);
       c.stroke();
       c.restore();
     },
 
-    // Fades out once both players have figured out the controls.
     _drawTapHint: function (c, W, H) {
       c.save();
       c.globalAlpha = this.hintFade * 0.75;
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.font = '900 17px system-ui';
-      for (var i = 0; i < 2; i++) {
+      for (var i = 0; i < this.n; i++) {
         c.save();
         c.translate(W / 2, i === 0 ? H - 46 : 46);
         if (i === 1) c.rotate(Math.PI);
         c.fillStyle = this.players[i].glow;
-        c.fillText('HOLD YOUR SIDE', 0, 0);
+        c.fillText(this.n === 1 ? 'TAP TO STEP' : 'TAP YOUR SIDE', 0, 0);
         c.restore();
       }
       c.restore();
@@ -459,28 +493,28 @@
       var p = this.players[i], b = this.bases[i];
       var t = this.target;
       var tx = t ? t.x : this.W / 2;
-      var ty = t ? t.y : this.H / 2;
+      var ty = t ? t.y : this.line;
       var dx = tx - b.x, dy = ty - b.y;
       var full = Math.sqrt(dx * dx + dy * dy) || 1;
       dx /= full; dy /= full;
 
-      var len = this.reach[i] * full;
+      var len = this.shown[i] * full;
       if (len < 6) return;
 
       var frozen = this.frozen[i] > 0;
-      var col = frozen ? ICE : p.color;
-      var glow = frozen ? ICE_RIM : p.glow;
+      var busted = this.busted[i];
+      var col = frozen ? ICE : (busted ? '#7c6f9c' : p.color);
+      var glow = frozen ? ICE_RIM : (busted ? '#9c8fbc' : p.glow);
 
       var tipX = b.x + dx * len, tipY = b.y + dy * len;
       var px = -dy, py = dx;
-      var wob = clamp(this.wobble[i], -34, 34);
-      if (frozen) wob += Math.sin(this.elapsed * 60) * 4;      // shivers
+      var wob = Math.sin(this.elapsed * 22) * this.pulse[i] * 12;
+      if (frozen) wob += Math.sin(this.elapsed * 60) * 4;
       var midX = b.x + dx * len * 0.5 + px * wob;
       var midY = b.y + dy * len * 0.5 + py * wob;
 
       c.save();
       c.lineCap = 'round';
-
       c.globalAlpha = 0.30;
       c.strokeStyle = glow;
       c.lineWidth = 34;
@@ -495,20 +529,25 @@
       c.lineWidth = 5;
       c.beginPath(); c.moveTo(b.x, b.y); c.quadraticCurveTo(midX, midY, tipX, tipY); c.stroke();
 
-      c.globalAlpha = 0.55;
-      c.fillStyle = 'rgba(0,0,0,0.22)';
-      for (var s = 1; s <= 6; s++) {
-        var k = s / 7;
-        var qx = lerp(lerp(b.x, midX, k), lerp(midX, tipX, k), k);
-        var qy = lerp(lerp(b.y, midY, k), lerp(midY, tipY, k), k);
-        c.beginPath(); c.arc(qx, qy, 4.5, 0, 6.2832); c.fill();
+      // One knuckle per step taken, so progress is countable at a glance.
+      var steps = t ? Math.min(this.taps[i], t.need) : 0;
+      c.globalAlpha = 0.85;
+      for (var s = 1; s <= steps; s++) {
+        var k = s / (t.need + 0.0001);
+        if (k > this.shown[i] + 0.02) break;
+        var kk = k / Math.max(this.shown[i], 0.0001);
+        kk = clamp(kk, 0, 1);
+        var qx = lerp(lerp(b.x, midX, kk), lerp(midX, tipX, kk), kk);
+        var qy = lerp(lerp(b.y, midY, kk), lerp(midY, tipY, kk), kk);
+        c.fillStyle = 'rgba(255,255,255,0.75)';
+        c.beginPath(); c.arc(qx, qy, 4, 0, 6.2832); c.fill();
       }
       c.restore();
 
-      this._drawClaw(c, tipX, tipY, dx, dy, p, i, frozen);
+      this._drawClaw(c, tipX, tipY, dx, dy, p, i, frozen, busted);
     },
 
-    _drawClaw: function (c, x, y, dx, dy, p, i, frozen) {
+    _drawClaw: function (c, x, y, dx, dy, p, i, frozen, busted) {
       var ang = Math.atan2(dy, dx);
       var open = this.grabbedBy === i ? 0.25 : 1;
       var R = 30;
@@ -516,7 +555,7 @@
       c.save();
       c.translate(x, y);
       c.rotate(ang);
-      c.fillStyle = frozen ? ICE : p.color;
+      c.fillStyle = frozen ? ICE : (busted ? '#7c6f9c' : p.color);
       for (var k = -1; k <= 1; k++) {
         c.save();
         c.rotate(k * 0.62 * open);
@@ -541,7 +580,7 @@
       } else {
         c.fillStyle = p.color;
         c.fillRect(x - R, y - R, R * 2, R * 2);
-        c.font = '30px system-ui';
+        c.font = '30px ' + EMOJI_FONT;
         c.textAlign = 'center';
         c.textBaseline = 'middle';
         c.fillText(p.emoji || '🐾', x, y + 1);
@@ -549,18 +588,20 @@
       if (frozen) {
         c.fillStyle = 'rgba(232,246,255,0.62)';
         c.fillRect(x - R, y - R, R * 2, R * 2);
+      } else if (busted) {
+        c.fillStyle = 'rgba(40,32,64,0.55)';
+        c.fillRect(x - R, y - R, R * 2, R * 2);
       }
       c.restore();
       c.lineWidth = 5;
-      c.strokeStyle = frozen ? ICE_RIM : p.glow;
+      c.strokeStyle = frozen ? ICE_RIM : (busted ? '#9c8fbc' : p.glow);
       c.stroke();
       c.restore();
 
       if (frozen) {
         c.save();
-        c.font = '22px system-ui';
-        c.textAlign = 'center';
-        c.textBaseline = 'middle';
+        c.font = '22px ' + EMOJI_FONT;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText('🧊', x, y - R - 12);
         c.restore();
       }
@@ -576,7 +617,8 @@
       var s = t.scale * (grabbing ? 1 : 1 + Math.sin(t.bob * 6) * 0.05);
       if (s <= 0.01) return;
 
-      var bomb = t.kind === 'bomb', gold = t.kind === 'gold';
+      var bomb = t.kind === 'bomb', gold = t.kind === 'gold', num = t.kind === 'number';
+      var settling = this.settle > 0;
 
       c.save();
       c.translate(t.x, t.y + bob);
@@ -585,7 +627,8 @@
 
       var halo = c.createRadialGradient(0, 0, t.r * 0.3, 0, 0, t.r * 2.1);
       halo.addColorStop(0, bomb ? 'rgba(255,77,109,0.55)'
-        : gold ? 'rgba(255,210,76,0.75)' : 'rgba(255,232,154,0.55)');
+        : gold ? 'rgba(255,210,76,0.75)'
+        : num ? 'rgba(157,240,138,0.6)' : 'rgba(255,232,154,0.55)');
       halo.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = halo;
       c.beginPath(); c.arc(0, 0, t.r * 2.1, 0, 6.2832); c.fill();
@@ -597,48 +640,55 @@
         for (var k = 0; k < 8; k++) {
           c.rotate(6.2832 / 8);
           c.beginPath();
-          c.moveTo(0, -t.r * 1.15);
-          c.lineTo(7, -t.r * 1.9);
-          c.lineTo(-7, -t.r * 1.9);
-          c.closePath();
-          c.fill();
+          c.moveTo(0, -t.r * 1.15); c.lineTo(7, -t.r * 1.9); c.lineTo(-7, -t.r * 1.9);
+          c.closePath(); c.fill();
         }
         c.restore();
       }
 
-      c.fillStyle = bomb ? 'rgba(52,28,48,0.96)' : 'rgba(255,255,255,0.94)';
+      c.fillStyle = bomb ? 'rgba(52,28,48,0.96)'
+        : num ? (settling ? '#9df08a' : '#ffffff') : 'rgba(255,255,255,0.94)';
       c.beginPath(); c.arc(0, 0, t.r, 0, 6.2832); c.fill();
 
       c.lineWidth = 7;
       c.lineCap = 'round';
-      c.strokeStyle = bomb ? '#ff4d6d' : (remain > 0.35 ? (gold ? '#ffd24c' : '#ffd24c') : '#ff4d6d');
+      c.strokeStyle = bomb ? '#ff4d6d' : (remain > 0.35 ? (num ? '#9df08a' : '#ffd24c') : '#ff4d6d');
       c.beginPath();
       c.arc(0, 0, t.r + 8, -Math.PI / 2, -Math.PI / 2 + 6.2832 * remain);
       c.stroke();
 
-      c.font = Math.round(t.r * 1.25) + 'px system-ui';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText(t.emoji, 0, 2);
+      if (num) {
+        c.fillStyle = '#20103f';
+        c.font = '900 ' + Math.round(t.r * 1.25) + 'px system-ui';
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(String(t.need), 0, 2);
+      } else {
+        c.font = Math.round(t.r * 1.25) + 'px ' + EMOJI_FONT;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(t.emoji, 0, 2);
+      }
       c.restore();
 
-      if (bomb) {
-        // Say it out loud — a symbol alone is not enough for a 5-year-old.
+      if (bomb) this._sideLabel(c, t, "DON'T TAP!", '#ff4d6d');
+      else if (num) this._sideLabel(c, t, 'TAP EXACTLY ' + t.need, '#9df08a');
+    },
+
+    // Written twice, one each way up, so both players can read it.
+    _sideLabel: function (c, t, text, color) {
+      c.save();
+      c.globalAlpha = 0.6 + Math.sin(this.elapsed * 10) * 0.3;
+      c.fillStyle = color;
+      c.font = '900 15px system-ui';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      for (var i = 0; i < this.n; i++) {
         c.save();
-        c.globalAlpha = 0.55 + Math.sin(this.elapsed * 12) * 0.35;
-        c.fillStyle = '#ff4d6d';
-        c.font = '900 15px system-ui';
-        c.textAlign = 'center';
-        c.textBaseline = 'middle';
-        for (var i = 0; i < 2; i++) {
-          c.save();
-          c.translate(t.x, t.y + (i === 0 ? t.r + 34 : -t.r - 34));
-          if (i === 1) c.rotate(Math.PI);
-          c.fillText("DON'T GRAB!", 0, 0);
-          c.restore();
-        }
+        c.translate(t.x, t.y + (i === 0 ? t.r + 34 : -t.r - 34));
+        if (i === 1) c.rotate(Math.PI);
+        c.fillText(text, 0, 0);
         c.restore();
       }
+      c.restore();
     },
 
     _drawFloaters: function (c) {
@@ -654,7 +704,7 @@
         c.fillStyle = f.color;
         c.strokeStyle = 'rgba(0,0,0,0.35)';
         c.lineWidth = 4;
-        c.font = '900 40px system-ui';
+        c.font = '900 38px system-ui';
         c.strokeText(f.text, 0, 0);
         c.fillText(f.text, 0, 0);
         if (f.sub) {
@@ -692,10 +742,9 @@
       var y0 = H / 2 - ((n - 1) * gapY) / 2;
       c.save();
       for (var i = 0; i < n; i++) {
-        var on = i <= this.level;
         c.beginPath();
-        c.arc(W - 22, y0 + i * gapY, on ? 7 : 4.5, 0, 6.2832);
-        c.fillStyle = on ? '#ffd24c' : 'rgba(255,255,255,0.22)';
+        c.arc(W - 22, y0 + i * gapY, i <= this.level ? 7 : 4.5, 0, 6.2832);
+        c.fillStyle = i <= this.level ? '#ffd24c' : 'rgba(255,255,255,0.22)';
         c.fill();
       }
       c.restore();

@@ -22,10 +22,10 @@
       self.cfg = cfg;
       self.duration = cfg.duration || 20;
       self.tapMode = cfg.inputMode === 'tap';
+      self.n = cfg.players ? cfg.players.length : 2;
       self.scores = [0, 0];
       self.shown = [0, 0];
       self.live = [0, 0];
-      self.held = [false, false];
       self.kick = [0, 0];
       self.elapsed = 0;
       self.hypeIn = 0;
@@ -70,45 +70,29 @@
       this.pointers = {};
 
       var sideOf = function (x) {
+        if (self.n === 1) return 0;
         var r = el.getBoundingClientRect();
         return (x - r.left) < r.width / 2 ? 0 : 1;
       };
 
+      // Taps only — holding a finger down does nothing.
       this._down = function (e) {
-        var i = sideOf(e.clientX);
-        self.pointers[e.pointerId] = i;
-        self._press(i, true);
+        self._tap(sideOf(e.clientX));
         e.preventDefault();
       };
-      this._up = function (e) {
-        var i = self.pointers[e.pointerId];
-        if (i === undefined) return;
-        delete self.pointers[e.pointerId];
-        for (var k in self.pointers) if (self.pointers[k] === i) return;
-        self._press(i, false);
-      };
-
       el.addEventListener('pointerdown', this._down, { passive: false });
-      el.addEventListener('pointerup', this._up);
-      el.addEventListener('pointercancel', this._up);
-      el.addEventListener('pointerleave', this._up);
     },
 
     _unbindTouch: function () {
-      var el = this.touchEl;
-      if (!el) return;
-      el.removeEventListener('pointerdown', this._down);
-      el.removeEventListener('pointerup', this._up);
-      el.removeEventListener('pointercancel', this._up);
-      el.removeEventListener('pointerleave', this._up);
+      if (this.touchEl) this.touchEl.removeEventListener('pointerdown', this._down);
       this.touchEl = null;
     },
 
-    _press: function (i, on) {
-      if (this.held[i] === on) return;
-      this.held[i] = on;
-      if (on) { this.kick[i] = 1; global.RoarAudio.startVoice(i); }
-      else global.RoarAudio.stopVoice(i);
+    _tap: function (i) {
+      if (i >= this.n) return;
+      global.RoarAudio.playVoiceOnce(i, 0.9);
+      this.scores[i] += 18;
+      this.kick[i] = 1;
     },
 
     _loop: function (now) {
@@ -122,12 +106,10 @@
       var share = [0, 0], best = -1, active = false;
 
       if (self.tapMode) {
-        for (i = 0; i < 2; i++) {
-          self.kick[i] = Math.max(0, self.kick[i] - dt * 4);
-          share[i] = (self.held[i] ? 0.9 : 0) + self.kick[i] * 0.6;
-          if (share[i] > 0) active = true;
+        for (i = 0; i < self.n; i++) {
+          self.kick[i] = Math.max(0, self.kick[i] - dt * 3);
+          if (self.kick[i] > 0.05) { active = true; if (best < 0 || self.kick[i] > self.kick[best]) best = i; }
         }
-        best = share[0] === share[1] ? -1 : (share[0] > share[1] ? 0 : 1);
       } else {
         var f = global.RoarAudio.analyze();
         var a = global.RoarAudio.attribute(f);
@@ -141,8 +123,9 @@
       }
 
       for (i = 0; i < 2; i++) {
-        self.scores[i] += share[i] * 100 * dt;
-        self.live[i] = Math.max(self.live[i] - dt * 1.8, Math.min(1, share[i]));
+        if (!self.tapMode) self.scores[i] += share[i] * 100 * dt;
+        var lvl = self.tapMode ? self.kick[i] : Math.min(1, share[i]);
+        self.live[i] = Math.max(self.live[i] - dt * 1.8, lvl);
         self.el.lane[i].classList.toggle('is-roaring', active && best === i);
       }
 

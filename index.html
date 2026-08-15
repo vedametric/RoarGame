@@ -15,6 +15,7 @@
 <body>
 
 <div class="stars" aria-hidden="true"></div>
+<button class="sound-btn" id="btn-sound" type="button" aria-label="Sound on or off">🔊</button>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
 <main id="app">
@@ -37,6 +38,19 @@
       Turn the volume up and put the phone between you.<br />
       Photos and voices never leave this phone.
     </p>
+  </section>
+
+  <!-- ═════════════════════ HOW MANY PLAYERS ═════════════════════ -->
+  <section class="screen" id="screen-count">
+    <h2 class="heading">How many players?</h2>
+    <div class="count-row">
+      <button class="count-card" id="count-1" type="button">
+        <span class="count-emoji">🙂</span><b>1 PLAYER</b><i>Beat your own best score</i>
+      </button>
+      <button class="count-card count-card--p2" id="count-2" type="button">
+        <span class="count-emoji">🙂🙃</span><b>2 PLAYERS</b><i>Head to head</i>
+      </button>
+    </div>
   </section>
 
   <!-- ═════════════════════ HOW TO PLAY ═════════════════════ -->
@@ -163,6 +177,26 @@
     <button class="linkish" id="btn-redo-voices" type="button">Re-record our sounds</button>
   </section>
 
+  <!-- ═════════════════════ TAKE YOUR SIDES ═════════════════════ -->
+  <section class="screen screen--flat" id="screen-sides">
+    <div class="side side--top">
+      <div class="side-inner">
+        <img class="side-photo" id="side-photo-2" alt="" />
+        <div class="side-name" id="side-name-2">Player 2</div>
+        <div class="side-tag" id="side-tag-2">this side is yours</div>
+      </div>
+    </div>
+    <div class="side-split"><span id="side-split-label">sit facing each other</span></div>
+    <div class="side side--bottom">
+      <div class="side-inner">
+        <img class="side-photo" id="side-photo-1" alt="" />
+        <div class="side-name" id="side-name-1">Player 1</div>
+        <div class="side-tag" id="side-tag-1">this side is yours</div>
+        <button class="btn btn--go" id="btn-sides-ready" type="button">WE'RE READY</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ COUNTDOWN ═════════════════════ -->
   <section class="screen screen--flat" id="screen-countdown">
     <div class="countdown countdown--flip" id="countdown-num-2">3</div>
@@ -225,8 +259,8 @@
     <p class="winner-line" id="winner-line">is the LOUDEST BEAST!</p>
     <div class="series" id="series" hidden></div>
     <div class="final-scores">
-      <div class="final final--p1"><span id="final-name-1">Player 1</span><b id="final-score-1">0</b></div>
-      <div class="final final--p2"><span id="final-name-2">Player 2</span><b id="final-score-2">0</b></div>
+      <div class="final final--p1" id="final-1"><span id="final-name-1">Player 1</span><b id="final-score-1">0</b></div>
+      <div class="final final--p2" id="final-2"><span id="final-name-2">Player 2</span><b id="final-score-2">0</b></div>
     </div>
     <button class="btn btn--huge btn--go" id="btn-again" type="button">PLAY AGAIN</button>
     <button class="linkish" id="btn-pick-mode" type="button">Pick another game</button>

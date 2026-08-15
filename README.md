@@ -14,8 +14,8 @@ a moo, anything). If the raw capture comes back unusable on some device, the
 game synthesises a growl around that player's own pitch instead, so a tap
 always makes a noise. That recording is used two ways:
 
-- **👆 TAP mode (default)** — hold your own half of the screen and your recorded
-  sound plays back on repeat: *roar roar roar*. Nobody has to shout, so nobody
+- **👆 TAP mode (default)** — tap your own half of the screen and your recorded
+  sound plays once per tap: *roar, roar, roar*. Nobody has to shout, so nobody
   ends up hoarse. This mode ignores the microphone entirely during play.
 - **🎤 SHOUT mode** — actually shout, and the game splits the microphone between
   the two saved voice fingerprints.
@@ -33,6 +33,14 @@ indicator goes away when the game isn't listening.
 
 ---
 
+## One player or two
+
+Choose at the start. **Two players** share the phone head to head; a
+*take your sides* screen names who owns which end before anything begins, so
+nobody has to guess. **One player** plays solo against their own best score.
+
+There is a 🔊 button in the corner to play with the sound off.
+
 ## The two games
 
 ### 🖐️ GRAB IT! — 45 seconds, 4 levels
@@ -42,19 +50,27 @@ other. The top half of the screen is rotated 180° so each kid reads their own
 side the right way up.
 
 Something pops up on the centre line, **exactly the same distance from each
-player**. Hold your side (or shout) and your claw-arm shoots out towards it;
-let go and it springs back. First claw to touch it grabs it.
+player**. Every tap walks your claw-arm one step closer. **Holding a finger
+down does nothing** — only separate taps count, so there is no way to lean on
+the screen and cheat. In SHOUT mode each separate burst of noise is one step,
+so "roar, roar, roar" does the same job.
 
-Not everything is worth grabbing:
+Not everything is worth tapping:
 
 | | | |
 |---|---|---|
-| ⭐ | **treat** | points |
+| ⭐ | **treat** | a few steps, first claw there takes it |
 | 🌟 | **golden** | double points, but it does not hang around |
-| 💣 | **bomb** | lose 15 points and your arm **freezes solid** for a second |
+| 💣 | **bomb** | do not touch it — 15 points off and your arm **freezes solid** |
+| **7** | **number** | needs **exactly** that many taps. One too many and you bust. |
+
+The numbered objects are the reason mashing does not pay. Arriving starts a
+short settle, and an extra tap during it overshoots: tap a **10** ten times and
+it is yours, tap it eleven times and you get nothing. Bigger numbers pay more.
 
 - Grabs in a row build a **combo multiplier**, up to ×3.
-- Drumming out short presses beats leaning on it — each fresh press adds a kick.
+- Taps between objects still play your sound, but count for nothing — you
+  cannot charge up before something appears.
 - Miss a treat before its ring runs out and it escapes. Letting a *bomb* expire
   is the correct play, so it just fizzles.
 - **It gets harder:** every level the stars appear faster, vanish sooner, get
@@ -76,9 +92,9 @@ easier on small voices) than one long press or one long scream.
 
 ### 📊 ROAR METER — 20 seconds
 
-Hold the phone up between the two players. Each player holds their own side of
-the screen — or roars, in SHOUT mode — and their bar climbs by their share. The
-bars rescale as the leader grows, so there's always somewhere higher to go.
+Hold the phone up between the two players. Tap your own side of the screen as
+fast as you can — or roar, in SHOUT mode — and your bar climbs. The bars
+rescale as the leader grows, so there's always somewhere higher to go.
 
 ---
 
@@ -185,6 +201,11 @@ game-grab.js    GRAB IT! — canvas game loop
 game-roar.js    ROAR METER — bar-graph game loop
 app.js          screen flow, photos, results
 ```
+
+Canvas text needs an explicit `"Apple Color Emoji"` family on iOS — the generic
+`system-ui` will not fall back to it, which is why the animal avatars baked out
+blank at first. There is a runtime probe that falls back to a large initial if
+emoji cannot be drawn into a canvas at all.
 
 ---
 
