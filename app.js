@@ -570,8 +570,39 @@
 
   on('ct-toggle', function () { CountGame.toggle(); });
   on('ct-restart', function () { CountGame.restart(); });
-  on('ct-voice-next', function () { CountGame.nextVoice(); });
-  on('ct-exit', function () { CountGame.stop(); show('screen-games'); });
+  on('ct-voice-next', openVoices);
+  on('voice-done', function () { $('voice-sheet').hidden = true; });
+  $('voice-sheet').addEventListener('click', function (e) {
+    if (e.target === this) this.hidden = true;
+  });
+
+  function openVoices() {
+    var list = CountGame.list();
+    var box = $('voice-list');
+    box.innerHTML = '';
+
+    if (!list.length) {
+      box.innerHTML = '<p class="subheading">This phone has no voices to choose from.</p>';
+    }
+    list.forEach(function (v) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'voice-row' + (v.i === CountGame.vi ? ' is-on' : '');
+      b.innerHTML = '<b>' + v.name + '</b><span>' + (v.lang || '') + '</span>';
+      b.addEventListener('click', function () {
+        CountGame.pickVoice(v.i);
+        var rows = box.querySelectorAll('.voice-row');
+        for (var k = 0; k < rows.length; k++) rows[k].classList.toggle('is-on', k === v.i);
+      });
+      box.appendChild(b);
+    });
+    $('voice-sheet').hidden = false;
+  }
+  on('ct-exit', function () {
+    $('voice-sheet').hidden = true;
+    CountGame.stop();
+    show('screen-games');
+  });
 
   /* ── results ──────────────────────────────────────────────── */
 

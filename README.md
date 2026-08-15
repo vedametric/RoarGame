@@ -82,10 +82,18 @@ The numeral fills the screen, the word sits under it, and up to twenty there
 are dots to count along with. A ring around the number fills up during the
 pause so you can see the next one coming.
 
-The voice is picked from whatever the phone has, preferring the deepest male
-readers (Alex, Daniel, Aaron, Fred, …) and skipping the obviously female ones,
-pitched down and slowed. **try another** cycles through the rest, because which
-voices exist differs from phone to phone.
+The voice comes from whatever the phone has. Depth comes from **choosing a
+naturally deep reader** (Alex, Daniel, Aaron, Arthur, …), not from pitch-shifting
+— dropping a synthesiser's pitch a long way wrecks its formants and turns it
+into a growling robot. Rate `0.85` and pitch `0.92` are gentle nudges that stay
+human. Downloaded **Enhanced** and **Premium** voices are preferred strongly,
+because they sound far more like a real person than the compact defaults, and
+the novelty voices (Zarvox, Trinoids, Albert…) are filtered out entirely.
+
+**change voice** opens a picker of the male voices on that phone; tap one to
+hear it count to three. It also points at
+*Settings → Accessibility → Spoken Content → Voices*, where the much better
+Enhanced voices can be downloaded.
 
 Timing follows the utterance's own `onend` rather than a fixed timer, so the
 pause is always a real pause *after* the word however long it takes to say

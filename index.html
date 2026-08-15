@@ -352,7 +352,7 @@
 
     <p class="ct-voice">
       voice: <b id="ct-voice-name">…</b>
-      <button class="linkish" id="ct-voice-next" type="button">try another</button>
+      <button class="linkish" id="ct-voice-next" type="button">change voice</button>
     </p>
   </section>
 
@@ -371,6 +371,19 @@
     <button class="linkish" id="btn-pick-mode" type="button">Pick another game</button>
     <button class="linkish" id="btn-new-players" type="button">New players</button>
   </section>
+
+  <!-- ═════════════════════ VOICE PICKER ═════════════════════ -->
+  <div class="sheet" id="voice-sheet" hidden>
+    <div class="sheet-card">
+      <h2 class="heading heading--sm">Pick a voice</h2>
+      <p class="subheading">Tap one to hear it count to three.</p>
+      <div class="voice-list" id="voice-list"></div>
+      <p class="fineprint">On an iPhone, <b>Settings → Accessibility → Spoken Content →
+        Voices</b> has extra voices to download. The <b>Enhanced</b> ones sound much
+        more like a real person.</p>
+      <button class="btn btn--go" id="voice-done" type="button">DONE</button>
+    </div>
+  </div>
 
   <!-- ═════════════════════ ANIMAL PICKER ═════════════════════ -->
   <div class="sheet" id="animal-sheet" hidden>

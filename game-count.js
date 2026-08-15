@@ -21,13 +21,27 @@
     [1e12, 'trillion'], [1e9, 'billion'], [1e6, 'million'], [1e3, 'thousand']
   ];
 
-  // Voices worth trying for a deep male reader, best first.
-  var WANTED = ['alex', 'daniel', 'aaron', 'fred', 'arthur', 'oliver', 'gordon',
-                'rishi', 'google uk english male', 'microsoft david',
-                'microsoft guy', 'microsoft mark', 'en-gb-standard-b', 'male'];
+  // Naturally deep male readers, best first. Depth comes from picking one of
+  // these — NOT from pitch-shifting, which is what makes a synthesiser sound
+  // like a robot.
+  var WANTED = ['alex', 'daniel', 'aaron', 'arthur', 'oliver', 'gordon',
+                'nathan', 'rishi', 'tom', 'google uk english male',
+                'microsoft david', 'microsoft guy', 'microsoft mark', 'male'];
   var NOT_HIM = ['samantha', 'karen', 'moira', 'tessa', 'fiona', 'victoria',
                  'susan', 'allison', 'ava', 'serena', 'martha', 'catherine',
-                 'kate', 'nicky', 'zoe', 'female', 'amelie', 'anna', 'ellen'];
+                 'kate', 'nicky', 'zoe', 'female', 'amelie', 'anna', 'ellen',
+                 'shelley', 'sandy', 'grandma', 'flo', 'eddy', 'reed', 'rocko'];
+  // Novelty voices — these are the genuinely creepy ones.
+  var NOVELTY = ['zarvox', 'trinoids', 'whisper', 'bells', 'boing', 'bubbles',
+                 'bad news', 'good news', 'cellos', 'organ', 'deranged',
+                 'hysterical', 'bahh', 'albert', 'jester', 'junior', 'ralph',
+                 'kathy', 'princess', 'wobble', 'superstar'];
+  // Markers for the higher-quality, far more human-sounding downloads.
+  var NICE = ['enhanced', 'premium', 'natural', 'neural', 'siri'];
+
+  // A gentle nudge below the voice's own pitch reads as "deep". Anything
+  // near 0.5 wrecks the formants and sounds like a monster.
+  var RATE = 0.85, PITCH = 0.92;
 
   var GAP = 3.5;             // seconds of silence between numbers
   var COLORS = ['#ffd24c', '#7ee8a0', '#7ec8ff', '#e6b3ff', '#ff9f7a', '#ffe89a'];
@@ -102,29 +116,61 @@
       var en = all.filter(function (v) { return /^en([-_]|$)/i.test(v.lang || ''); });
       var pool = en.length ? en : all;
 
+      function has(name, list) {
+        for (var i = 0; i < list.length; i++) if (name.indexOf(list[i]) >= 0) return true;
+        return false;
+      }
+
       function rank(v) {
         var name = (v.name || '').toLowerCase();
-        for (var i = 0; i < NOT_HIM.length; i++) {
-          if (name.indexOf(NOT_HIM[i]) >= 0) return 500;
-        }
+        if (has(name, NOVELTY)) return 900;          // the actually scary ones
+        if (has(name, NOT_HIM)) return 500;
+
+        var score = 100;
         for (var k = 0; k < WANTED.length; k++) {
-          if (name.indexOf(WANTED[k]) >= 0) return k;
+          if (name.indexOf(WANTED[k]) >= 0) { score = k; break; }
         }
-        return 100;
+        // A downloaded "enhanced" voice sounds hugely more human than the
+        // compact default, so prefer it strongly.
+        if (has(name, NICE)) score -= 20;
+        return score;
       }
 
       pool = pool.slice().sort(function (a, b) { return rank(a) - rank(b); });
+
+      // A man's voice was asked for, so offer men — but never leave the
+      // picker nearly empty on a device that ships very few voices.
+      var men = pool.filter(function (v) { return rank(v) < 500; });
+      pool = men.length >= 3 ? men : pool.filter(function (v) { return rank(v) < 900; });
+      if (!pool.length) pool = en.length ? en : all;
       var keepIndex = this.voices.length ? this.vi : 0;
       this.voices = pool;
       this.vi = Math.min(keepIndex, pool.length - 1);
     },
 
-    nextVoice: function () {
-      if (this.voices.length < 2) return;
-      this.vi = (this.vi + 1) % this.voices.length;
+    list: function () {
+      return this.voices.map(function (v, i) {
+        return { i: i, name: v.name, lang: v.lang };
+      });
+    },
+
+    pickVoice: function (i) {
+      if (i < 0 || i >= this.voices.length) return;
+      this.vi = i;
       this._showVoice();
-      try { speechSynthesis.cancel(); } catch (e) {}
-      this._say();                    // hear the change straight away
+      this.sample();
+    },
+
+    // "one, two, three" in the chosen voice, without disturbing the count.
+    sample: function () {
+      try {
+        if (!global.speechSynthesis || global.RoarAudio.muted) return;
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance('one, two, three');
+        if (this.voices[this.vi]) u.voice = this.voices[this.vi];
+        u.rate = RATE; u.pitch = PITCH; u.volume = 1;
+        speechSynthesis.speak(u);
+      } catch (e) {}
     },
 
     _showVoice: function () {
@@ -149,8 +195,8 @@
           speechSynthesis.cancel();
           var u = new SpeechSynthesisUtterance(text);
           if (self.voices[self.vi]) u.voice = self.voices[self.vi];
-          u.rate = 0.72;              // slow and deliberate
-          u.pitch = 0.45;             // as deep as the API allows
+          u.rate = RATE;
+          u.pitch = PITCH;
           u.volume = 1;
           u.onend = function () { self._afterWord(); };
           u.onerror = function () { self._afterWord(); };
