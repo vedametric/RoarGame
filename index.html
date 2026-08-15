@@ -72,6 +72,15 @@
       </span>
     </button>
 
+    <button class="mode-card mode-card--count" id="game-count" type="button">
+      <span class="mode-emoji" aria-hidden="true">🔢</span>
+      <span class="mode-text">
+        <b>COUNTING</b>
+        <i>A deep, slow voice counts out loud from zero, on and on forever. Numbers, words and dots to count along with.</i>
+        <em>no rush &bull; no winning</em>
+      </span>
+    </button>
+
     <button class="linkish" id="btn-games-back" type="button">Back</button>
   </section>
 
@@ -324,6 +333,29 @@
     </div>
   </section>
 
+  <!-- ═════════════════════ COUNTING ═════════════════════ -->
+  <section class="screen" id="screen-counting">
+    <div class="ct-stage">
+      <div class="ct-ring" id="ct-ring"></div>
+      <div class="ct-number" id="ct-number">0</div>
+    </div>
+    <div class="ct-word" id="ct-word">zero</div>
+    <div class="ct-dots" id="ct-dots" hidden></div>
+
+    <p class="warn" id="ct-warn" hidden>This phone won't speak out loud, so the numbers are shown only.</p>
+
+    <div class="ct-controls">
+      <button class="ct-btn" id="ct-restart" type="button" aria-label="Start again">↺</button>
+      <button class="ct-btn ct-btn--big" id="ct-toggle" type="button" aria-label="Pause or play">⏸</button>
+      <button class="ct-btn" id="ct-exit" type="button" aria-label="Back to games">✕</button>
+    </div>
+
+    <p class="ct-voice">
+      voice: <b id="ct-voice-name">…</b>
+      <button class="linkish" id="ct-voice-next" type="button">try another</button>
+    </p>
+  </section>
+
   <!-- ═════════════════════ RESULT ═════════════════════ -->
   <section class="screen" id="screen-result">
     <div class="crown" aria-hidden="true">👑</div>
@@ -355,6 +387,7 @@
 <script src="fx.js"></script>
 <script src="game-grab.js"></script>
 <script src="game-balloon.js"></script>
+<script src="game-count.js"></script>
 <script src="game-roar.js"></script>
 <script src="app.js"></script>
 </body>

@@ -72,6 +72,26 @@ wicker basket. There are no image assets. The world uses a plain perspective
 projection: every object has a world `(x, y, z)` and its screen position is
 that divided by depth.
 
+## 🔢 COUNTING
+
+Also in **ALL GAMES**. A deep, slow man's voice counts out loud from zero and
+keeps going — one, two, three — with a **three and a half second pause** after
+each number. There is no score and no end.
+
+The numeral fills the screen, the word sits under it, and up to twenty there
+are dots to count along with. A ring around the number fills up during the
+pause so you can see the next one coming.
+
+The voice is picked from whatever the phone has, preferring the deepest male
+readers (Alex, Daniel, Aaron, Fred, …) and skipping the obviously female ones,
+pitched down and slowed. **try another** cycles through the rest, because which
+voices exist differs from phone to phone.
+
+Timing follows the utterance's own `onend` rather than a fixed timer, so the
+pause is always a real pause *after* the word however long it takes to say
+"one hundred and thirty-seven" — with a watchdog, because iOS does not reliably
+deliver `onend`.
+
 ## One player or two
 
 Choose at the start. **Two players** share the phone head to head; a
@@ -239,6 +259,7 @@ fx.js           particle bursts + confetti
 game-grab.js    GRAB IT! — canvas game loop
 game-roar.js    ROAR METER — bar-graph game loop
 game-balloon.js THE HOT AIR BALLOON — by Sienna 🦄
+game-count.js   COUNTING — spoken numbers, forever
 app.js          screen flow, photos, results
 ```
 
