@@ -38,7 +38,18 @@ indicator goes away when the game isn't listening.
 Reachable from **ALL GAMES** on the first screen. You are standing in the
 basket at sunset, the striped envelope above your head and the ropes running
 past your shoulders. Six buttons fly it: a move pad for **left / right /
-forward / back**, and a **🔥 burner / ⬇︎ vent** pair for altitude.
+forward / back**, and a **🔥 burner / ⬇︎ vent** pair for altitude — and you fly
+in whatever direction you are facing.
+
+**Drag the sky to look around**, all the way through 360°. A short press is a
+grab rather than a look, so the two never fight. Firing the burner also twists
+you slowly round, the way a real balloon does, and there is always a little
+drift even when you are holding still.
+
+**It sounds like flying.** Rushing air that rises and falls with your speed, a
+roaring burner while you climb, a hiss while you vent, a sparkle for a unicorn,
+a munch for food, a soft puff for a cloud, a sad little call if you bump a bird,
+and a thump when you touch down. All synthesised — there are no sound files.
 
 Out over the mountains there is plenty to collect — fly into something, or just
 tap it:

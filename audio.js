@@ -170,8 +170,16 @@
     // iOS suspends the context whenever the app goes to the background, and a
     // suspended context reads as pure silence. Nudge it before anything that
     // needs to hear.
+    // Also *creates* the context when there isn't one yet. Games that never
+    // touch the microphone (the balloon) otherwise reach playback with no
+    // context at all, and every sound is silently dropped. Call from a gesture.
     resume: function () {
-      if (this.ctx && this.ctx.state === 'suspended') {
+      if (!this.ctx) {
+        var AC = global.AudioContext || global.webkitAudioContext;
+        if (!AC) return;
+        try { this.ctx = new AC(); } catch (e) { return; }
+      }
+      if (this.ctx.state === 'suspended') {
         try { this.ctx.resume(); } catch (e) {}
       }
     },
@@ -650,11 +658,90 @@
       return { w: [p0, p1], best: p0 >= p1 ? 0 : 1, conf: Math.abs(p0 - p1), accepted: true };
     },
 
+    /* ── continuous air: wind, burner, vent ────────────────────── */
+
+    _loops: [],
+
+    _noise: function () {
+      if (this._nb) return this._nb;
+      var sr = this.ctx.sampleRate, n = Math.floor(sr * 2);
+      var b = this.ctx.createBuffer(1, n, sr);
+      var d = b.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      this._nb = b;
+      return b;
+    },
+
+    // A living soundscape for the balloon: rushing air that follows your
+    // speed, a roaring burner and a hissing vent. Returns setters the game
+    // drives every frame, all ramped so nothing clicks.
+    airLoop: function () {
+      if (!this.ctx) return null;
+      var ctx = this.ctx, self = this;
+
+      var master = ctx.createGain();
+      master.gain.value = this.muted ? 0 : 1;
+      master.connect(ctx.destination);
+
+      function chain(type, freq, q, initial) {
+        var src = ctx.createBufferSource();
+        src.buffer = self._noise();
+        src.loop = true;
+        var f = ctx.createBiquadFilter();
+        f.type = type; f.frequency.value = freq;
+        if (q) f.Q.value = q;
+        var g = ctx.createGain();
+        g.gain.value = initial || 0;
+        src.connect(f); f.connect(g); g.connect(master);
+        src.start();
+        return { src: src, f: f, g: g };
+      }
+
+      var wind = chain('lowpass', 420, 0.7, 0);
+      var vent = chain('highpass', 1900, 0.8, 0);
+      var flame = chain('bandpass', 240, 0.9, 0);
+
+      var rumble = ctx.createOscillator();
+      var rf = ctx.createBiquadFilter();
+      var rg = ctx.createGain();
+      rumble.type = 'sawtooth'; rumble.frequency.value = 56;
+      rf.type = 'lowpass'; rf.frequency.value = 250;
+      rg.gain.value = 0;
+      rumble.connect(rf); rf.connect(rg); rg.connect(master);
+      rumble.start();
+
+      function ramp(g, v) {
+        try { g.gain.setTargetAtTime(v, ctx.currentTime, 0.09); }
+        catch (e) { g.gain.value = v; }
+      }
+
+      var h = {
+        setWind: function (v) {
+          ramp(wind.g, v * 0.34);
+          try { wind.f.frequency.value = 300 + v * 1100; } catch (e) {}
+        },
+        setBurner: function (v) { ramp(flame.g, v * 0.26); ramp(rg, v * 0.18); },
+        setVent: function (v) { ramp(vent.g, v * 0.16); },
+        setMuted: function (m) { master.gain.value = m ? 0 : 1; },
+        stop: function () {
+          var i = self._loops.indexOf(h);
+          if (i >= 0) self._loops.splice(i, 1);
+          [wind.src, vent.src, flame.src, rumble].forEach(function (s) {
+            try { s.stop(); } catch (e) {}
+          });
+          try { master.disconnect(); } catch (e) {}
+        }
+      };
+      this._loops.push(h);
+      return h;
+    },
+
     /* ── little synthesised sound effects (no asset files) ─────── */
 
     setMuted: function (on) {
       this.muted = !!on;
       if (this.muted) this.stopAllVoices();
+      for (var i = 0; i < this._loops.length; i++) this._loops[i].setMuted(this.muted);
     },
 
     sfx: function (type) {
@@ -695,6 +782,17 @@
         case 'level':  voice('square',   520,  520, 0.10, 0.13, 0);
                        voice('square',   700,  700, 0.10, 0.13, 0.1);
                        voice('square',   900,  900, 0.16, 0.13, 0.2);  break;
+        case 'sparkle': [1046, 1318, 1568, 2093, 2637].forEach(function (f, i) {
+                          voice('sine', f, f * 1.02, 0.30, 0.10, i * 0.045);
+                        });                                            break;
+        case 'nom':    voice('triangle', 420, 240, 0.09, 0.16, 0);
+                       voice('triangle', 300, 170, 0.10, 0.14, 0.09);  break;
+        case 'puff':   voice('sine',     700, 1500, 0.24, 0.05, 0);    break;
+        case 'birdaww': voice('sine',    900,  420, 0.30, 0.11, 0);
+                        voice('sine',    700,  330, 0.34, 0.09, 0.11); break;
+        case 'thud':   voice('sine',     140,   60, 0.24, 0.20, 0);
+                       voice('triangle', 523,  523, 0.20, 0.08, 0.10);
+                       voice('triangle', 784,  784, 0.28, 0.08, 0.22);  break;
         case 'win':    [523, 659, 784, 1046].forEach(function (f, i) {
                          voice('triangle', f, f, 0.3, 0.16, i * 0.11);
                        });                                             break;

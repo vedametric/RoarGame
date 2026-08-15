@@ -29,6 +29,7 @@
   var NEAR = 10;
   var FAR = 900;
   var GRID = 44;             // field size on the ground
+  var SPIN = 0.55;           // how much the burner twists you round
 
   var POINTS = { food: 10, cloud: 5, unicorn: 25, bird: -10, land: 50 };
 
@@ -46,6 +47,9 @@
 
       self.camX = 0; self.alt = 120; self.camZ = 0;
       self.vx = 0; self.vy = 0; self.vz = 0;
+      self.yaw = 0; self.yawVel = 0;
+      self.cosY = 1; self.sinY = 0;
+      self.drag = null;
       self.hold = { left: 0, right: 0, fwd: 0, back: 0, up: 0, down: 0 };
 
       self.score = 0;
@@ -60,6 +64,7 @@
       self.things = [];
       self.ground = [];
       self.running = true;
+      self.air = global.RoarAudio.airLoop();
 
       for (var i = 0; i < 34; i++) self.things.push(self._make(true));
       for (i = 0; i < 26; i++) self.ground.push(self._makeGround(true));
@@ -68,6 +73,10 @@
       addEventListener('resize', self._onResize);
       self._fit();
       self._bind();
+
+      // Nobody discovers dragging on their own.
+      self._say('Drag the sky to look around 👆', '#ffe89a');
+      self.msg.life = 5;
 
       self.last = performance.now();
       self.raf = requestAnimationFrame(function (t) { self._loop(t); });
@@ -78,6 +87,7 @@
       cancelAnimationFrame(this.raf);
       if (this._onResize) removeEventListener('resize', this._onResize);
       this._unbind();
+      if (this.air) { this.air.stop(); this.air = null; }
     },
 
     _fit: function () {
@@ -118,11 +128,32 @@
         this.btns.push({ el: el, dn: dn, up: up });
       }
 
-      // Tapping the sky reaches out and grabs whatever you tapped.
-      this._pick = function (e) {
-        self._pickAt(e.clientX, e.clientY);
+      // Drag anywhere in the sky to look around, all the way round if you
+      // like. A press that barely moves is a grab instead.
+      this._down2 = function (e) {
+        self.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 };
       };
-      this.canvas.addEventListener('pointerdown', this._pick);
+      this._move2 = function (e) {
+        var d = self.drag;
+        if (!d || d.id !== e.pointerId) return;
+        var dx = e.clientX - d.x;
+        d.moved += Math.abs(dx) + Math.abs(e.clientY - d.y);
+        self.yaw -= dx * 0.005;
+        self.yawVel *= 0.5;                 // your hand overrides any spin
+        d.x = e.clientX; d.y = e.clientY;
+        e.preventDefault();
+      };
+      this._up2 = function (e) {
+        var d = self.drag;
+        if (!d || d.id !== e.pointerId) return;
+        if (d.moved < 12) self._pickAt(e.clientX, e.clientY);
+        self.drag = null;
+      };
+
+      this.canvas.addEventListener('pointerdown', this._down2);
+      this.canvas.addEventListener('pointermove', this._move2, { passive: false });
+      this.canvas.addEventListener('pointerup', this._up2);
+      this.canvas.addEventListener('pointercancel', this._up2);
     },
 
     _unbind: function () {
@@ -134,7 +165,12 @@
         b.el.removeEventListener('pointerleave', b.up);
       }
       this.btns = [];
-      if (this._pick) this.canvas.removeEventListener('pointerdown', this._pick);
+      if (this._down2) {
+        this.canvas.removeEventListener('pointerdown', this._down2);
+        this.canvas.removeEventListener('pointermove', this._move2);
+        this.canvas.removeEventListener('pointerup', this._up2);
+        this.canvas.removeEventListener('pointercancel', this._up2);
+      }
     },
 
     _fireBurner: function () {
@@ -163,10 +199,12 @@
     _make: function (spread) {
       var r = Math.random();
       var kind = r < 0.30 ? 'food' : r < 0.58 ? 'cloud' : r < 0.76 ? 'unicorn' : 'bird';
+      var ang = (this.yaw || 0) + rnd(-1.25, 1.25);
+      var dist = spread ? rnd(140, FAR * 0.95) : rnd(FAR * 0.55, FAR * 0.95);
       var o = {
         kind: kind, on: true,
-        x: rnd(-320, 320),
-        z: (this.camZ || 0) + (spread ? rnd(120, FAR) : rnd(FAR * 0.65, FAR)),
+        x: (this.camX || 0) + Math.sin(ang) * dist,
+        z: (this.camZ || 0) + Math.cos(ang) * dist,
         drift: rnd(-9, 9),
         bobT: rnd(0, 6.28),
         flap: rnd(0, 6.28)
@@ -179,23 +217,51 @@
     },
 
     _makeGround: function (spread) {
+      var ang = (this.yaw || 0) + rnd(-1.4, 1.4);
+      var dist = spread ? rnd(50, FAR * 0.9) : rnd(FAR * 0.6, FAR * 0.9);
       return {
-        x: rnd(-420, 420),
-        z: (this.camZ || 0) + (spread ? rnd(40, FAR) : rnd(FAR * 0.7, FAR)),
+        x: (this.camX || 0) + Math.sin(ang) * dist,
+        z: (this.camZ || 0) + Math.cos(ang) * dist,
         emoji: GROUND_LIFE[(Math.random() * GROUND_LIFE.length) | 0],
         size: rnd(14, 26)
       };
     },
 
-    _project: function (x, y, z) {
-      var dz = z - this.camZ;
-      if (dz < NEAR || dz > FAR * 1.2) return null;
-      var s = this.f / dz;
+    // World → camera, rotated by the heading so you can face any direction.
+    _cam: function (x, y, z) {
+      var dx = x - this.camX, dz = z - this.camZ;
       return {
-        sx: this.W / 2 + (x - this.camX) * s,
-        sy: this.hz - (y - (this.alt + EYE)) * s,
-        s: s, size: s * 30, dz: dz
+        rx: dx * this.cosY - dz * this.sinY,
+        ry: y - (this.alt + EYE),
+        rz: dx * this.sinY + dz * this.cosY
       };
+    },
+
+    _project: function (x, y, z) {
+      var p = this._cam(x, y, z);
+      if (p.rz < NEAR || p.rz > FAR * 1.2) return null;
+      var s = this.f / p.rz;
+      return {
+        sx: this.W / 2 + p.rx * s,
+        sy: this.hz - p.ry * s,
+        s: s, size: s * 30, dz: p.rz
+      };
+    },
+
+    // A ground-level segment, clipped against the near plane.
+    _lineW: function (c, x0, z0, x1, z1) {
+      var a = this._cam(x0, 0, z0), b = this._cam(x1, 0, z1), t;
+      if (a.rz < NEAR && b.rz < NEAR) return;
+      if (a.rz < NEAR) {
+        t = (NEAR - a.rz) / (b.rz - a.rz);
+        a = { rx: a.rx + (b.rx - a.rx) * t, ry: a.ry, rz: NEAR };
+      } else if (b.rz < NEAR) {
+        t = (NEAR - b.rz) / (a.rz - b.rz);
+        b = { rx: b.rx + (a.rx - b.rx) * t, ry: b.ry, rz: NEAR };
+      }
+      var sa = this.f / a.rz, sb = this.f / b.rz;
+      c.moveTo(this.W / 2 + a.rx * sa, this.hz - a.ry * sa);
+      c.lineTo(this.W / 2 + b.rx * sb, this.hz - b.ry * sb);
     },
 
     /* ── loop ─────────────────────────────────────────────────── */
@@ -220,8 +286,20 @@
       var k = Math.exp(-DAMP * dt);
       this.vx *= k; this.vy *= k; this.vz *= k;
 
-      this.camX = clamp(this.camX + this.vx * dt * 6, -400, 400);
-      this.camZ += this.vz * dt * 6;
+      // A real balloon turns slowly as the burner fires and as it vents, and
+      // never quite holds still. That drift is most of what sells it.
+      this.yawVel += (h.up * SPIN - h.down * SPIN * 0.8) * dt;
+      this.yawVel += Math.sin(this.t * 0.13) * 0.010 * dt;
+      this.yawVel *= Math.exp(-1.1 * dt);
+      this.yawVel = clamp(this.yawVel, -0.9, 0.9);
+      this.yaw += this.yawVel * dt;
+
+      this.cosY = Math.cos(this.yaw);
+      this.sinY = Math.sin(this.yaw);
+
+      // You fly the way you are facing.
+      this.camX += (this.vz * this.sinY + this.vx * this.cosY) * dt * 6;
+      this.camZ += (this.vz * this.cosY - this.vx * this.sinY) * dt * 6;
       this.alt = clamp(this.alt + this.vy * dt * 6, 0, MAX_ALT);
 
       if (this.alt <= 0.4 && !h.up) {
@@ -231,9 +309,16 @@
         this.landed = false;
       }
 
-      this.sway = this.sway * 0.92 + this.vx * 0.02;
+      this.sway = this.sway * 0.92 + (this.vx * 0.02 - this.yawVel * 0.5);
       this.burner = Math.max(0, this.burner - dt * 1.6);
       if (h.up) this.burner = Math.min(1, this.burner + dt * 3);
+
+      if (this.air) {
+        var speed = Math.min(1, Math.hypot(this.vx, this.vz, this.vy) / 26);
+        this.air.setWind(0.22 + speed * 0.78);          // always a little breeze
+        this.air.setBurner(this.burner);
+        this.air.setVent(h.down ? 1 : 0);
+      }
 
       // things drift, get collected, and recycle behind you
       for (i = 0; i < this.things.length; i++) {
@@ -244,21 +329,26 @@
         if (o.kind === 'unicorn') o.y += Math.sin(o.bobT * 1.6) * 14 * dt;
         if (o.kind === 'bird') o.z -= 8 * dt;            // birds fly toward you
 
-        var dz = o.z - this.camZ;
-        if (dz < NEAR - 6 || dz > FAR * 1.25 || Math.abs(o.x - this.camX) > 700) {
+        var dx = o.x - this.camX, dz = o.z - this.camZ;
+        var flat = Math.hypot(dx, dz);
+        var behind = dx * this.sinY + dz * this.cosY;      // camera-space depth
+        if (flat > FAR * 1.25 || (behind < -60 && flat > 200)) {
           this.things[i] = this._make(false);
           continue;
         }
         if (!o.on) continue;
 
         var reach = o.kind === 'cloud' ? (o.size * 0.55 + 14) : 26;
-        var dx = o.x - this.camX, dy = o.y - (this.alt + EYE);
-        if (Math.abs(dz) < reach && Math.hypot(dx, dy) < reach) this._take(o, false);
+        var dy = o.y - (this.alt + EYE);
+        if (flat < reach && Math.abs(dy) < reach) this._take(o, false);
       }
 
       for (i = 0; i < this.ground.length; i++) {
         var g = this.ground[i];
-        if (g.z - this.camZ < NEAR || g.z - this.camZ > FAR * 1.25) this.ground[i] = this._makeGround(false);
+        var gdx = g.x - this.camX, gdz = g.z - this.camZ;
+        var gflat = Math.hypot(gdx, gdz);
+        var gbehind = gdx * this.sinY + gdz * this.cosY;
+        if (gflat > FAR * 1.2 || (gbehind < -60 && gflat > 200)) this.ground[i] = this._makeGround(false);
       }
 
       for (i = this.floaters.length - 1; i >= 0; i--) {
@@ -282,7 +372,7 @@
       } else {
         this._say('Landed 🌱', '#9df08a');
       }
-      global.RoarAudio.sfx('gold');
+      global.RoarAudio.sfx('thud');
       if (this.cfg.onLand) this.cfg.onLand(this.score);
     },
 
@@ -297,7 +387,7 @@
         o.y += 30;
         this._say('Oh no — mind the birds! 🐦', '#ff9f9f');
         this._float(sx, sy, POINTS.bird, '#ff8a8a');
-        global.RoarAudio.sfx('miss');
+        global.RoarAudio.sfx('birdaww');
         return;
       }
 
@@ -306,7 +396,7 @@
       this.score += pts;
       this.collected[o.kind]++;
       this._float(sx, sy, '+' + pts, o.kind === 'unicorn' ? '#e6b3ff' : '#ffe89a');
-      global.RoarAudio.sfx(o.kind === 'unicorn' ? 'gold' : 'grab');
+      global.RoarAudio.sfx(o.kind === 'unicorn' ? 'sparkle' : o.kind === 'cloud' ? 'puff' : 'nom');
       if (o.kind === 'unicorn') this._say('Unicorn caught! 🦄', '#e6b3ff');
       if (tapped && o.kind === 'food') this._say('Yum! 😋', '#ffe89a');
 
@@ -353,7 +443,9 @@
       c.fillStyle = g;
       c.fillRect(0, 0, W, this.hz + 2);
 
-      var sunX = W * 0.5 - this.camX * 0.35;
+      var rel = ((0 - this.yaw + Math.PI) % 6.2832 + 6.2832) % 6.2832 - Math.PI;
+      var visible = Math.abs(rel) < 1.35;
+      var sunX = W * 0.5 + (visible ? Math.tan(rel) * this.f : 1e5);
       var sunY = this.hz - 26;
       var glow = c.createRadialGradient(sunX, sunY, 4, sunX, sunY, W * 0.55);
       glow.addColorStop(0, 'rgba(255,240,190,0.95)');
@@ -363,8 +455,10 @@
       c.fillStyle = glow;
       c.fillRect(0, 0, W, this.hz + 2);
 
-      c.fillStyle = 'rgba(255,247,214,0.96)';
-      c.beginPath(); c.arc(sunX, sunY, W * 0.085, 0, 6.2832); c.fill();
+      if (visible) {
+        c.fillStyle = 'rgba(255,247,214,0.96)';
+        c.beginPath(); c.arc(sunX, sunY, W * 0.085, 0, 6.2832); c.fill();
+      }
 
       // a few high streak clouds, barely moving
       c.save();
@@ -372,7 +466,7 @@
       c.fillStyle = '#ffd9c0';
       for (var i = 0; i < 5; i++) {
         var y = this.hz - 60 - i * 34 - (this.alt * 0.12) % 40;
-        var x = ((i * 260 - this.camX * 0.25) % (W + 400)) - 200;
+        var x = ((i * 260 - this.yaw * this.f * 0.5 - this.camX * 0.25) % (W + 400) + W + 400) % (W + 400) - 200;
         c.beginPath();
         c.ellipse(x, y, 110 - i * 8, 8, 0, 0, 6.2832);
         c.fill();
@@ -383,18 +477,19 @@
     // Three ridge lines built from stacked sine waves — cheap and stable.
     _mountains: function (c, W, H) {
       var layers = [
-        { col: '#8a5580', amp: 46, base: 10, freq: 0.0055, par: 0.10, seed: 0.0 },
-        { col: '#5c3468', amp: 68, base: 2, freq: 0.0038, par: 0.20, seed: 1.7 },
-        { col: '#341f4e', amp: 94, base: -16, freq: 0.0026, par: 0.34, seed: 3.4 }
+        { col: '#8a5580', amp: 46, base: 10, n: 3.1, par: 0.00010, seed: 0.0 },
+        { col: '#5c3468', amp: 68, base: 2, n: 2.2, par: 0.00022, seed: 1.7 },
+        { col: '#341f4e', amp: 94, base: -16, n: 1.4, par: 0.00040, seed: 3.4 }
       ];
       for (var L = 0; L < layers.length; L++) {
         var m = layers[L];
-        var off = this.camX * m.par;
         c.fillStyle = m.col;
         c.beginPath();
         c.moveTo(0, this.hz + 4);
         for (var x = 0; x <= W; x += 6) {
-          var u = (x + off) * m.freq + m.seed;
+          // bearing of this column, so the ridge line wraps seamlessly at 360
+          var az = this.yaw + Math.atan2(x - W / 2, this.f) + this.camX * m.par;
+          var u = az * m.n + m.seed;
           var h = Math.sin(u) * m.amp
                 + Math.sin(u * 2.3 + 1.1) * m.amp * 0.42
                 + Math.sin(u * 4.7 + 2.6) * m.amp * 0.18;
@@ -418,42 +513,39 @@
 
     // Ground plane: receding field bands plus lines converging on the horizon.
     _land: function (c, W, H) {
-      var eye = this.alt + EYE;
 
       var g = c.createLinearGradient(0, this.hz, 0, H);
-      g.addColorStop(0, '#6b5a3a');
-      g.addColorStop(0.10, '#4f6b39');
-      g.addColorStop(1, '#20351f');
+      g.addColorStop(0, '#7b6440');
+      g.addColorStop(0.08, '#5c7040');
+      g.addColorStop(0.45, '#42663a');
+      g.addColorStop(1, '#1d3020');
       c.fillStyle = g;
       c.fillRect(0, this.hz, W, H - this.hz);
 
-      var yAt = function (dz) { return this.hz + (eye * this.f) / dz; }.bind(this);
+      // soft patches of lighter and darker land, so it is not a flat carpet
+      var patch = c.createLinearGradient(0, this.hz, W, H);
+      patch.addColorStop(0, 'rgba(120,150,80,0.14)');
+      patch.addColorStop(0.4, 'rgba(40,70,40,0.10)');
+      patch.addColorStop(0.7, 'rgba(140,160,90,0.12)');
+      patch.addColorStop(1, 'rgba(30,60,35,0.14)');
+      c.fillStyle = patch;
+      c.fillRect(0, this.hz, W, H - this.hz);
 
-      // bands
-      var start = Math.floor(this.camZ / GRID) * GRID;
-      c.save();
-      c.beginPath(); c.rect(0, this.hz, W, H - this.hz); c.clip();
-      for (var n = 0; n < 60; n++) {
-        var z0 = start + n * GRID, z1 = z0 + GRID;
-        var dz0 = z0 - this.camZ, dz1 = z1 - this.camZ;
-        if (dz1 < NEAR) continue;
-        if (dz0 < NEAR) dz0 = NEAR;
-        var y0 = yAt(dz0), y1 = yAt(dz1);
-        if (y0 > H && y1 > H) continue;
-        c.fillStyle = (n % 2) ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.045)';
-        c.fillRect(0, y1, W, Math.max(1, y0 - y1));
-      }
+      // A world-space grid of field edges. Drawn as real 3D lines so the
+      // whole landscape turns with you instead of sliding sideways.
+      var gx = Math.floor(this.camX / GRID) * GRID;
+      var gz = Math.floor(this.camZ / GRID) * GRID;
+      var span = 17 * GRID;
 
-      // converging field edges
-      c.strokeStyle = 'rgba(255,255,255,0.10)';
-      c.lineWidth = 1.5;
-      var xStart = Math.floor((this.camX - 600) / GRID) * GRID;
-      for (var i = 0; i < 40; i++) {
-        var wx = xStart + i * GRID;
-        var a = this._project(wx, 0, this.camZ + 26);
-        var b = this._project(wx, 0, this.camZ + 620);
-        if (!a || !b) continue;
-        c.beginPath(); c.moveTo(a.sx, a.sy); c.lineTo(b.sx, b.sy); c.stroke();
+      for (var pass = 0; pass < 2; pass++) {
+        c.strokeStyle = pass ? 'rgba(240,255,220,0.10)' : 'rgba(20,40,14,0.20)';
+        c.lineWidth = pass ? 1.2 : 2;
+        c.beginPath();
+        for (var i = -17; i <= 17; i++) {
+          this._lineW(c, gx + i * GRID, gz - span, gx + i * GRID, gz + span);
+          this._lineW(c, gx - span, gz + i * GRID, gx + span, gz + i * GRID);
+        }
+        c.stroke();
       }
 
       // haze so the far ground melts into the horizon
