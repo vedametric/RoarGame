@@ -39,6 +39,34 @@
     </p>
   </section>
 
+  <!-- ═════════════════════ HOW TO PLAY ═════════════════════ -->
+  <section class="screen" id="screen-how">
+    <h2 class="heading">How do you want to play?</h2>
+    <p class="subheading">You can change this later.</p>
+
+    <button class="mode-card mode-card--grab" id="how-tap" type="button">
+      <span class="mode-emoji" aria-hidden="true">👆</span>
+      <span class="mode-text">
+        <b>TAP</b>
+        <i>Record your sound once, then just hold your side of the screen and
+           it plays for you. No shouting, no sore throats.</i>
+        <em>easiest &bull; recommended</em>
+      </span>
+    </button>
+
+    <button class="mode-card mode-card--roar" id="how-voice" type="button">
+      <span class="mode-emoji" aria-hidden="true">🎤</span>
+      <span class="mode-text">
+        <b>SHOUT</b>
+        <i>Really use your voice. The phone listens the whole game and works
+           out who is making the noise.</i>
+        <em>loudest &bull; needs a quiet room</em>
+      </span>
+    </button>
+
+    <p class="fineprint">Either way you record your sound first, so the game needs the microphone once.</p>
+  </section>
+
   <!-- ═════════════════════ MIC PERMISSION ═════════════════════ -->
   <section class="screen" id="screen-mic">
     <div class="big-emoji pulse" id="mic-emoji" aria-hidden="true">🎤</div>
@@ -63,7 +91,7 @@
       <input type="file" accept="image/*" id="photo-input" class="sr-only" />
       <input type="text" id="name-input" class="name-input" maxlength="10" placeholder="Your name" autocomplete="off" autocorrect="off" spellcheck="false" />
       <button class="btn btn--go" id="btn-photo-next" type="button" disabled>NEXT</button>
-      <button class="linkish" id="btn-surprise" type="button">No photo? Give me an animal 🎲</button>
+      <button class="linkish" id="btn-surprise" type="button">No photo? Pick an animal 🐾</button>
     </div>
 
     <!-- step 2: voice print -->
@@ -204,6 +232,15 @@
     <button class="linkish" id="btn-pick-mode" type="button">Pick another game</button>
     <button class="linkish" id="btn-new-players" type="button">New players</button>
   </section>
+
+  <!-- ═════════════════════ ANIMAL PICKER ═════════════════════ -->
+  <div class="sheet" id="animal-sheet" hidden>
+    <div class="sheet-card">
+      <h2 class="heading heading--sm">Pick your animal!</h2>
+      <div class="animal-grid" id="animal-grid"></div>
+      <button class="linkish" id="btn-animal-cancel" type="button">Never mind</button>
+    </div>
+  </div>
 
 </main>
 
