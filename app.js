@@ -61,7 +61,7 @@
   /* ── screens ──────────────────────────────────────────────── */
 
   var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
-                  'screen-sides': 1, 'screen-balloon': 1 };
+                  'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1 };
 
   function show(id) {
     var all = document.querySelectorAll('.screen');
@@ -551,6 +551,28 @@
     show('screen-games');
   });
 
+  /* ── counting ─────────────────────────────────────────────── */
+
+  function startCounting() {
+    show('screen-counting');
+    keepAwake();
+    RoarAudio.releaseMic();       // counting never listens
+    $('ct-warn').hidden = true;
+
+    CountGame.start({
+      els: {
+        number: $('ct-number'), word: $('ct-word'), dots: $('ct-dots'),
+        ring: $('ct-ring'), toggle: $('ct-toggle'),
+        voice: $('ct-voice-name'), warn: $('ct-warn')
+      }
+    });
+  }
+
+  on('ct-toggle', function () { CountGame.toggle(); });
+  on('ct-restart', function () { CountGame.restart(); });
+  on('ct-voice-next', function () { CountGame.nextVoice(); });
+  on('ct-exit', function () { CountGame.stop(); show('screen-games'); });
+
   /* ── results ──────────────────────────────────────────────── */
 
   function finish(scores) {
@@ -636,6 +658,7 @@
   on('game-grab', function () { pendingGame = 'grab'; show('screen-count'); });
   on('game-roar', function () { pendingGame = 'roar'; show('screen-count'); });
   on('game-balloon', function () { RoarAudio.resume(); startBalloon(); });
+  on('game-count', function () { RoarAudio.resume(); startCounting(); });
 
   on('count-1', function () { playerCount = 1; show('screen-how'); });
   on('count-2', function () { playerCount = 2; show('screen-how'); });
@@ -748,6 +771,7 @@
       if (GrabGame.running) GrabGame.stop();
       if (RoarGame.running) RoarGame.stop();
       if (BalloonGame.running) BalloonGame.stop();
+      if (CountGame.running) CountGame.stop();
       RoarAudio.stopAllVoices();
     }
   });
