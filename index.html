@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#17092f" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="description" content="Roar Battle - two player voice games for kids. Upload your photos, make your sound, and shout to win." />
+<title>Roar Battle</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%81%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="stars" aria-hidden="true"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<main id="app">
+
+  <!-- ═════════════════════ SPLASH ═════════════════════ -->
+  <section class="screen is-active" id="screen-splash">
+    <div class="splash-beasts" aria-hidden="true">
+      <span class="beast b1">🦁</span>
+      <span class="beast b2">🐯</span>
+    </div>
+    <h1 class="title">
+      <span class="title-word">ROAR</span>
+      <span class="title-word title-word--2">BATTLE</span>
+    </h1>
+    <p class="tagline">2 players &bull; loudest beast wins</p>
+
+    <button class="btn btn--huge btn--go" id="btn-begin" type="button">BEGIN GAME</button>
+
+    <p class="fineprint">
+      Turn the volume up and put the phone between you.<br />
+      Photos and voices never leave this phone.
+    </p>
+  </section>
+
+  <!-- ═════════════════════ MIC PERMISSION ═════════════════════ -->
+  <section class="screen" id="screen-mic">
+    <div class="big-emoji pulse" id="mic-emoji" aria-hidden="true">🎤</div>
+    <h2 class="heading" id="mic-title">Can we use the microphone?</h2>
+    <p class="subheading" id="mic-msg">Tap <b>Allow</b> so we can hear your mighty roars!</p>
+    <div class="room-bar" id="mic-listening" hidden><i></i></div>
+    <button class="btn btn--go" id="btn-mic-retry" type="button" hidden>TRY AGAIN</button>
+  </section>
+
+  <!-- ═════════════════════ PLAYER SETUP ═════════════════════ -->
+  <section class="screen" id="screen-setup">
+    <div class="player-chip" id="setup-chip">PLAYER 1</div>
+
+    <!-- step 1: photo -->
+    <div class="step" id="step-photo">
+      <h2 class="heading">Add your photo!</h2>
+      <label class="avatar-drop" id="avatar-drop" for="photo-input">
+        <img id="avatar-preview" alt="" hidden />
+        <span class="avatar-plus" id="avatar-plus" aria-hidden="true">📷</span>
+        <span class="sr-only">Choose a photo</span>
+      </label>
+      <input type="file" accept="image/*" id="photo-input" class="sr-only" />
+      <input type="text" id="name-input" class="name-input" maxlength="10" placeholder="Your name" autocomplete="off" autocorrect="off" spellcheck="false" />
+      <button class="btn btn--go" id="btn-photo-next" type="button" disabled>NEXT</button>
+      <button class="linkish" id="btn-surprise" type="button">No photo? Give me an animal 🎲</button>
+    </div>
+
+    <!-- step 2: voice print -->
+    <div class="step" id="step-voice" hidden>
+      <h2 class="heading">Make your sound!</h2>
+      <p class="subheading">A ROAR 🦁 a MEOW 🐱 a MOO 🐮 — anything! Just make it <b>your</b> sound, and keep going until the ring fills up.</p>
+
+      <button class="record-orb" id="btn-record" type="button">
+        <span class="orb-ring" id="orb-ring"></span>
+        <img class="orb-photo" id="orb-photo" alt="" />
+        <span class="orb-label" id="orb-label">TAP &amp; ROAR</span>
+      </button>
+
+      <div class="meter" aria-hidden="true"><i id="rec-meter-fill"></i></div>
+      <p class="status" id="rec-status">&nbsp;</p>
+
+      <button class="btn btn--go" id="btn-voice-next" type="button" hidden>NEXT</button>
+      <button class="linkish" id="btn-rerecord" type="button" hidden>Record it again 🔁</button>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ MODE PICKER ═════════════════════ -->
+  <section class="screen" id="screen-modes">
+    <div class="versus">
+      <div class="vs-side">
+        <img class="vs-photo vs-photo--p1" id="vs-photo-1" alt="" />
+        <div class="vs-name" id="vs-name-1">Player 1</div>
+      </div>
+      <div class="vs-badge">VS</div>
+      <div class="vs-side">
+        <img class="vs-photo vs-photo--p2" id="vs-photo-2" alt="" />
+        <div class="vs-name" id="vs-name-2">Player 2</div>
+      </div>
+    </div>
+
+    <p class="warn" id="voice-warn" hidden></p>
+    <h2 class="heading heading--sm">Pick a game!</h2>
+
+    <button class="mode-card mode-card--grab" id="btn-mode-grab" type="button">
+      <span class="mode-emoji" aria-hidden="true">🖐️</span>
+      <span class="mode-text">
+        <b>GRAB IT!</b>
+        <i>Phone flat in the middle. Shout to shoot your claw out and grab the star first. Gets faster and faster!</i>
+        <em>45 seconds &bull; 4 levels</em>
+      </span>
+    </button>
+
+    <button class="mode-card mode-card--roar" id="btn-mode-roar" type="button">
+      <span class="mode-emoji" aria-hidden="true">📊</span>
+      <span class="mode-text">
+        <b>ROAR METER</b>
+        <i>Hold the phone up between you. Roar your loudest and push your bar to the sky.</i>
+        <em>20 seconds</em>
+      </span>
+    </button>
+
+    <button class="linkish" id="btn-redo-voices" type="button">Re-record our sounds</button>
+  </section>
+
+  <!-- ═════════════════════ COUNTDOWN ═════════════════════ -->
+  <section class="screen screen--flat" id="screen-countdown">
+    <div class="countdown countdown--flip" id="countdown-num-2">3</div>
+    <div class="countdown" id="countdown-num">3</div>
+  </section>
+
+  <!-- ═════════════════════ GAME: GRAB IT ═════════════════════ -->
+  <section class="screen screen--flat" id="screen-grab">
+    <canvas id="grab-canvas"></canvas>
+    <div class="grab-hud grab-hud--top">
+      <div class="hud-score hud-score--p2" id="grab-score-2">0</div>
+      <div class="hud-name" id="grab-name-2">Player 2</div>
+    </div>
+    <div class="grab-hud grab-hud--bottom">
+      <div class="hud-score hud-score--p1" id="grab-score-1">0</div>
+      <div class="hud-name" id="grab-name-1">Player 1</div>
+    </div>
+    <div class="flash-banner" id="grab-flash" hidden></div>
+  </section>
+
+  <!-- ═════════════════════ GAME: ROAR METER ═════════════════════ -->
+  <section class="screen screen--battle" id="screen-roar">
+    <div class="timer-wrap">
+      <div class="timer" id="timer">20</div>
+      <div class="timer-track"><i id="timer-fill"></i></div>
+    </div>
+
+    <div class="arena">
+      <div class="lane lane--p1" id="lane-1">
+        <div class="lane-avatar"><img id="bar-photo-1" alt="" /></div>
+        <div class="bar-track"><div class="bar" id="bar-1"><span class="bar-cap"></span></div></div>
+        <div class="lane-foot">
+          <div class="lane-score" id="score-1">0</div>
+          <div class="lane-name" id="bar-name-1">Player 1</div>
+        </div>
+      </div>
+
+      <div class="lane lane--p2" id="lane-2">
+        <div class="lane-avatar"><img id="bar-photo-2" alt="" /></div>
+        <div class="bar-track"><div class="bar" id="bar-2"><span class="bar-cap"></span></div></div>
+        <div class="lane-foot">
+          <div class="lane-score" id="score-2">0</div>
+          <div class="lane-name" id="bar-name-2">Player 2</div>
+        </div>
+      </div>
+    </div>
+
+    <p class="hype" id="hype">ROAAAR!</p>
+  </section>
+
+  <!-- ═════════════════════ RESULT ═════════════════════ -->
+  <section class="screen" id="screen-result">
+    <div class="crown" aria-hidden="true">👑</div>
+    <img class="winner-photo" id="winner-photo" alt="" />
+    <h2 class="winner-name" id="winner-name">Player 1</h2>
+    <p class="winner-line" id="winner-line">is the LOUDEST BEAST!</p>
+    <div class="final-scores">
+      <div class="final final--p1"><span id="final-name-1">Player 1</span><b id="final-score-1">0</b></div>
+      <div class="final final--p2"><span id="final-name-2">Player 2</span><b id="final-score-2">0</b></div>
+    </div>
+    <button class="btn btn--huge btn--go" id="btn-again" type="button">PLAY AGAIN</button>
+    <button class="linkish" id="btn-pick-mode" type="button">Pick another game</button>
+    <button class="linkish" id="btn-new-players" type="button">New players</button>
+  </section>
+
+</main>
+
+<script src="audio.js"></script>
+<script src="fx.js"></script>
+<script src="game-grab.js"></script>
+<script src="game-roar.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

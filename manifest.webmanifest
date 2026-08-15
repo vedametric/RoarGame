@@ -1,0 +1,11 @@
+{
+  "name": "Roar Battle",
+  "short_name": "Roar",
+  "description": "Two player voice games for kids. Upload your photos, make your sound, and shout to win.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#17092f",
+  "theme_color": "#17092f"
+}
