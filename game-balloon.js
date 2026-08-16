@@ -61,6 +61,7 @@
       self.t = 0;
       self.msg = null;
       self.floaters = [];
+      self.feathers = [];
       self.things = [];
       self.ground = [];
       self.running = true;
@@ -185,7 +186,8 @@
 
       for (var i = 0; i < this.things.length; i++) {
         var o = this.things[i];
-        if (!o.on || o.kind === 'bird') continue;
+        if (!o.on) continue;
+        if (o.kind === 'bird' && o.state && o.state !== 'fly') continue;
         var p = this._project(o.x, o.y, o.z);
         if (!p) continue;
         var d = Math.hypot(p.sx - px, p.sy - py);
@@ -323,6 +325,12 @@
       // things drift, get collected, and recycle behind you
       for (i = 0; i < this.things.length; i++) {
         var o = this.things[i];
+
+        if (o.kind === 'bird' && o.state && o.state !== 'fly') {
+          this._stepBird(o, dt, i);
+          continue;                       // no drifting, no collecting
+        }
+
         o.bobT += dt;
         o.flap += dt * 9;
         o.x += o.drift * dt;
@@ -349,6 +357,16 @@
         var gflat = Math.hypot(gdx, gdz);
         var gbehind = gdx * this.sinY + gdz * this.cosY;
         if (gflat > FAR * 1.2 || (gbehind < -60 && gflat > 200)) this.ground[i] = this._makeGround(false);
+      }
+
+      for (i = this.feathers.length - 1; i >= 0; i--) {
+        var ft = this.feathers[i];
+        ft.age += dt;
+        if (ft.age > ft.life) { this.feathers.splice(i, 1); continue; }
+        ft.vy -= 42 * dt;                 // feathers sink, they do not plummet
+        ft.vx *= 0.97; ft.vz *= 0.97; ft.vy *= 0.99;
+        ft.x += ft.vx * dt; ft.y += ft.vy * dt; ft.z += ft.vz * dt;
+        ft.rot += ft.spin * dt;
       }
 
       for (i = this.floaters.length - 1; i >= 0; i--) {
@@ -380,16 +398,7 @@
       var p = this._project(o.x, o.y, o.z);
       var sx = p ? p.sx : this.W / 2, sy = p ? p.sy : this.hz;
 
-      if (o.kind === 'bird') {
-        // Never a collectible. Bumping one costs you, and it flaps away.
-        this.score = Math.max(0, this.score + POINTS.bird);
-        o.drift = (o.x < this.camX ? -1 : 1) * 60;
-        o.y += 30;
-        this._say('Oh no — mind the birds! 🐦', '#ff9f9f');
-        this._float(sx, sy, POINTS.bird, '#ff8a8a');
-        global.RoarAudio.sfx('birdaww');
-        return;
-      }
+      if (o.kind === 'bird') { this._hitBird(o, sx, sy); return; }
 
       o.on = false;
       var pts = POINTS[o.kind];
@@ -405,6 +414,73 @@
         var i = self.things.indexOf(o);
         if (i >= 0) self.things[i] = self._make(false);
       }, 30);
+    },
+
+    // Birds are never points. Clip one and it skips sideways in fright, goes
+    // off with a puff of feathers, then tumbles all the way down to the ground.
+    _hitBird: function (o, sx, sy) {
+      if (o.state && o.state !== 'fly') return;
+
+      o.state = 'hop';
+      o.stateT = 0;
+      o.hopDir = o.x >= this.camX ? 1 : -1;
+      o.baseY = o.y;
+      o.rot = 0;
+
+      this.score = Math.max(0, this.score + POINTS.bird);
+      this._float(sx, sy, POINTS.bird, '#ff8a8a');
+      this._say('Oh no! Mind the birds 🐦', '#ff9f9f');
+      global.RoarAudio.sfx('birdaww');
+    },
+
+    _stepBird: function (o, dt, i) {
+      o.stateT += dt;
+
+      if (o.state === 'hop') {
+        // two panicked skips to the side before it goes
+        o.x += o.hopDir * 130 * dt;
+        o.y = o.baseY + Math.abs(Math.sin(o.stateT * 16)) * 22;
+        if (o.stateT > 0.5) {
+          o.state = 'boom';
+          o.stateT = 0;
+          o.vy = 26;
+          o.spin = rnd(-9, 9);
+          this._feathers(o, 14);
+          global.RoarAudio.sfx('bomb');
+        }
+        return true;
+      }
+
+      if (o.state === 'boom') {
+        if (o.stateT > 0.2) { o.state = 'fall'; o.stateT = 0; }
+        return true;
+      }
+
+      // fall: gravity all the way down to the fields
+      o.vy -= 240 * dt;
+      o.y += o.vy * dt;
+      o.x += o.hopDir * 14 * dt;
+      o.rot += o.spin * dt;
+
+      if (o.y <= 0) {
+        o.y = 0;
+        this._feathers(o, 6, 0.35);      // a last little puff of dust
+        this.things[i] = this._make(false);
+      }
+      return true;
+    },
+
+    _feathers: function (o, n, force) {
+      var f = force == null ? 1 : force;
+      for (var k = 0; k < n; k++) {
+        this.feathers.push({
+          x: o.x, y: o.y, z: o.z,
+          vx: rnd(-46, 46) * f, vy: rnd(-14, 52) * f, vz: rnd(-46, 46) * f,
+          rot: rnd(0, 6.28), spin: rnd(-7, 7),
+          age: 0, life: rnd(1.3, 2.4),
+          col: ['#ffffff', '#efe8f8', '#c8bcd8', '#3a2b52'][(Math.random() * 4) | 0]
+        });
+      }
     },
 
     _float: function (x, y, text, color) {
@@ -426,6 +502,7 @@
       this._land(c, W, H);
       this._groundLife(c);
       this._things(c);
+      this._featherDraw(c);
       this._balloon(c, W, H);
       this._floaters(c);
       this._hud(c, W, H);
@@ -617,15 +694,42 @@
         if (o.kind === 'bird') {
           var bs = clamp(o.size * p.s * 0.7, 3, 46);
           c.globalAlpha = 0.55 + fade * 0.45;
+
+          if (o.state === 'boom') {
+            // the puff itself: an expanding ring where the bird was
+            var k = o.stateT / 0.2;
+            c.save();
+            c.globalAlpha = (1 - k) * 0.9;
+            c.strokeStyle = '#fff';
+            c.lineWidth = Math.max(2, bs * 0.5 * (1 - k));
+            c.beginPath();
+            c.arc(p.sx, p.sy, bs * (0.6 + k * 2.6), 0, 6.2832);
+            c.stroke();
+            c.fillStyle = 'rgba(255,255,255,' + (1 - k) * 0.5 + ')';
+            c.beginPath();
+            c.arc(p.sx, p.sy, bs * (1 - k) * 1.1, 0, 6.2832);
+            c.fill();
+            c.restore();
+            continue;
+          }
+
+          c.save();
+          c.translate(p.sx, p.sy);
+          var falling = o.state === 'fall';
+          if (falling) c.rotate(o.rot);
           c.strokeStyle = '#2a1c3f';
           c.lineWidth = Math.max(1.4, bs * 0.16);
           c.lineCap = 'round';
-          var w = bs, flap = Math.sin(o.flap) * 0.5 + 0.5;
+
+          var w = bs;
+          // Flapping while it flies; wings folded and limp once it is falling.
+          var flap = falling ? -0.55 : Math.sin(o.flap) * 0.5 + 0.5;
           c.beginPath();
-          c.moveTo(p.sx - w, p.sy + w * 0.25 * flap);
-          c.quadraticCurveTo(p.sx - w * 0.4, p.sy - w * 0.5, p.sx, p.sy);
-          c.quadraticCurveTo(p.sx + w * 0.4, p.sy - w * 0.5, p.sx + w, p.sy + w * 0.25 * flap);
+          c.moveTo(-w, w * 0.25 * flap);
+          c.quadraticCurveTo(-w * 0.4, -w * 0.5, 0, 0);
+          c.quadraticCurveTo(w * 0.4, -w * 0.5, w, w * 0.25 * flap);
           c.stroke();
+          c.restore();
           continue;
         }
 
@@ -808,6 +912,26 @@
       vg.addColorStop(1, 'rgba(10,4,26,0.45)');
       c.fillStyle = vg;
       c.fillRect(0, 0, W, H);
+    },
+
+    _featherDraw: function (c) {
+      c.save();
+      for (var i = 0; i < this.feathers.length; i++) {
+        var f = this.feathers[i];
+        var p = this._project(f.x, f.y, f.z);
+        if (!p) continue;
+        var r = clamp(4.5 * p.s * 8, 1.2, 16);
+        c.globalAlpha = clamp((1 - f.age / f.life) * 1.5, 0, 1) * 0.95;
+        c.save();
+        c.translate(p.sx, p.sy);
+        c.rotate(f.rot);
+        c.fillStyle = f.col;
+        c.beginPath();
+        c.ellipse(0, 0, r, r * 0.42, 0, 0, 6.2832);
+        c.fill();
+        c.restore();
+      }
+      c.restore();
     },
 
     _floaters: function (c) {

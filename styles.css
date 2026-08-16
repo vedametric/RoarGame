@@ -160,6 +160,15 @@ body {
   line-height: 1.6; color: rgba(201,189,240,.72);
 }
 
+/* Which build is loaded. Tap it to reload past a stale cache. */
+.build-tag {
+  margin: 10px 0 0; padding: 4px 10px;
+  font: 600 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .06em; color: rgba(201,189,240,.5);
+  background: rgba(255,255,255,.05);
+  border: 0; border-radius: 999px;
+}
+
 .warn {
   margin: 0; max-width: 24em; padding: 12px 16px;
   font-size: 14px; font-weight: 700; line-height: 1.45;
@@ -637,10 +646,9 @@ body {
 .animal:active { transform: scale(.9); }
 
 .animal-face {
-  display: grid; place-items: center;
+  display: block;
   width: 100%; aspect-ratio: 1; border-radius: 50%;
-  font-size: clamp(28px, 9vw, 40px); line-height: 1;
-  background: linear-gradient(140deg, var(--g), var(--c));
+  object-fit: cover;
   box-shadow: 0 4px 0 rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.35);
 }
 .animal:active .animal-face { box-shadow: 0 1px 0 rgba(0,0,0,.3); }
@@ -961,3 +969,99 @@ body {
   border-color: var(--go-a);
 }
 .voice-row.is-on b::after { content: ' ✓'; color: var(--go-a); }
+
+/* ── SIENNA'S CALCULATOR ────────────────────────────────────── */
+
+.mode-card--calc { border-color: rgba(126,200,255,.5); }
+
+#screen-calc { gap: 10px; justify-content: flex-start; padding-top: calc(env(safe-area-inset-top,0px) + 14px); }
+
+.cl-head {
+  display: flex; align-items: center; gap: 8px;
+  width: min(420px, 100%);
+}
+.cl-title {
+  margin: 0; flex: 1; text-align: left;
+  font-size: clamp(19px, 5.6vw, 25px); font-weight: 900;
+  background: linear-gradient(180deg, #fff, var(--p2));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.cl-speak, .cl-exit {
+  appearance: none; cursor: pointer; padding: 0; flex: 0 0 auto;
+  width: 42px; height: 42px; display: grid; place-items: center;
+  font-size: 18px; font-weight: 900; color: #fff;
+  border: 2px solid rgba(255,255,255,.22); border-radius: 50%;
+  background: rgba(255,255,255,.10);
+}
+.cl-speak.is-off { opacity: .5; }
+.cl-speak:active, .cl-exit:active { transform: scale(.9); }
+
+.cl-screen {
+  width: min(420px, 100%);
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.18));
+  border: 2px solid rgba(255,255,255,.14);
+  text-align: right;
+  overflow: hidden;
+}
+.cl-sum {
+  font-size: 15px; font-weight: 800; color: var(--ink-soft);
+  min-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cl-out {
+  font-size: clamp(38px, 13vw, 58px); font-weight: 900; line-height: 1.1;
+  color: var(--go-a); font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 3px 0 rgba(0,0,0,.3);
+}
+.cl-out.is-long { font-size: clamp(26px, 8vw, 38px); }
+.cl-out.pop { animation: scorePop .3s cubic-bezier(.2,1.6,.4,1); }
+
+.cl-pad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+  width: min(420px, 100%);
+  flex: 1; min-height: 0;
+}
+.cl-key {
+  appearance: none; cursor: pointer; border: 0; padding: 0;
+  display: grid; place-items: center;
+  min-height: 54px;
+  font-family: inherit; font-size: clamp(21px, 6.4vw, 28px); font-weight: 900;
+  color: #2b1a10; border-radius: 18px;
+  background: linear-gradient(180deg, #fff, #ddd3ee);
+  box-shadow: 0 4px 0 rgba(0,0,0,.4);
+  -webkit-user-select: none; user-select: none;
+}
+.cl-key:active { transform: translateY(4px); box-shadow: 0 0 0 rgba(0,0,0,.4); }
+.cl-key--wide { grid-column: span 2; }
+.cl-key--op {
+  color: #fff;
+  background: linear-gradient(180deg, #5cc4f5, #2f7fd0);
+  box-shadow: 0 4px 0 #1d5590;
+}
+.cl-key--fn { background: linear-gradient(180deg, #e7dcf7, #b9a8d6); }
+.cl-key--clear {
+  color: #fff;
+  background: linear-gradient(180deg, #ff8f8f, #e8483f);
+  box-shadow: 0 4px 0 #a52a24;
+}
+.cl-key--eq {
+  color: #43210a;
+  background: linear-gradient(180deg, var(--go-a), var(--go-b));
+  box-shadow: 0 4px 0 #b8480a;
+}
+
+.cl-credit {
+  margin: 0; font-size: 11.5px; font-weight: 900; letter-spacing: .06em;
+  color: #e6b3ff;
+}
+
+@media (max-height: 700px) {
+  .cl-key { min-height: 44px; font-size: clamp(18px, 5.6vw, 23px); }
+  .cl-out { font-size: clamp(30px, 10vw, 42px); }
+  .cl-screen { padding: 10px 14px; }
+}

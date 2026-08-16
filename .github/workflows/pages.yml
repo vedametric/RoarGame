@@ -22,6 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Cache busting: rewrite every ?v=dev to the commit being deployed, so a
+      # new build asks the phone for file URLs it has never fetched before and
+      # nobody ends up running last week's JavaScript against this week's HTML.
+      - name: Stamp the build
+        run: |
+          BUILD="$(git rev-parse --short HEAD)"
+          echo "Stamping build $BUILD"
+          sed -i "s/?v=dev/?v=$BUILD/g; s/name=\"build\" content=\"dev\"/name=\"build\" content=\"$BUILD\"/" index.html
+          grep -c "?v=$BUILD" index.html
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

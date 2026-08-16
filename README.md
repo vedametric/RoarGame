@@ -9,6 +9,13 @@ elephant or dino. Picking an animal also fills in the name, so a kid who can't
 type yet still ends up with one. That face rides on the end of their claw-arm
 during the game.
 
+The animals are **drawn, not emoji** — ten little vector faces painted with
+canvas paths in `animals.js`. Emoji were tried first and were never reliable:
+iOS will not fall back to the colour emoji font inside a canvas unless you name
+it exactly, the font may not be ready when the avatar is baked, and the same
+glyph looks different on every device. Drawing them removes all of that, so the
+face a kid picks is the face they get, every time, on every phone.
+
 Then each player records their own sound ("make your sound!" — a roar, a meow,
 a moo, anything). If the raw capture comes back unusable on some device, the
 game synthesises a growl around that player's own pitch instead, so a tap
@@ -59,11 +66,19 @@ tap it:
 | 🍎 | food | +10 |
 | ☁️ | clouds | +5 |
 | 🦄 | unicorns | +25 — they drift, so you have to chase them |
-| 🐦 | **birds** | **−10. Never collect a bird.** Bump one and it flaps away startled. |
+| 🐦 | **birds** | **−10. Never collect a bird.** See below. |
 | 🌱 | landing | +50 the first time you set her down gently |
 
 There is no timer. Fly wherever you like, land whenever you like, and finish
 with ✕ when you have had enough.
+
+**About the birds.** They are not points, they are a mistake, and the game makes
+that unmistakable. Touch one and it startles sideways in a hopping little skip,
+then bursts in a puff of feathers with **−10** floating up, and the body
+tumbles end over end all the way down to the ground, where it lands in one last
+scatter of feathers and a new thing drifts in to take its place. It all plays
+out in world space, so you can watch the whole fall from wherever you happen to
+be flying.
 
 Everything you see is painted in code — the sunset gradient, the parallax
 mountain ridges with sunset catching their tops, the receding fields with
@@ -99,6 +114,25 @@ Timing follows the utterance's own `onend` rather than a fixed timer, so the
 pause is always a real pause *after* the word however long it takes to say
 "one hundred and thirty-seven" — with a watchdog, because iOS does not reliably
 deliver `onend`.
+
+## 🧮 SIENNA'S CALCULATOR
+
+Also in **ALL GAMES**. A plain, friendly calculator with big buttons: **add,
+take away, times and share**, plus a decimal point, backspace and clear.
+
+The line above the answer shows the sum being built — `12 + 5` — so a child can
+see what they are doing rather than watching digits appear from nowhere. It
+works on the pending pair the way a pocket calculator does, so `2 + 3 + 4` shows
+**5** the moment the second `+` is pressed, which is exactly the running total a
+kid expects.
+
+**🔊 reads it out loud** — every key as it is pressed ("seven", "plus", "two")
+and the answer a little slower ("equals nine"). Tap the speaker to turn the
+voice off and it becomes a silent calculator; the main sound button silences it
+too.
+
+Sharing by zero doesn't error or show `Infinity`; it says **oops!** and
+"you can't share by zero", and clears itself ready for another go.
 
 ## One player or two
 
@@ -262,19 +296,33 @@ awake during play via the Screen Wake Lock API where available.
 ```
 index.html      all screens
 styles.css      everything visual
+animals.js      the ten animal faces, drawn with canvas paths
 audio.js        microphone, voice fingerprinting, speaker attribution
 fx.js           particle bursts + confetti
 game-grab.js    GRAB IT! — canvas game loop
 game-roar.js    ROAR METER — bar-graph game loop
 game-balloon.js THE HOT AIR BALLOON — by Sienna 🦄
 game-count.js   COUNTING — spoken numbers, forever
+game-calc.js    SIENNA'S CALCULATOR — arithmetic, read aloud
 app.js          screen flow, photos, results
 ```
 
-Canvas text needs an explicit `"Apple Color Emoji"` family on iOS — the generic
-`system-ui` will not fall back to it, which is why the animal avatars baked out
-blank at first. There is a runtime probe that falls back to a large initial if
-emoji cannot be drawn into a canvas at all.
+## Cache busting
+
+A phone that has played before will happily keep serving itself the old files,
+which is worse than it sounds: new HTML running last week's JavaScript breaks in
+ways that look like real bugs. So:
+
+- The document asks not to be cached, because it is the file that names the
+  version of everything else.
+- Every script, the stylesheet and the manifest are fetched as `?v=<build>`.
+  `.github/workflows/pages.yml` rewrites `?v=dev` to the short commit SHA it is
+  deploying, so a new deploy requests URLs the phone has never seen and cannot
+  have cached. In the repo the files stay `?v=dev`, so local development is
+  unaffected.
+- The splash shows which build is loaded — `build 1a2b3c4`. **Tap it** to
+  reload past anything Safari is still holding on to. Handy when the page has
+  been added to the Home Screen, where there is no address bar to pull down.
 
 ---
 
