@@ -580,10 +580,10 @@
       } else {
         c.fillStyle = p.color;
         c.fillRect(x - R, y - R, R * 2, R * 2);
-        c.font = '30px ' + EMOJI_FONT;
-        c.textAlign = 'center';
-        c.textBaseline = 'middle';
-        c.fillText(p.emoji || '🐾', x, y + 1);
+        if (!(p.animal && global.Animals && global.Animals.draw(c, p.animal, x, y + 2, R * 0.9))) {
+          c.fillStyle = p.glow;
+          c.beginPath(); c.arc(x, y, R * 0.45, 0, 6.2832); c.fill();
+        }
       }
       if (frozen) {
         c.fillStyle = 'rgba(232,246,255,0.62)';

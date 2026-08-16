@@ -6,23 +6,9 @@
   'use strict';
 
   var RECORD_MS = 2500;
-  // Ten to choose from, for players who would rather not use a photo.
-  var ANIMALS = [
-    { emoji: '🐰', name: 'Rabbit' },
-    { emoji: '🐮', name: 'Cow' },
-    { emoji: '🦁', name: 'Lion' },
-    { emoji: '🦒', name: 'Giraffe' },
-    { emoji: '🦭', name: 'Seal' },
-    { emoji: '🐧', name: 'Penguin' },
-    { emoji: '🦈', name: 'Shark' },
-    { emoji: '🐯', name: 'Tiger' },
-    { emoji: '🐘', name: 'Elephant' },
-    { emoji: '🦖', name: 'Dino' }
-  ];
-
-  // iOS Safari will not fall back to the colour emoji font for canvas text
-  // when the family is `system-ui`, so the animal avatars baked out blank.
-  var EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif';
+  // Drawn as real artwork in animals.js — emoji in a canvas could not be
+  // relied on to render at all.
+  var ANIMALS = Animals.list();
 
   var SKINS = [
     { color: '#ff8a2b', glow: '#ffd24c', emoji: '🦁' },
@@ -49,7 +35,7 @@
       img: null,
       color: SKINS[i].color,
       glow: SKINS[i].glow,
-      emoji: SKINS[i].emoji
+      animal: null
     };
   }
 
@@ -61,7 +47,21 @@
   /* ── screens ──────────────────────────────────────────────── */
 
   var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
-                  'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1 };
+                  'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1,
+                  'screen-calc': 1 };
+
+  // Anything that is running gets torn down before a new screen appears, so a
+  // stray tap can never leave two game loops fighting over the same canvas.
+  function stopEverything() {
+    try { if (GrabGame.running) GrabGame.stop(); } catch (e) {}
+    try { if (RoarGame.running) RoarGame.stop(); } catch (e) {}
+    try { if (BalloonGame.running) BalloonGame.stop(); } catch (e) {}
+    try { if (CountGame.running) CountGame.stop(); } catch (e) {}
+    try { if (CalcGame.running) CalcGame.stop(); } catch (e) {}
+    clearTimeout(countdownTimer);
+    pendingStart = null;
+    RoarAudio.stopAllVoices();
+  }
 
   function show(id) {
     var all = document.querySelectorAll('.screen');
@@ -70,6 +70,28 @@
     // Keep it out of the play area, where it sits inside player 2's half.
     $('btn-sound').hidden = !!PLAYING[id];
   }
+
+  // Rotating the phone changes every dimension the canvases were sized from,
+  // and iOS reports the new size a beat after the event — so refit more than
+  // once rather than trusting the first reading.
+  function refit() {
+    [GrabGame, BalloonGame].forEach(function (g) {
+      if (g && g.running && g._fit) { try { g._fit(); } catch (e) {} }
+    });
+  }
+
+  function onViewportChange() {
+    refit();
+    setTimeout(refit, 120);
+    setTimeout(refit, 400);
+  }
+
+  addEventListener('orientationchange', onViewportChange);
+  addEventListener('resize', onViewportChange);
+  if (global_visualViewport()) {
+    global_visualViewport().addEventListener('resize', onViewportChange);
+  }
+  function global_visualViewport() { return window.visualViewport || null; }
 
   function setSound(on) {
     RoarAudio.setMuted(!on);
@@ -120,58 +142,6 @@
     });
   }
 
-  // Waits for fonts, otherwise the emoji can bake into the canvas as a blank.
-  function animalPhoto(emoji, skin, name) {
-    var ready = (document.fonts && document.fonts.ready) || Promise.resolve();
-    return Promise.resolve(ready).then(function () {
-      var S = 320;
-      var cv = document.createElement('canvas');
-      cv.width = cv.height = S;
-      var c = cv.getContext('2d');
-      var g = c.createLinearGradient(0, 0, S, S);
-      g.addColorStop(0, skin.glow);
-      g.addColorStop(1, skin.color);
-      c.fillStyle = g;
-      c.fillRect(0, 0, S, S);
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-
-      if (canvasEmojiWorks()) {
-        c.font = '210px ' + EMOJI_FONT;
-        c.fillText(emoji, S / 2, S / 2 + 12);
-      } else {
-        // Last resort: a big initial, so the avatar is never a blank disc.
-        c.fillStyle = 'rgba(255,255,255,.92)';
-        c.font = '900 170px system-ui';
-        c.fillText(name ? name.charAt(0).toUpperCase() : '?', S / 2, S / 2 + 6);
-      }
-      return cv.toDataURL('image/png');
-    });
-  }
-
-  // Probe once: draw an emoji on a scratch canvas and see if any pixels land.
-  var _emojiOk = null;
-  function canvasEmojiWorks() {
-    if (_emojiOk !== null) return _emojiOk;
-    try {
-      var cv = document.createElement('canvas');
-      cv.width = cv.height = 24;
-      var c = cv.getContext('2d');
-      c.font = '20px ' + EMOJI_FONT;
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText('🦁', 12, 12);
-      var d = c.getImageData(0, 0, 24, 24).data;
-      for (var i = 3; i < d.length; i += 4) {
-        if (d[i] > 8) { _emojiOk = true; return true; }
-      }
-      _emojiOk = false;
-    } catch (e) {
-      _emojiOk = true;                 // cannot tell (tainted canvas): assume fine
-    }
-    return _emojiOk;
-  }
-
   function setPhoto(dataUrl) {
     var p = players[current];
     p.photo = dataUrl;
@@ -195,7 +165,8 @@
       b.type = 'button';
       b.className = 'animal';
       b.setAttribute('aria-label', a.name);
-      b.innerHTML = '<span class="animal-face">' + a.emoji + '</span>' +
+      b.innerHTML = '<img class="animal-face" alt="" src="' +
+                    Animals.avatar(a.key, SKINS[0]) + '">' +
                     '<span class="animal-name">' + a.name + '</span>';
       b.addEventListener('click', function () { pickAnimal(a); });
       grid.appendChild(b);
@@ -207,17 +178,21 @@
     // Tint the picker with whichever player is choosing.
     sheet.style.setProperty('--c', SKINS[current].color);
     sheet.style.setProperty('--g', SKINS[current].glow);
+    var imgs = sheet.querySelectorAll('.animal-face');
+    for (var i = 0; i < imgs.length && i < ANIMALS.length; i++) {
+      imgs[i].src = Animals.avatar(ANIMALS[i].key, SKINS[current]);
+    }
     sheet.hidden = false;
   }
 
   function closeAnimals() { $('animal-sheet').hidden = true; }
 
   function pickAnimal(a) {
-    players[current].emoji = a.emoji;
+    players[current].animal = a.key;
     // A kid who cannot type yet still ends up with a name they chose.
     var nameEl = $('name-input');
     if (!nameEl.value.trim()) nameEl.value = a.name;
-    animalPhoto(a.emoji, SKINS[current], a.name).then(setPhoto);
+    setPhoto(Animals.avatar(a.key, SKINS[current]));
     RoarAudio.sfx('spawn');
     closeAnimals();
   }
@@ -427,7 +402,10 @@
 
   var pendingStart = null;
 
+  var countdownTimer = null;
+
   function countdown(then) {
+    clearTimeout(countdownTimer);
     show('screen-countdown');
     keepAwake();
     RoarAudio.resume();
@@ -446,11 +424,12 @@
       RoarAudio.sfx(seq[i] === 'GO!' ? 'go' : 'tick');
 
       i++;
-      setTimeout(i < seq.length ? step : then, i < seq.length ? 700 : 450);
+      countdownTimer = setTimeout(i < seq.length ? step : then, i < seq.length ? 700 : 450);
     })();
   }
 
   function playGrab() {
+    stopEverything();
     mode = 'grab';
     $('grab-name-1').textContent = players[0].name;
     $('grab-name-2').textContent = players[1].name;
@@ -483,6 +462,7 @@
   }
 
   function playRoar() {
+    stopEverything();
     mode = 'roar';
     for (var i = 0; i < 2; i++) {
       $('bar-photo-' + (i + 1)).src = players[i].photo;
@@ -515,6 +495,7 @@
   /* ── the hot air balloon ──────────────────────────────────── */
 
   function startBalloon() {
+    stopEverything();
     $('bl-end').hidden = true;
     $('bl-score').textContent = '0';
     show('screen-balloon');
@@ -547,13 +528,14 @@
   on('bl-again', function () { Confetti.stop(); startBalloon(); });
   on('bl-menu', function () {
     Confetti.stop();
-    BalloonGame.stop();
+    stopEverything();
     show('screen-games');
   });
 
   /* ── counting ─────────────────────────────────────────────── */
 
   function startCounting() {
+    stopEverything();
     show('screen-counting');
     keepAwake();
     RoarAudio.releaseMic();       // counting never listens
@@ -600,9 +582,30 @@
   }
   on('ct-exit', function () {
     $('voice-sheet').hidden = true;
-    CountGame.stop();
+    stopEverything();
     show('screen-games');
   });
+
+  /* ── Sienna's calculator ──────────────────────────────────── */
+
+  function startCalc() {
+    stopEverything();
+    show('screen-calc');
+    RoarAudio.releaseMic();
+    CalcGame.start({
+      els: { sum: $('cl-sum'), out: $('cl-out'), speak: $('cl-speak') }
+    });
+  }
+
+  // One delegated listener rather than twenty, so a fast double-press on a
+  // key can never leave a stray handler behind.
+  $('cl-pad').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-k]') : null;
+    if (b) CalcGame.press(b.getAttribute('data-k'));
+  });
+
+  on('cl-speak', function () { CalcGame.setSpeak(!CalcGame.speak); });
+  on('cl-exit', function () { stopEverything(); show('screen-games'); });
 
   /* ── results ──────────────────────────────────────────────── */
 
@@ -683,13 +686,14 @@
   });
 
   on('btn-games', function () { RoarAudio.resume(); show('screen-games'); });
-  on('btn-games-back', function () { show('screen-splash'); });
+  on('btn-games-back', function () { stopEverything(); show('screen-splash'); });
 
   // Picking from the list remembers the choice and skips the mode screen.
-  on('game-grab', function () { pendingGame = 'grab'; show('screen-count'); });
-  on('game-roar', function () { pendingGame = 'roar'; show('screen-count'); });
+  on('game-grab', function () { stopEverything(); pendingGame = 'grab'; show('screen-count'); });
+  on('game-roar', function () { stopEverything(); pendingGame = 'roar'; show('screen-count'); });
   on('game-balloon', function () { RoarAudio.resume(); startBalloon(); });
   on('game-count', function () { RoarAudio.resume(); startCounting(); });
+  on('game-calc', function () { RoarAudio.resume(); startCalc(); });
 
   on('count-1', function () { playerCount = 1; show('screen-how'); });
   on('count-2', function () { playerCount = 2; show('screen-how'); });
@@ -799,11 +803,24 @@
 
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
-      if (GrabGame.running) GrabGame.stop();
-      if (RoarGame.running) RoarGame.stop();
-      if (BalloonGame.running) BalloonGame.stop();
-      if (CountGame.running) CountGame.stop();
-      RoarAudio.stopAllVoices();
+      stopEverything();
     }
   });
+
+  /* ── which build am I running? ────────────────────────────────
+     The deploy stamps the commit into <meta name="build">, and every script
+     and stylesheet is fetched with that same ?v=, so a fresh deploy can never
+     be half-cached. This little tag on the splash says which one is loaded;
+     tapping it forces a reload past whatever Safari is holding on to. */
+  (function buildTag() {
+    var meta = document.querySelector('meta[name="build"]');
+    var build = (meta && meta.content) || 'dev';
+    var tag = document.getElementById('build-tag');
+    if (!tag) return;
+    tag.textContent = build === 'dev' ? 'local build' : 'build ' + build;
+    tag.addEventListener('click', function () {
+      var u = location.href.split('#')[0].split('?')[0];
+      location.replace(u + '?fresh=' + Date.now());
+    });
+  })();
 })();

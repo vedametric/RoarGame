@@ -7,10 +7,19 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="description" content="Roar Battle - two player voice games for kids. Upload your photos, make your sound, and shout to win." />
+
+<!-- Cache busting. The page itself must always be re-fetched, because it is the
+     thing that names which version of every other file to load. Every asset
+     below carries ?v=BUILD, which the Pages workflow rewrites to the commit it
+     deployed, so a new build asks for URLs the phone has never seen. -->
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta name="build" content="dev" />
+
 <title>Roar Battle</title>
-<link rel="manifest" href="manifest.webmanifest" />
+<link rel="manifest" href="manifest.webmanifest?v=dev" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%81%3C/text%3E%3C/svg%3E" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=dev" />
 </head>
 <body>
 
@@ -39,6 +48,7 @@
       Turn the volume up and put the phone between you.<br />
       Photos and voices never leave this phone.
     </p>
+    <button class="build-tag" id="build-tag" type="button" title="Tap to reload the newest version"></button>
   </section>
 
   <!-- ═════════════════════ GAME LIST ═════════════════════ -->
@@ -78,6 +88,15 @@
         <b>COUNTING</b>
         <i>A deep, slow voice counts out loud from zero, on and on forever. Numbers, words and dots to count along with.</i>
         <em>no rush &bull; no winning</em>
+      </span>
+    </button>
+
+    <button class="mode-card mode-card--calc" id="game-calc" type="button">
+      <span class="mode-emoji" aria-hidden="true">🧮</span>
+      <span class="mode-text">
+        <b>SIENNA'S CALCULATOR</b>
+        <i>Add, take away, times and share. Big buttons, and it can read every number out loud.</i>
+        <em>for working things out</em>
       </span>
     </button>
 
@@ -356,6 +375,47 @@
     </p>
   </section>
 
+  <!-- ═════════════════════ SIENNA'S CALCULATOR ═════════════════════ -->
+  <section class="screen" id="screen-calc">
+    <div class="cl-head">
+      <h2 class="cl-title">Sienna's Calculator</h2>
+      <button class="cl-speak" id="cl-speak" type="button" aria-label="Read numbers out loud">🔊</button>
+      <button class="cl-exit" id="cl-exit" type="button" aria-label="Back to games">✕</button>
+    </div>
+
+    <div class="cl-screen">
+      <div class="cl-sum" id="cl-sum">&nbsp;</div>
+      <div class="cl-out" id="cl-out">0</div>
+    </div>
+
+    <div class="cl-pad" id="cl-pad">
+      <button class="cl-key cl-key--clear" data-k="C" type="button">C</button>
+      <button class="cl-key cl-key--fn" data-k="⌫" type="button">⌫</button>
+      <button class="cl-key cl-key--op" data-k="÷" type="button">÷</button>
+      <button class="cl-key cl-key--op" data-k="×" type="button">×</button>
+
+      <button class="cl-key" data-k="7" type="button">7</button>
+      <button class="cl-key" data-k="8" type="button">8</button>
+      <button class="cl-key" data-k="9" type="button">9</button>
+      <button class="cl-key cl-key--op" data-k="-" type="button">−</button>
+
+      <button class="cl-key" data-k="4" type="button">4</button>
+      <button class="cl-key" data-k="5" type="button">5</button>
+      <button class="cl-key" data-k="6" type="button">6</button>
+      <button class="cl-key cl-key--op" data-k="+" type="button">+</button>
+
+      <button class="cl-key" data-k="1" type="button">1</button>
+      <button class="cl-key" data-k="2" type="button">2</button>
+      <button class="cl-key" data-k="3" type="button">3</button>
+      <button class="cl-key cl-key--eq" data-k="=" type="button" style="grid-row: span 2">=</button>
+
+      <button class="cl-key cl-key--wide" data-k="0" type="button">0</button>
+      <button class="cl-key" data-k="." type="button">.</button>
+    </div>
+
+    <p class="cl-credit">a calculator for Sienna 🦄</p>
+  </section>
+
   <!-- ═════════════════════ RESULT ═════════════════════ -->
   <section class="screen" id="screen-result">
     <div class="crown" aria-hidden="true">👑</div>
@@ -396,12 +456,14 @@
 
 </main>
 
-<script src="audio.js"></script>
-<script src="fx.js"></script>
-<script src="game-grab.js"></script>
-<script src="game-balloon.js"></script>
-<script src="game-count.js"></script>
-<script src="game-roar.js"></script>
-<script src="app.js"></script>
+<script src="animals.js?v=dev"></script>
+<script src="audio.js?v=dev"></script>
+<script src="fx.js?v=dev"></script>
+<script src="game-grab.js?v=dev"></script>
+<script src="game-balloon.js?v=dev"></script>
+<script src="game-count.js?v=dev"></script>
+<script src="game-calc.js?v=dev"></script>
+<script src="game-roar.js?v=dev"></script>
+<script src="app.js?v=dev"></script>
 </body>
 </html>
