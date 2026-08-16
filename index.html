@@ -281,6 +281,7 @@
       <div class="hud-combo" id="grab-combo-1" hidden></div>
     </div>
     <div class="flash-banner" id="grab-flash" hidden></div>
+    <button class="game-x" id="grab-exit" type="button" aria-label="Leave the game">✕</button>
   </section>
 
   <!-- ═════════════════════ GAME: ROAR METER ═════════════════════ -->
@@ -312,6 +313,7 @@
 
     <p class="hype" id="hype">ROAAAR!</p>
     <div class="tap-layer tap-layer--split-x" id="roar-tap" hidden></div>
+    <button class="game-x" id="roar-exit" type="button" aria-label="Leave the game">✕</button>
   </section>
 
   <!-- ═════════════════════ THE HOT AIR BALLOON ═════════════════════ -->
@@ -451,6 +453,17 @@
       <h2 class="heading heading--sm">Pick your animal!</h2>
       <div class="animal-grid" id="animal-grid"></div>
       <button class="linkish" id="btn-animal-cancel" type="button">Never mind</button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════ LEAVING A GAME ═════════════════════ -->
+  <div class="sheet sheet--quit" id="quit-sheet" hidden>
+    <div class="sheet-card quit-card">
+      <div class="quit-emoji" id="quit-emoji" aria-hidden="true">👋</div>
+      <h2 class="heading heading--sm" id="quit-title">Leave the game?</h2>
+      <p class="subheading" id="quit-msg">Your score won't be saved.</p>
+      <button class="btn btn--go" id="quit-stay" type="button">KEEP PLAYING</button>
+      <button class="btn btn--ghost btn--quit" id="quit-go" type="button">LEAVE</button>
     </div>
   </div>
 

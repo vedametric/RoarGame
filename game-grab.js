@@ -75,6 +75,7 @@
       self.burst = new global.Burst();
       self.grabbedBy = -1;
       self.grabAnim = 0;
+      self.paused = false;
       self.running = true;
 
       self._onResize = function () { self._fit(); };
@@ -136,7 +137,7 @@
 
     // One step closer. Holding does nothing at all — only separate taps count.
     _tap: function (i) {
-      if (i >= this.n) return;
+      if (i >= this.n || this.paused) return;
       this.hintFade = 0;
       this.pulse[i] = 1;
 
@@ -192,12 +193,21 @@
 
     /* ── main loop ────────────────────────────────────────────── */
 
+    // Held while the "leave the game?" question is up, so the clock does not
+    // run down behind it and nobody loses a round to a mis-tap.
+    setPaused: function (on) {
+      this.paused = !!on;
+      this.last = performance.now();
+    },
+
     _loop: function (now) {
       var self = this;
       var dt = Math.min(0.05, (now - self.last) / 1000);
       self.last = now;
-      self._update(dt);
-      self._draw(dt);
+      if (!self.paused) {
+        self._update(dt);
+        self._draw(dt);
+      }
       if (self.running) self.raf = requestAnimationFrame(function (t) { self._loop(t); });
     },
 

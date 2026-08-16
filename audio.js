@@ -700,6 +700,8 @@
       var wind = chain('lowpass', 420, 0.7, 0);
       var vent = chain('highpass', 1900, 0.8, 0);
       var flame = chain('bandpass', 240, 0.9, 0);
+      // Rain is the same noise heard much brighter — a hiss rather than a roar.
+      var rain = chain('highpass', 2600, 0.6, 0);
 
       var rumble = ctx.createOscillator();
       var rf = ctx.createBiquadFilter();
@@ -722,11 +724,17 @@
         },
         setBurner: function (v) { ramp(flame.g, v * 0.26); ramp(rg, v * 0.18); },
         setVent: function (v) { ramp(vent.g, v * 0.16); },
+        // Drizzle is a thin hiss, a downpour is a wide one, so the cutoff moves
+        // with the amount as well as the level.
+        setRain: function (v) {
+          ramp(rain.g, v * 0.22);
+          try { rain.f.frequency.value = 3400 - v * 1400; } catch (e) {}
+        },
         setMuted: function (m) { master.gain.value = m ? 0 : 1; },
         stop: function () {
           var i = self._loops.indexOf(h);
           if (i >= 0) self._loops.splice(i, 1);
-          [wind.src, vent.src, flame.src, rumble].forEach(function (s) {
+          [wind.src, vent.src, flame.src, rain.src, rumble].forEach(function (s) {
             try { s.stop(); } catch (e) {}
           });
           try { master.disconnect(); } catch (e) {}
@@ -793,6 +801,13 @@
         case 'thud':   voice('sine',     140,   60, 0.24, 0.20, 0);
                        voice('triangle', 523,  523, 0.20, 0.08, 0.10);
                        voice('triangle', 784,  784, 0.28, 0.08, 0.22);  break;
+        // A wobbling theremin swoop — the sound a flying saucer ought to make.
+        case 'alien':  voice('sine',     420, 1900, 0.22, 0.13, 0);
+                       voice('sine',    1900,  760, 0.26, 0.10, 0.18);
+                       voice('triangle', 660, 2400, 0.30, 0.06, 0.30);  break;
+        case 'thunder': voice('sawtooth', 70,   22, 0.85, 0.20, 0);
+                        voice('square',   44,   18, 1.10, 0.13, 0.06);
+                        voice('sine',    120,   30, 0.60, 0.09, 0.02);  break;
         case 'win':    [523, 659, 784, 1046].forEach(function (f, i) {
                          voice('triangle', f, f, 0.3, 0.16, i * 0.11);
                        });                                             break;

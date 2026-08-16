@@ -63,10 +63,76 @@
     RoarAudio.stopAllVoices();
   }
 
+  /* ── leaving a game ───────────────────────────────────────────
+     Every ✕ goes through here. Whatever is playing is held while the question
+     is up — the clock stops, the balloon hangs still, the counting waits — so
+     the answer is never rushed, and answering "keep playing" puts you back
+     exactly where you were rather than costing you the round. */
+
+  var quitAsk = null;   // the pending "yes, leave" action
+
+  function askQuit(opts) {
+    quitAsk = opts.onLeave;
+    $('quit-emoji').textContent = opts.emoji || '👋';
+    $('quit-title').textContent = opts.title || 'Leave the game?';
+    $('quit-msg').textContent = opts.msg || "Your score won't be saved.";
+    $('quit-stay').textContent = opts.stay || 'KEEP PLAYING';
+    $('quit-go').textContent = opts.leave || 'LEAVE';
+    // Only tinted when something is actually lost. Finishing a flight ends with
+    // your score on screen, so it is not a warning.
+    $('quit-go').classList.toggle('btn--quit', opts.loses !== false);
+    $('quit-sheet').hidden = false;
+    holdPlay(true);
+  }
+
+  function closeQuit() {
+    $('quit-sheet').hidden = true;
+    quitAsk = null;
+    holdPlay(false);
+  }
+
+  // Only what we actually stopped gets started again — someone who had already
+  // pressed ⏸ on the counting keeps their pause when they answer "keep going".
+  var held = [];
+
+  function holdPlay(on) {
+    if (on) {
+      held = [];
+      [GrabGame, RoarGame, BalloonGame, CountGame].forEach(function (g) {
+        if (!g || !g.running || !g.setPaused || g.paused) return;
+        try { g.setPaused(true); held.push(g); } catch (e) {}
+      });
+    } else {
+      held.forEach(function (g) {
+        if (g.running) { try { g.setPaused(false); } catch (e) {} }
+      });
+      held = [];
+    }
+  }
+
+  on('quit-stay', closeQuit);
+  on('quit-go', function () {
+    var go = quitAsk;
+    $('quit-sheet').hidden = true;
+    quitAsk = null;
+    if (go) go();
+  });
+
+  // Tapping the dark surround is the same as "keep playing" — the safe answer,
+  // since that is where a stray finger lands.
+  $('quit-sheet').addEventListener('click', function (e) {
+    if (e.target === this) closeQuit();
+  });
+
   function show(id) {
     var all = document.querySelectorAll('.screen');
     for (var i = 0; i < all.length; i++) all[i].classList.remove('is-active');
     $(id).classList.add('is-active');
+    // A screen that changes underneath the question (a timer running out, say)
+    // takes the question with it, and nothing is left frozen behind it.
+    $('quit-sheet').hidden = true;
+    quitAsk = null;
+    holdPlay(false);
     // Keep it out of the play area, where it sits inside player 2's half.
     $('btn-sound').hidden = !!PLAYING[id];
   }
@@ -518,13 +584,25 @@
     $('bl-end-score').textContent = Math.round(g.score);
     $('bl-end-tally').textContent =
       '🍎 ' + got.food + '   ☁️ ' + got.cloud + '   🦄 ' + got.unicorn +
+      (got.alien ? '   👽 ' + got.alien : '') +
+      (g.reachedSpace ? '   🚀 space' : '') +
       (g.landedOnce ? '   🌱 landed' : '');
     $('bl-end').hidden = false;
     Confetti.start(['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff', '#ffffff']);
     RoarAudio.sfx('win');
   }
 
-  on('bl-exit', endBalloon);
+  on('bl-exit', function () {
+    askQuit({
+      emoji: '🎈',
+      title: 'Finish the flight?',
+      msg: 'You will land and see how you did.',
+      stay: 'KEEP FLYING',
+      leave: 'FINISH',
+      loses: false,
+      onLeave: endBalloon
+    });
+  });
   on('bl-again', function () { Confetti.stop(); startBalloon(); });
   on('bl-menu', function () {
     Confetti.stop();
@@ -581,9 +659,18 @@
     $('voice-sheet').hidden = false;
   }
   on('ct-exit', function () {
-    $('voice-sheet').hidden = true;
-    stopEverything();
-    show('screen-games');
+    askQuit({
+      emoji: '🔢',
+      title: 'Stop counting?',
+      msg: 'It will start again from zero next time.',
+      stay: 'KEEP COUNTING',
+      leave: 'STOP',
+      onLeave: function () {
+        $('voice-sheet').hidden = true;
+        stopEverything();
+        show('screen-games');
+      }
+    });
   });
 
   /* ── Sienna's calculator ──────────────────────────────────── */
@@ -605,7 +692,16 @@
   });
 
   on('cl-speak', function () { CalcGame.setSpeak(!CalcGame.speak); });
-  on('cl-exit', function () { stopEverything(); show('screen-games'); });
+  on('cl-exit', function () {
+    askQuit({
+      emoji: '🧮',
+      title: 'Close the calculator?',
+      msg: 'The sum on the screen will be cleared.',
+      stay: 'KEEP USING IT',
+      leave: 'CLOSE',
+      onLeave: function () { stopEverything(); show('screen-games'); }
+    });
+  });
 
   /* ── results ──────────────────────────────────────────────── */
 
@@ -689,6 +785,21 @@
   on('btn-games-back', function () { stopEverything(); show('screen-splash'); });
 
   // Picking from the list remembers the choice and skips the mode screen.
+  // Leaving mid-round drops you back on the mode screen rather than all the
+  // way out, so the players stay set up and another go is one tap away.
+  function quitToModes() {
+    askQuit({
+      emoji: '👋',
+      title: 'Leave the game?',
+      msg: "This round won't count.",
+      leave: 'LEAVE',
+      onLeave: function () { stopEverything(); toModes(); }
+    });
+  }
+
+  on('grab-exit', quitToModes);
+  on('roar-exit', quitToModes);
+
   on('game-grab', function () { stopEverything(); pendingGame = 'grab'; show('screen-count'); });
   on('game-roar', function () { stopEverything(); pendingGame = 'roar'; show('screen-count'); });
   on('game-balloon', function () { RoarAudio.resume(); startBalloon(); });
