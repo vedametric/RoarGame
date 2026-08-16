@@ -24,17 +24,53 @@
 
   var ACC = 34;              // how hard a button pushes
   var DAMP = 1.7;            // drag, so it always drifts to a stop
-  var MAX_ALT = 460;
+  var MAX_ALT = 3200;        // all the way up to space
+  var SKY_TOP = 460;         // the old ceiling: above here the air thins out
+  var SPACE = 2100;          // black sky, stars, and the earth curving below
+  var ALIEN_ALT = 900;       // nobody meets an alien at treetop height
   var EYE = 3;               // basket floor above the ground
   var NEAR = 10;
   var FAR = 900;
   var GRID = 44;             // field size on the ground
   var SPIN = 0.55;           // how much the burner twists you round
 
-  var POINTS = { food: 10, cloud: 5, unicorn: 25, bird: -10, land: 50 };
+  var POINTS = { food: 10, cloud: 5, unicorn: 25, alien: 40, bird: -10, land: 50 };
+
+  /* ── weather ────────────────────────────────────────────────
+     It changes on its own every half-minute or so. Each kind moves the balloon
+     as well as decorating the sky, so you can feel it and not just see it. */
+  var WEATHER = {
+    clear: { name: 'Clear skies', icon: '☀️', say: 'Clear skies ☀️', tint: null,
+             wind: 0.10, drops: 0, colour: '#ffe89a' },
+    windy: { name: 'Windy', icon: '💨', say: 'Hold on — it is getting windy! 💨',
+             tint: null, wind: 1.00, drops: 0, colour: '#cfe9ff' },
+    rain:  { name: 'Rain', icon: '🌧️', say: 'Here comes the rain 🌧️',
+             tint: 'rgba(70,86,120,0.34)', wind: 0.45, drops: 150, colour: '#a9c9ff' },
+    snow:  { name: 'Snow', icon: '❄️', say: 'It is snowing! ❄️',
+             tint: 'rgba(190,205,235,0.26)', wind: 0.30, drops: 130, colour: '#eaf4ff' },
+    storm: { name: 'Storm', icon: '⛈️', say: 'A thunderstorm! Hold tight ⛈️',
+             tint: 'rgba(40,44,74,0.48)', wind: 1.35, drops: 210, colour: '#ffd24c' },
+    fog:   { name: 'Fog', icon: '🌫️', say: 'Foggy up here 🌫️',
+             tint: 'rgba(206,206,224,0.42)', wind: 0.18, drops: 0, colour: '#e6e6f2' },
+    rainbow: { name: 'Rainbow', icon: '🌈', say: 'Look — a rainbow! 🌈',
+             tint: null, wind: 0.22, drops: 0, colour: '#ffb3f0' }
+  };
+  // Rainbow only ever follows rain, the way it does out of the window.
+  var AFTER_RAIN = ['rainbow', 'clear'];
+  var ROLL = ['clear', 'windy', 'rain', 'snow', 'storm', 'fog', 'clear', 'windy', 'rain'];
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function rnd(a, b) { return a + Math.random() * (b - a); }
+
+  // Mix two #rrggbb colours, k = 0 gives the first, 1 the second. Used to drain
+  // the sunset away to black as the balloon climbs out of the atmosphere.
+  function blend(a, b, k) {
+    var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+    var r = Math.round((pa >> 16 & 255) * (1 - k) + (pb >> 16 & 255) * k);
+    var g = Math.round((pa >> 8 & 255) * (1 - k) + (pb >> 8 & 255) * k);
+    var bl = Math.round((pa & 255) * (1 - k) + (pb & 255) * k);
+    return 'rgb(' + r + ',' + g + ',' + bl + ')';
+  }
 
   var BalloonGame = {
     running: false,
@@ -53,9 +89,10 @@
       self.hold = { left: 0, right: 0, fwd: 0, back: 0, up: 0, down: 0 };
 
       self.score = 0;
-      self.collected = { food: 0, cloud: 0, unicorn: 0 };
+      self.collected = { food: 0, cloud: 0, unicorn: 0, alien: 0 };
       self.landed = false;
       self.landedOnce = false;
+      self.reachedSpace = false;
       self.burner = 0;
       self.sway = 0;
       self.t = 0;
@@ -64,8 +101,17 @@
       self.feathers = [];
       self.things = [];
       self.ground = [];
+      self.paused = false;
       self.running = true;
       self.air = global.RoarAudio.airLoop();
+
+      self.weather = 'clear';
+      self.wxIn = rnd(14, 22);      // seconds until the sky changes its mind
+      self.wxAmt = 0;               // eases in, so nothing snaps on
+      self.wxWindDir = rnd(0, 6.2832);
+      self.flash = 0;
+      self.drops = [];
+      self.stars = self._makeStars();
 
       for (var i = 0; i < 34; i++) self.things.push(self._make(true));
       for (i = 0; i < 26; i++) self.ground.push(self._makeGround(true));
@@ -88,6 +134,7 @@
       cancelAnimationFrame(this.raf);
       if (this._onResize) removeEventListener('resize', this._onResize);
       this._unbind();
+      clearTimeout(this.boom);
       if (this.air) { this.air.stop(); this.air = null; }
     },
 
@@ -199,8 +246,22 @@
     /* ── world ────────────────────────────────────────────────── */
 
     _make: function (spread) {
+      var alt = this.alt || 0;
       var r = Math.random();
-      var kind = r < 0.30 ? 'food' : r < 0.58 ? 'cloud' : r < 0.76 ? 'unicorn' : 'bird';
+      var kind;
+
+      // Aliens live up where the air runs out, and they take over completely
+      // once you are properly in space. Birds and food stay down below.
+      if (alt > ALIEN_ALT && r < clamp((alt - ALIEN_ALT) / (SPACE - ALIEN_ALT), 0.18, 0.72)) {
+        kind = 'alien';
+      } else if (alt > SPACE * 0.9) {
+        // Space is mostly saucers, but a unicorn up among the stars is far too
+        // good to leave out of Sienna's game.
+        kind = Math.random() < 0.24 ? 'unicorn' : 'alien';
+      } else {
+        kind = r < 0.30 ? 'food' : r < 0.58 ? 'cloud' : r < 0.76 ? 'unicorn' : 'bird';
+      }
+
       var ang = (this.yaw || 0) + rnd(-1.25, 1.25);
       var dist = spread ? rnd(140, FAR * 0.95) : rnd(FAR * 0.55, FAR * 0.95);
       var o = {
@@ -214,8 +275,30 @@
       if (kind === 'cloud') { o.y = rnd(150, 430); o.size = rnd(55, 105); o.puffs = 4 + ((Math.random() * 3) | 0); }
       else if (kind === 'food') { o.y = rnd(18, 190); o.size = 26; o.emoji = FOOD[(Math.random() * FOOD.length) | 0]; }
       else if (kind === 'unicorn') { o.y = rnd(50, 240); o.size = 34; o.emoji = '🦄'; o.drift = rnd(-22, 22); }
+      else if (kind === 'alien') { o.y = rnd(ALIEN_ALT, MAX_ALT); o.size = 30; o.drift = rnd(-30, 30);
+                                   o.blink = rnd(0, 6.28); o.dart = rnd(0, 6.28); }
       else { o.y = rnd(70, 340); o.size = 20; o.drift = rnd(-16, 16); }
+
+      // Whatever it is, put it somewhere you could actually reach from where
+      // you are now — otherwise everything sits far below once you climb.
+      if (alt > SKY_TOP * 0.8) o.y = clamp(alt + rnd(-150, 150), 20, MAX_ALT);
       return o;
+    },
+
+    // A fixed dome of stars, held in bearing and elevation so they sit still
+    // while you turn rather than sliding about with the scenery.
+    _makeStars: function () {
+      var out = [];
+      for (var i = 0; i < 170; i++) {
+        out.push({
+          az: rnd(0, 6.2832),
+          el: rnd(-0.12, 1.15),
+          r: rnd(0.5, 1.7),
+          tw: rnd(0, 6.2832),
+          bright: rnd(0.45, 1)
+        });
+      }
+      return out;
     },
 
     _makeGround: function (spread) {
@@ -268,12 +351,31 @@
 
     /* ── loop ─────────────────────────────────────────────────── */
 
+    // Held while the "finish the flight?" question is up. The held buttons are
+    // let go too, otherwise a finger still down when the card appeared would
+    // leave the burner stuck on when we come back.
+    setPaused: function (on) {
+      this.paused = !!on;
+      this.last = performance.now();
+      if (on) {
+        for (var k in this.hold) if (this.hold.hasOwnProperty(k)) this.hold[k] = 0;
+        if (this.air) {
+          this.air.setWind(0);      // the sky goes quiet while you decide
+          this.air.setBurner(0);
+          this.air.setVent(0);
+          this.air.setRain(0);
+        }
+      }
+    },
+
     _loop: function (now) {
       var self = this;
       var dt = Math.min(0.05, (now - self.last) / 1000);
       self.last = now;
-      self._update(dt);
-      self._draw(dt);
+      if (!self.paused) {
+        self._update(dt);
+        self._draw(dt);
+      }
       if (self.running) self.raf = requestAnimationFrame(function (t) { self._loop(t); });
     },
 
@@ -299,10 +401,26 @@
       this.cosY = Math.cos(this.yaw);
       this.sinY = Math.sin(this.yaw);
 
-      // You fly the way you are facing.
-      this.camX += (this.vz * this.sinY + this.vx * this.cosY) * dt * 6;
-      this.camZ += (this.vz * this.cosY - this.vx * this.sinY) * dt * 6;
-      this.alt = clamp(this.alt + this.vy * dt * 6, 0, MAX_ALT);
+      this._weather(dt);
+
+      // You fly the way you are facing, and the wind pushes you besides.
+      var wx = Math.sin(this.wxWindDir) * this.wind * 26;
+      var wz = Math.cos(this.wxWindDir) * this.wind * 26;
+      this.camX += ((this.vz * this.sinY + this.vx * this.cosY) * 6 + wx) * dt;
+      this.camZ += ((this.vz * this.cosY - this.vx * this.sinY) * 6 + wz) * dt;
+
+      // Thin air near the top: the balloon fairly shoots up there, so getting
+      // to space is a treat rather than a chore.
+      var lift = 1 + 2.6 * clamp((this.alt - SKY_TOP * 0.6) / (SPACE - SKY_TOP * 0.6), 0, 1);
+      this.alt = clamp(this.alt + this.vy * dt * 6 * (this.vy > 0 ? lift : 1), 0, MAX_ALT);
+
+      if (this.alt > SPACE && !this.reachedSpace) {
+        this.reachedSpace = true;
+        this.score += 100;
+        this._say('🚀 YOU MADE IT TO SPACE! +100', '#ffe89a');
+        this.msg.life = 4;
+        global.RoarAudio.sfx('win');
+      }
 
       if (this.alt <= 0.4 && !h.up) {
         if (!this.landed) this._touchDown();
@@ -317,9 +435,12 @@
 
       if (this.air) {
         var speed = Math.min(1, Math.hypot(this.vx, this.vz, this.vy) / 26);
-        this.air.setWind(0.22 + speed * 0.78);          // always a little breeze
+        // Space is silent: there is no air up there to rush past you.
+        var airy = 1 - clamp((this.alt - SKY_TOP) / (SPACE - SKY_TOP), 0, 1);
+        this.air.setWind((0.22 + speed * 0.78 + this.wind * 0.9) * airy);
         this.air.setBurner(this.burner);
         this.air.setVent(h.down ? 1 : 0);
+        this.air.setRain(this.rainAmt * airy);
       }
 
       // things drift, get collected, and recycle behind you
@@ -336,6 +457,14 @@
         o.x += o.drift * dt;
         if (o.kind === 'unicorn') o.y += Math.sin(o.bobT * 1.6) * 14 * dt;
         if (o.kind === 'bird') o.z -= 8 * dt;            // birds fly toward you
+        if (o.kind === 'alien') {
+          // Saucers do not drift, they dart — a sudden sideways skip, then a
+          // pause, which is exactly how they behave in every film.
+          o.dart += dt * 1.5;
+          o.x += Math.sin(o.dart * 2.3) * 46 * dt;
+          o.z += Math.cos(o.dart * 1.7) * 46 * dt;
+          o.y += Math.sin(o.dart * 0.9) * 26 * dt;
+        }
 
         var dx = o.x - this.camX, dz = o.z - this.camZ;
         var flat = Math.hypot(dx, dz);
@@ -346,7 +475,7 @@
         }
         if (!o.on) continue;
 
-        var reach = o.kind === 'cloud' ? (o.size * 0.55 + 14) : 26;
+        var reach = o.kind === 'cloud' ? (o.size * 0.55 + 14) : o.kind === 'alien' ? 34 : 26;
         var dy = o.y - (this.alt + EYE);
         if (flat < reach && Math.abs(dy) < reach) this._take(o, false);
       }
@@ -380,6 +509,99 @@
       if (this.cfg.onScore) this.cfg.onScore(this.score, this.alt / MAX_ALT);
     },
 
+    /* ── weather ──────────────────────────────────────────────────
+       The sky makes its own mind up every twenty-odd seconds. Above the clouds
+       it clears — real weather happens down in the air, and it would be silly
+       to have snow in space — so climbing is a way to escape a storm. */
+
+    _weather: function (dt) {
+      this.wxIn -= dt;
+      if (this.wxIn <= 0) this._turnWeather();
+
+      var w = WEATHER[this.weather] || WEATHER.clear;
+      // Nothing snaps on or off; every change fades over about two seconds.
+      this.wxAmt = clamp(this.wxAmt + dt * 0.5, 0, 1);
+      var thin = 1 - clamp((this.alt - SKY_TOP * 0.7) / (SPACE * 0.8 - SKY_TOP * 0.7), 0, 1);
+      var amt = this.wxAmt * thin;
+
+      this.wxStrength = amt;
+      this.wind = w.wind * amt;
+      this.rainAmt = this.weather === 'rain' ? amt : this.weather === 'storm' ? amt : 0;
+
+      // The wind wanders rather than blowing from one fixed quarter all game.
+      this.wxWindDir += Math.sin(this.t * 0.07) * 0.25 * dt;
+
+      // lightning, and the thunder a moment behind it
+      if (this.weather === 'storm' && amt > 0.4) {
+        this.flash = Math.max(0, this.flash - dt * 3.2);
+        if (this.flash <= 0 && Math.random() < dt * 0.32) {
+          this.flash = 1;
+          var self = this;
+          this.boom = setTimeout(function () {
+            if (self.running && !self.paused) global.RoarAudio.sfx('thunder');
+          }, 300 + Math.random() * 700);
+        }
+      } else {
+        this.flash = Math.max(0, this.flash - dt * 3);
+      }
+
+      this._stepDrops(dt, w, amt);
+    },
+
+    _turnWeather: function () {
+      var next;
+      if (this.weather === 'rain' && Math.random() < 0.7) {
+        next = AFTER_RAIN[(Math.random() * AFTER_RAIN.length) | 0];
+      } else {
+        do { next = ROLL[(Math.random() * ROLL.length) | 0]; } while (next === this.weather);
+      }
+      this.weather = next;
+      this.wxAmt = 0;
+      this.wxIn = rnd(22, 38);
+      this.wxWindDir = rnd(0, 6.2832);
+      this.drops.length = 0;
+
+      // No weather report while you are above it all.
+      if (this.alt < SPACE * 0.7) {
+        var w = WEATHER[next];
+        this._say(w.say, w.colour);
+        if (next === 'storm') global.RoarAudio.sfx('thunder');
+      }
+    },
+
+    // Rain and snow are drawn straight on the screen rather than in the world:
+    // they are all around you, and this keeps hundreds of them cheap.
+    _stepDrops: function (dt, w, amt) {
+      var want = Math.round(w.drops * amt);
+      var snow = this.weather === 'snow';
+
+      // Snowflakes and raindrops are shaped differently, so a change of weather
+      // starts a fresh batch rather than re-using the last lot at the wrong size.
+      if (this.dropKind !== this.weather) { this.drops.length = 0; this.dropKind = this.weather; }
+
+      while (this.drops.length < want) {
+        this.drops.push({
+          x: Math.random() * (this.W || 400),
+          y: Math.random() * (this.H || 800),
+          v: snow ? rnd(40, 110) : rnd(620, 1000),
+          len: snow ? rnd(2.5, 6) : rnd(11, 26),
+          sway: rnd(0, 6.28),
+          o: rnd(0.35, 0.9)
+        });
+      }
+      if (this.drops.length > want) this.drops.length = want;
+
+      var gust = Math.sin(this.wxWindDir) * this.wind * 90 + this.yawVel * 260;
+      for (var i = 0; i < this.drops.length; i++) {
+        var d = this.drops[i];
+        d.y += d.v * dt;
+        d.sway += dt * 2.2;
+        d.x += (gust + (snow ? Math.sin(d.sway) * 26 : 0)) * dt;
+        if (d.y > this.H) { d.y = -10; d.x = Math.random() * this.W; }
+        if (d.x < -20) d.x += this.W + 40; else if (d.x > this.W + 20) d.x -= this.W + 40;
+      }
+    },
+
     _touchDown: function () {
       this.landed = true;
       this.vy = 0; this.vx *= 0.3; this.vz *= 0.3;
@@ -404,9 +626,12 @@
       var pts = POINTS[o.kind];
       this.score += pts;
       this.collected[o.kind]++;
-      this._float(sx, sy, '+' + pts, o.kind === 'unicorn' ? '#e6b3ff' : '#ffe89a');
-      global.RoarAudio.sfx(o.kind === 'unicorn' ? 'sparkle' : o.kind === 'cloud' ? 'puff' : 'nom');
+      this._float(sx, sy, '+' + pts,
+        o.kind === 'unicorn' ? '#e6b3ff' : o.kind === 'alien' ? '#9dff9d' : '#ffe89a');
+      global.RoarAudio.sfx(o.kind === 'unicorn' ? 'sparkle' : o.kind === 'alien' ? 'alien'
+                         : o.kind === 'cloud' ? 'puff' : 'nom');
       if (o.kind === 'unicorn') this._say('Unicorn caught! 🦄', '#e6b3ff');
+      if (o.kind === 'alien') this._say('An alien! 👽 +' + pts, '#9dff9d');
       if (tapped && o.kind === 'food') this._say('Yum! 😋', '#ffe89a');
 
       var self = this;
@@ -497,28 +722,59 @@
       var c = this.ctx, W = this.W, H = this.H;
       c.clearRect(0, 0, W, H);
 
+      // How far into space we are. At 1 the ground is long gone and the world
+      // below is a curved blue edge.
+      var sp = clamp((this.alt - SKY_TOP) / (SPACE - SKY_TOP), 0, 1);
+      this.sp = sp;
+
       this._sky(c, W, H);
-      this._mountains(c, W, H);
-      this._land(c, W, H);
-      this._groundLife(c);
+      this._stars(c, W, H, sp);
+      if (sp < 1) {
+        c.save();
+        c.globalAlpha = 1 - sp;                 // the world fades as you leave it
+        this._mountains(c, W, H);
+        this._land(c, W, H);
+        this._groundLife(c);
+        c.restore();
+      }
+      if (sp > 0.35) this._earth(c, W, H, sp);
       this._things(c);
       this._featherDraw(c);
       this._balloon(c, W, H);
+      this._weatherDraw(c, W, H);
       this._floaters(c);
       this._hud(c, W, H);
     },
 
     // Sunset: warm at the horizon, dusk overhead, and it deepens as you climb.
+    // Keep climbing and the whole thing drains away to the black of space.
     _sky: function (c, W, H) {
-      var high = clamp(this.alt / MAX_ALT, 0, 1);
+      var sp = this.sp || 0;
+      var storm = this.weather === 'storm' ? (this.wxStrength || 0) : 0;
+
+      // In space the sky is black from top to bottom, so paint the whole
+      // canvas rather than just down to the horizon.
+      if (sp > 0) {
+        c.fillStyle = '#04040f';
+        c.fillRect(0, 0, W, H);
+      }
+
       var g = c.createLinearGradient(0, 0, 0, this.hz + 2);
-      g.addColorStop(0.00, high > 0.5 ? '#0c0a2e' : '#20134f');
-      g.addColorStop(0.35, '#4b2377');
-      g.addColorStop(0.62, '#9b3f7a');
-      g.addColorStop(0.82, '#ef7452');
-      g.addColorStop(1.00, '#ffc46b');
+      var mix = function (hex, k) { return blend(hex, '#04040f', k); };
+      g.addColorStop(0.00, mix(sp > 0.5 ? '#0c0a2e' : '#20134f', sp));
+      g.addColorStop(0.35, mix(storm > 0.3 ? '#2f2a55' : '#4b2377', sp));
+      g.addColorStop(0.62, mix(storm > 0.3 ? '#4a4470' : '#9b3f7a', sp));
+      g.addColorStop(0.82, mix(storm > 0.3 ? '#7d6f88' : '#ef7452', sp));
+      g.addColorStop(1.00, mix(storm > 0.3 ? '#b6a68f' : '#ffc46b', sp));
+      c.save();
+      c.globalAlpha = 1 - sp * 0.92;
       c.fillStyle = g;
       c.fillRect(0, 0, W, this.hz + 2);
+      c.restore();
+      if (sp > 0.98) return;                  // no sun, no streak clouds up there
+
+      c.save();
+      c.globalAlpha = 1 - sp;                 // the sunset thins out as you climb
 
       var rel = ((0 - this.yaw + Math.PI) % 6.2832 + 6.2832) % 6.2832 - Math.PI;
       var visible = Math.abs(rel) < 1.35;
@@ -538,8 +794,7 @@
       }
 
       // a few high streak clouds, barely moving
-      c.save();
-      c.globalAlpha = 0.30;
+      c.globalAlpha = 0.30 * (1 - sp);
       c.fillStyle = '#ffd9c0';
       for (var i = 0; i < 5; i++) {
         var y = this.hz - 60 - i * 34 - (this.alt * 0.12) % 40;
@@ -549,6 +804,196 @@
         c.fill();
       }
       c.restore();
+    },
+
+    /* ── space ────────────────────────────────────────────────────
+       Stars are held at a fixed bearing and elevation on a dome around you, so
+       turning sweeps past them properly instead of dragging them along. */
+
+    _stars: function (c, W, H, sp) {
+      var a = clamp((this.alt - SKY_TOP * 0.75) / (SPACE * 0.75), 0, 1);
+      if (a <= 0.02) return;
+      c.save();
+      for (var i = 0; i < this.stars.length; i++) {
+        var s = this.stars[i];
+        var rel = ((s.az - this.yaw + Math.PI) % 6.2832 + 6.2832) % 6.2832 - Math.PI;
+        if (Math.abs(rel) > 1.3) continue;                 // behind you
+        var x = W / 2 + Math.tan(rel) * this.f;
+        if (x < -8 || x > W + 8) continue;
+        var y = this.hz - Math.tan(s.el) * this.f * 0.55;
+        if (y < -8 || y > this.hz + 8) continue;
+        var tw = 0.72 + Math.sin(this.t * 1.7 + s.tw) * 0.28;
+        c.globalAlpha = a * s.bright * tw;
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.arc(x, y, s.r * (1 + sp * 0.5), 0, 6.2832);
+        c.fill();
+      }
+
+      // the moon, once it is dark enough to see one
+      if (a > 0.5) {
+        var mrel = ((2.4 - this.yaw + Math.PI) % 6.2832 + 6.2832) % 6.2832 - Math.PI;
+        if (Math.abs(mrel) < 1.2) {
+          var mx = W / 2 + Math.tan(mrel) * this.f, my = this.hz - this.f * 0.42;
+          var r = W * 0.055;
+          c.globalAlpha = (a - 0.5) * 2;
+          var mg = c.createRadialGradient(mx - r * 0.3, my - r * 0.3, r * 0.2, mx, my, r);
+          mg.addColorStop(0, '#fffef4'); mg.addColorStop(1, '#cdc9bb');
+          c.fillStyle = mg;
+          c.beginPath(); c.arc(mx, my, r, 0, 6.2832); c.fill();
+          c.fillStyle = 'rgba(150,145,135,0.45)';
+          [[-0.3, 0.1, 0.22], [0.25, -0.25, 0.15], [0.1, 0.4, 0.12]].forEach(function (k) {
+            c.beginPath(); c.arc(mx + k[0] * r, my + k[1] * r, k[2] * r, 0, 6.2832); c.fill();
+          });
+        }
+      }
+      c.restore();
+    },
+
+    // The world seen from above: a curved blue edge with the atmosphere glowing
+    // along it. It sinks and flattens the higher you go.
+    _earth: function (c, W, H, sp) {
+      var k = clamp((sp - 0.35) / 0.65, 0, 1);
+      var top = this.hz + k * H * 0.13;                  // the world falls away
+      var r = W * (2.6 - k * 1.1);                       // and curves more
+      var cx = W / 2, cy = top + r;
+
+      c.save();
+      c.globalAlpha = k;
+
+      c.beginPath();
+      c.arc(cx, cy, r, -Math.PI, 0);
+      c.closePath();
+      var g = c.createLinearGradient(0, top, 0, Math.min(H, top + H * 0.7));
+      g.addColorStop(0, '#7fc4ff');
+      g.addColorStop(0.18, '#2f7fd0');
+      g.addColorStop(0.55, '#1c4f8f');
+      g.addColorStop(1, '#0d2450');
+      c.fillStyle = g;
+      c.fill();
+
+      // continents: soft green blobs that turn with you
+      c.save();
+      c.clip();
+      // Land is drawn as clusters of small overlapping blobs rather than one
+      // big ellipse each, which reads as coastline instead of a green pill.
+      c.fillStyle = 'rgba(96,150,92,0.7)';
+      var turn = this.camX * 0.0004 - this.yaw * 0.12;
+      for (var i = 0; i < 9; i++) {
+        var ang = -Math.PI + ((i * 0.41 + turn) % Math.PI);
+        var depth = 0.86 + (i % 3) * 0.045;
+        for (var b = 0; b < 4; b++) {
+          var off = (b - 1.5) * 0.055;
+          var lx = cx + Math.cos(ang + off) * r * depth;
+          var ly = cy + Math.sin(ang + off) * r * depth;
+          c.beginPath();
+          c.ellipse(lx, ly, W * (0.035 + (b % 2) * 0.02), W * (0.026 + (i % 2) * 0.012),
+                    ang + off, 0, 6.2832);
+          c.fill();
+        }
+      }
+      // and a swirl of cloud over the top
+      c.fillStyle = 'rgba(255,255,255,0.35)';
+      for (i = 0; i < 5; i++) {
+        var a2 = -Math.PI + (i * 0.8 + this.t * 0.004) % Math.PI;
+        c.beginPath();
+        c.ellipse(cx + Math.cos(a2) * r * 0.95, cy + Math.sin(a2) * r * 0.95,
+                  W * 0.13, W * 0.028, a2, 0, 6.2832);
+        c.fill();
+      }
+      c.restore();
+
+      // the atmosphere, lit along the limb
+      c.lineWidth = 8 + k * 10;
+      var atm = c.createLinearGradient(0, top - 20, 0, top + 30);
+      atm.addColorStop(0, 'rgba(150,215,255,0)');
+      atm.addColorStop(0.5, 'rgba(150,215,255,0.75)');
+      atm.addColorStop(1, 'rgba(150,215,255,0)');
+      c.strokeStyle = atm;
+      c.beginPath();
+      c.arc(cx, cy, r, -Math.PI, 0);
+      c.stroke();
+      c.restore();
+    },
+
+    /* ── weather on the screen ───────────────────────────────────
+       Rain, snow, fog and lightning sit in front of everything, because they
+       are between you and the world rather than part of it. */
+
+    _weatherDraw: function (c, W, H) {
+      var w = WEATHER[this.weather] || WEATHER.clear;
+      var amt = this.wxStrength || 0;
+      if (amt <= 0.01) return;
+
+      if (w.tint) {
+        c.save();
+        c.globalAlpha = amt;
+        c.fillStyle = w.tint;
+        c.fillRect(0, 0, W, H);
+        c.restore();
+      }
+
+      if (this.weather === 'fog') {
+        c.save();
+        c.globalAlpha = amt * 0.5;
+        var fg = c.createLinearGradient(0, this.hz - H * 0.25, 0, H);
+        fg.addColorStop(0, 'rgba(226,226,240,0)');
+        fg.addColorStop(0.45, 'rgba(226,226,240,0.85)');
+        fg.addColorStop(1, 'rgba(210,210,228,0.6)');
+        c.fillStyle = fg;
+        c.fillRect(0, this.hz - H * 0.25, W, H);
+        c.restore();
+      }
+
+      if (this.weather === 'rainbow') {
+        var bands = ['#ff5f6d', '#ffa751', '#ffe259', '#7ddf64', '#4facfe', '#8f6ed5'];
+        var rel = ((1.1 - this.yaw + Math.PI) % 6.2832 + 6.2832) % 6.2832 - Math.PI;
+        if (Math.abs(rel) < 1.5) {
+          var bx = W / 2 + Math.tan(rel) * this.f;
+          c.save();
+          c.globalAlpha = amt * 0.55;
+          c.lineWidth = 9;
+          for (var b = 0; b < bands.length; b++) {
+            c.strokeStyle = bands[b];
+            c.beginPath();
+            c.arc(bx, this.hz + H * 0.22, W * 0.42 - b * 9, Math.PI, 0);
+            c.stroke();
+          }
+          c.restore();
+        }
+      }
+
+      if (this.drops.length) {
+        var snow = this.weather === 'snow';
+        c.save();
+        c.lineCap = 'round';
+        for (var i = 0; i < this.drops.length; i++) {
+          var d = this.drops[i];
+          c.globalAlpha = d.o * amt;
+          if (snow) {
+            c.fillStyle = '#fff';
+            c.beginPath();
+            c.arc(d.x, d.y, d.len * 0.7, 0, 6.2832);
+            c.fill();
+          } else {
+            c.strokeStyle = '#cfe4ff';
+            c.lineWidth = 1.6;
+            c.beginPath();
+            c.moveTo(d.x, d.y);
+            c.lineTo(d.x - this.wind * 5, d.y + d.len);
+            c.stroke();
+          }
+        }
+        c.restore();
+      }
+
+      if (this.flash > 0) {
+        c.save();
+        c.globalAlpha = this.flash * 0.55;
+        c.fillStyle = '#fff';
+        c.fillRect(0, 0, W, H);
+        c.restore();
+      }
     },
 
     // Three ridge lines built from stacked sine waves — cheap and stable.
@@ -735,6 +1180,67 @@
 
         var size = clamp(o.size * p.s * 1.1, 8, 96);
         c.globalAlpha = 0.4 + fade * 0.6;
+
+        // A little flying saucer with a green pilot under the dome, drawn
+        // rather than lettered so it looks the same on every phone.
+        if (o.kind === 'alien') {
+          var s = size;
+          c.save();
+          c.translate(p.sx, p.sy + Math.sin(o.bobT * 2.4) * s * 0.12);
+
+          var halo = c.createRadialGradient(0, 0, s * 0.2, 0, 0, s * 1.5);
+          halo.addColorStop(0, 'rgba(140,255,170,0.40)');
+          halo.addColorStop(1, 'rgba(140,255,170,0)');
+          c.fillStyle = halo;
+          c.beginPath(); c.arc(0, 0, s * 1.5, 0, 6.2832); c.fill();
+
+          // beam of light underneath
+          c.globalAlpha *= 0.55;
+          c.fillStyle = 'rgba(170,255,190,0.35)';
+          c.beginPath();
+          c.moveTo(-s * 0.28, s * 0.16);
+          c.lineTo(s * 0.28, s * 0.16);
+          c.lineTo(s * 0.72, s * 1.25);
+          c.lineTo(-s * 0.72, s * 1.25);
+          c.closePath(); c.fill();
+          c.globalAlpha /= 0.55;
+
+          // dome
+          var dome = c.createLinearGradient(0, -s * 0.6, 0, 0);
+          dome.addColorStop(0, 'rgba(215,245,255,0.95)');
+          dome.addColorStop(1, 'rgba(130,190,225,0.75)');
+          c.fillStyle = dome;
+          c.beginPath();
+          c.ellipse(0, -s * 0.04, s * 0.42, s * 0.42, 0, Math.PI, 0);
+          c.fill();
+
+          // the pilot
+          c.fillStyle = '#7bea86';
+          c.beginPath(); c.ellipse(0, -s * 0.18, s * 0.19, s * 0.22, 0, 0, 6.2832); c.fill();
+          c.fillStyle = '#16321c';
+          c.beginPath(); c.ellipse(-s * 0.07, -s * 0.20, s * 0.055, s * 0.075, -0.3, 0, 6.2832); c.fill();
+          c.beginPath(); c.ellipse(s * 0.07, -s * 0.20, s * 0.055, s * 0.075, 0.3, 0, 6.2832); c.fill();
+
+          // hull
+          var hull = c.createLinearGradient(0, -s * 0.1, 0, s * 0.2);
+          hull.addColorStop(0, '#dfe6ef');
+          hull.addColorStop(1, '#7d8aa0');
+          c.fillStyle = hull;
+          c.beginPath();
+          c.ellipse(0, 0, s * 0.82, s * 0.20, 0, 0, 6.2832);
+          c.fill();
+
+          // running lights, blinking round the rim
+          for (var L = 0; L < 5; L++) {
+            var lx = (-0.6 + L * 0.3) * s;
+            var on = (Math.sin(this.t * 5 + o.blink + L) + 1) / 2;
+            c.fillStyle = 'rgba(255,' + Math.round(150 + on * 105) + ',120,' + (0.35 + on * 0.65) + ')';
+            c.beginPath(); c.arc(lx, s * 0.09, s * 0.065, 0, 6.2832); c.fill();
+          }
+          c.restore();
+          continue;
+        }
+
         if (o.kind === 'unicorn') {
           c.save();
           c.translate(p.sx, p.sy + Math.sin(o.bobT * 2.2) * size * 0.12);
@@ -976,10 +1482,46 @@
       c.textBaseline = 'middle';
       c.fillText('🎈', x, markY);
 
+      // a mark where space begins, so the climb has something to aim at
+      var spY = top + hgt * (1 - SPACE / MAX_ALT);
+      c.strokeStyle = 'rgba(255,255,255,0.5)';
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(x - 7, spY); c.lineTo(x + 7, spY); c.stroke();
+      c.fillStyle = 'rgba(255,255,255,0.55)';
+      c.font = '800 8px system-ui';
+      c.textAlign = 'right';
+      c.fillText('SPACE', x - 9, spY + 3);
+
+      c.textAlign = 'right';
       c.fillStyle = 'rgba(255,255,255,0.9)';
       c.font = '900 11px system-ui';
       c.textBaseline = 'alphabetic';
-      c.fillText(Math.round(this.alt) + 'm', x, top + hgt + 16);
+      c.fillText(Math.round(this.alt) + 'm', x + 6, top + hgt + 16);
+      c.restore();
+
+      // what the sky is doing, top left, out of the way of the score
+      var w = WEATHER[this.weather] || WEATHER.clear;
+      var above = this.alt > SPACE * 0.8;
+      c.save();
+      c.globalAlpha = 0.9;
+      // Top middle: clear of the score on the left, the ✕ on the right and the
+      // flight controls at the bottom.
+      var label = above ? 'SPACE' : w.name.toUpperCase();
+      c.textBaseline = 'middle';
+      c.font = '800 11px system-ui';
+      var tw = c.measureText(label).width;
+      var bx = W / 2 - (tw + 26) / 2, by = 26;
+      c.fillStyle = 'rgba(20,8,40,0.4)';
+      c.beginPath();
+      c.roundRect ? c.roundRect(bx - 8, by - 12, tw + 42, 24, 12)
+                  : c.rect(bx - 8, by - 12, tw + 42, 24);
+      c.fill();
+      c.textAlign = 'left';
+      c.font = '14px ' + EMOJI;
+      c.fillText(above ? '🚀' : w.icon, bx, by);
+      c.font = '800 11px system-ui';
+      c.fillStyle = 'rgba(255,255,255,0.8)';
+      c.fillText(label, bx + 22, by + 1);
       c.restore();
 
       if (this.msg) {
@@ -987,8 +1529,16 @@
         c.save();
         c.globalAlpha = a;
         c.textAlign = 'center';
-        c.font = '900 22px system-ui';
-        c.lineWidth = 5;
+        // Shrink to fit rather than running off the edge — some of these lines
+        // are much longer than others.
+        var fs = 22;
+        c.font = '900 ' + fs + 'px system-ui';
+        var wide = c.measureText(this.msg.text).width;
+        if (wide > W - 56) {
+          fs = Math.max(12, Math.floor(fs * (W - 56) / wide));
+          c.font = '900 ' + fs + 'px system-ui';
+        }
+        c.lineWidth = Math.max(3, fs * 0.22);
         c.strokeStyle = 'rgba(0,0,0,0.45)';
         c.fillStyle = this.msg.color;
         c.strokeText(this.msg.text, W / 2, H * 0.30);

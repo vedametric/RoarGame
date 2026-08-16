@@ -21,6 +21,7 @@
       var self = this;
       self.cfg = cfg;
       self.duration = cfg.duration || 20;
+      self.paused = false;
       self.tapMode = cfg.inputMode === 'tap';
       self.n = cfg.players ? cfg.players.length : 2;
       self.scores = [0, 0];
@@ -88,8 +89,15 @@
       this.touchEl = null;
     },
 
+    // Held while the "leave the game?" question is up, so the clock does not
+    // run down behind it and nobody loses a round to a mis-tap.
+    setPaused: function (on) {
+      this.paused = !!on;
+      this.last = performance.now();
+    },
+
     _tap: function (i) {
-      if (i >= this.n) return;
+      if (i >= this.n || this.paused) return;
       global.RoarAudio.playVoiceOnce(i, 0.9);
       this.scores[i] += 18;
       this.kick[i] = 1;
@@ -98,6 +106,11 @@
     _loop: function (now) {
       var self = this;
       var dt = Math.min(0.05, (now - self.last) / 1000);
+      if (self.paused) {
+        self.last = now;
+        self.raf = requestAnimationFrame(function (t) { self._loop(t); });
+        return;
+      }
       self.last = now;
       var i;
 

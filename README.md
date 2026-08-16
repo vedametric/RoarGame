@@ -48,6 +48,28 @@ past your shoulders. Six buttons fly it: a move pad for **left / right /
 forward / back**, and a **🔥 burner / ⬇︎ vent** pair for altitude — and you fly
 in whatever direction you are facing.
 
+**Fly all the way up to space.** The ceiling is 3,200m — seven times what it
+was. Keep the burner on and the sunset drains away to black, stars come out,
+the moon appears, and the ground curves away below you into a blue planet with
+its atmosphere glowing along the rim. The air thins as you climb so the balloon
+fairly shoots up the last stretch; reaching space is worth **+100**. There is a
+mark on the altitude gauge showing how far there is to go.
+
+**👽 Aliens.** Little flying saucers with a green pilot under the dome, running
+lights blinking round the rim and a beam of light underneath. They dart about
+rather than drift, they only appear high up — never down at treetop height —
+and they are worth **+40**, more than a unicorn. Above the clouds they are most
+of what is out there, though the odd unicorn still drifts past among the stars.
+
+**🌦️ The weather changes on its own**, every twenty to forty seconds, and it is
+announced when it turns. **Clear skies**, **wind** that visibly shoves the
+balloon across the sky, **rain**, **snow** that sways as it falls, a
+**thunderstorm** with lightning and thunder a beat behind it, **fog** that
+closes in, and a **rainbow** — which only ever follows the rain, the way it
+does out of the window. Every kind pushes the balloon as well as decorating the
+sky, so you feel it and not just see it. And since real weather happens down in
+the air, **climbing is a way to escape a storm**.
+
 **Drag the sky to look around**, all the way through 360°. A short press is a
 grab rather than a look, so the two never fight. Firing the burner also twists
 you slowly round, the way a real balloon does, and there is always a little
@@ -56,7 +78,10 @@ drift even when you are holding still.
 **It sounds like flying.** Rushing air that rises and falls with your speed, a
 roaring burner while you climb, a hiss while you vent, a sparkle for a unicorn,
 a munch for food, a soft puff for a cloud, a sad little call if you bump a bird,
-and a thump when you touch down. All synthesised — there are no sound files.
+a theremin swoop for a flying saucer, the hiss of rain, rolling thunder, and a
+thump when you touch down. All synthesised — there are no sound files. **Space
+is silent**: there is no air up there to rush past you, so the wind fades out
+as you leave the atmosphere.
 
 Out over the mountains there is plenty to collect — fly into something, or just
 tap it:
@@ -67,6 +92,8 @@ tap it:
 | ☁️ | clouds | +5 |
 | 🦄 | unicorns | +25 — they drift, so you have to chase them |
 | 🐦 | **birds** | **−10. Never collect a bird.** See below. |
+| 👽 | aliens | +40 — only up where the air runs out |
+| 🚀 | space | +100 the first time you get all the way up |
 | 🌱 | landing | +50 the first time you set her down gently |
 
 There is no timer. Fly wherever you like, land whenever you like, and finish
@@ -131,6 +158,15 @@ and the answer a little slower ("equals nine"). Tap the speaker to turn the
 voice off and it becomes a silent calculator; the main sound button silences it
 too.
 
+**Big numbers are read back whole.** Typing 54321 one key at a time only ever
+said "five, four, three, two, one", which tells a child nothing about the number
+they have just made. So when the typing stops, it says the whole thing —
+*"fifty-four thousand three hundred and twenty-one"* — with no need to press
+equals; the pause itself is the cue. Pressing another key first cancels it, a
+single digit is not repeated back because it is already whole, and the words
+come from the same number-speller COUNTING uses, so both games say a number the
+same way.
+
 Sharing by zero doesn't error or show `Infinity`; it says **oops!** and
 "you can't share by zero", and clears itself ready for another go.
 
@@ -141,6 +177,26 @@ Choose at the start. **Two players** share the phone head to head; a
 nobody has to guess. **One player** plays solo against their own best score.
 
 There is a 🔊 button in the corner to play with the sound off.
+
+## Leaving a game
+
+**Every game has a ✕.** GRAB IT and ROAR METER used not to, so the only way out
+of a round was to wait out the clock or close the whole app — which is a silly
+thing to make anyone do.
+
+**It asks before it closes**, because a ✕ is easy to hit by accident with a
+phone flat on the table between two children. While the question is up the game
+is *held*, not stopped: the clock does not run down behind it, the balloon hangs
+still, the counting waits, and taps do not reach the game. **KEEP PLAYING** puts
+you back exactly where you were with the round intact, and so does tapping the
+dark surround — the safe answer is where a stray finger lands. A pause you set
+yourself with ⏸ survives the question too.
+
+Both buttons are labelled for what they actually do — *KEEP FLYING / FINISH* in
+the balloon, *KEEP COUNTING / STOP* in COUNTING — and only a genuinely
+destructive **LEAVE** is tinted red. Finishing a flight ends with your score on
+screen, so it is not a warning. Leaving GRAB IT or ROAR METER drops you back on
+the mode screen with the players still set up, so another go is one tap away.
 
 ## The tap games
 

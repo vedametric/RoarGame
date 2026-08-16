@@ -45,6 +45,7 @@
       this.op = null;
       this.fresh = true;       // next digit starts a new number
       this.sum = '';           // the line above, e.g. "12 + 5"
+      clearTimeout(this._wholeT);
 
       this._render();
       return this;
@@ -52,12 +53,16 @@
 
     stop: function () {
       this.running = false;
+      clearTimeout(this._wholeT);
       try { speechSynthesis.cancel(); } catch (e) {}
     },
 
     setSpeak: function (on) {
       this.speak = !!on;
-      if (!on) { try { speechSynthesis.cancel(); } catch (e) {} }
+      if (!on) {
+        clearTimeout(this._wholeT);
+        try { speechSynthesis.cancel(); } catch (e) {}
+      }
       this._render();
       return this.speak;
     },
@@ -66,6 +71,8 @@
 
     press: function (key) {
       if (!this.running) return;
+      // Any other key means the number is finished with, one way or another.
+      if (key !== '.' && !/^[0-9]$/.test(key)) clearTimeout(this._wholeT);
 
       if (key === 'C') return this._clear();
       if (key === '⌫') return this._back();
@@ -83,6 +90,7 @@
       }
       this._say(d);
       this._render();
+      this._sayWholeSoon();
     },
 
     _dot: function () {
@@ -90,6 +98,7 @@
       else if (this.entry.indexOf('.') < 0) this.entry += '.';
       this._say('point');
       this._render();
+      this._sayWholeSoon();
     },
 
     _operator: function (k) {
@@ -115,7 +124,7 @@
       this.sum = shown + ' =';
       this.op = null;
       this.fresh = true;
-      this._say('equals ' + this.entry, true);
+      this._say('equals ' + this.spell(parseFloat(this.entry)), true);
       this._render();
     },
 
@@ -152,9 +161,47 @@
       this.entry = this.entry.length > 1 ? this.entry.slice(0, -1) : '0';
       if (this.entry === '-' || this.entry === '') this.entry = '0';
       this._render();
+      this._sayWholeSoon();
     },
 
     /* ── voice ────────────────────────────────────────────────── */
+
+    /* Typing 54321 reads out "five, four, three, two, one", which tells a child
+       nothing about the number they have just made. So once the typing stops,
+       say the whole thing: "fifty-four thousand three hundred and twenty-one".
+       No need to press equals — the wait itself is the cue. */
+    _sayWholeSoon: function () {
+      var self = this;
+      clearTimeout(this._wholeT);
+      if (!this.speak || global.RoarAudio.muted) return;
+      if (this.entry.replace('-', '').replace('.', '').length < 2) return;  // "7" is already whole
+      this._wholeT = setTimeout(function () { self._sayWhole(); }, 1100);
+    },
+
+    _sayWhole: function () {
+      if (!this.running) return;
+      var n = parseFloat(this.entry);
+      if (!isFinite(n)) return;
+      this._say(this.spell(n), true);
+    },
+
+    // Words for the number, borrowed from COUNTING so both games say a number
+    // the same way. Decimals are read digit by digit after the point, which is
+    // how everyone actually says them.
+    spell: function (n) {
+      var W = global.CountGame && global.CountGame.words;
+      if (!W) return String(n);
+      var neg = n < 0;
+      n = Math.abs(n);
+      var whole = Math.floor(n);
+      var out = W(whole);
+      var dot = String(this.entry).split('.')[1];
+      if (dot) {
+        out += ' point';
+        for (var i = 0; i < dot.length; i++) out += ' ' + W(+dot.charAt(i));
+      }
+      return (neg ? 'minus ' : '') + out;
+    },
 
     _say: function (text, slow) {
       if (!this.speak || global.RoarAudio.muted) return;

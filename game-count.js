@@ -227,6 +227,12 @@
       }, self.waitFor);
     },
 
+    // Same shape as the other games, so the "stop counting?" question can hold
+    // whatever is playing without knowing which game it is.
+    setPaused: function (on) {
+      if (!!on !== !!this.paused) this.toggle();
+    },
+
     toggle: function () {
       this.paused = !this.paused;
       if (this.paused) {
