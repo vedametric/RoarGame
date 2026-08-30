@@ -826,6 +826,7 @@
         ask: $('ck-ask'), digital: $('ck-digital'), inWords: $('ck-inwords'),
         digitalWrap: document.querySelector('.ck-digital-wrap'),
         options: $('ck-options'), teach: $('ck-teach'), ring: $('ck-ring'),
+        words: $('ck-words'),
         stars: $('ck-stars'), streak: $('ck-streak'), level: $('ck-level'),
         tell: $('ck-tell'),
         win: $('ck-win'), winStars: $('ck-win-stars'), winTime: $('ck-win-time'),
@@ -842,6 +843,7 @@
   on('ck-hear', function () { ClockGame.hear(); });
   on('ck-tell', function () { ClockGame.tell(); });
   on('ck-ring', function () { ClockGame.toggleMinutes(); });
+  on('ck-words', function () { ClockGame.toggleWords(); });
   on('ck-next', function () { ClockGame.next(); });
 
   function clockMode(play) {

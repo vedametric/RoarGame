@@ -49,7 +49,10 @@ for (var n = 0; n <= 100; n++) add('n-' + n, CountGame.words(n));
 /* ── the clock ────────────────────────────────────────────────── */
 for (var h = 1; h <= 12; h++) {
   for (var m = 0; m < 60; m += 5) {
+    // Both wordings: "half past seven" and "seven thirty". The game says
+    // whichever she has it set to.
     add('t-' + h + '-' + m, ClockGame.spoken(h, m));
+    add('d-' + h + '-' + m, ClockGame.spokenDigital(h, m));
   }
   add('th-' + h, 'It is pointing near ' + h + '.');
 }

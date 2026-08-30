@@ -35,6 +35,14 @@
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
 
+  function saved(key, fallback) {
+    try { var v = localStorage.getItem('clock.' + key); return v === null ? fallback : v; }
+    catch (e) { return fallback; }
+  }
+  function save(key, value) {
+    try { localStorage.setItem('clock.' + key, value); } catch (e) {}
+  }
+
   // "half past seven", "quarter to four", "three o'clock" — how it is said out
   // loud, which is how a child learns it long before they read 7:30.
   function spoken(h, m) {
@@ -49,6 +57,19 @@
   }
 
   function digital(h, m) { return ((h % 12) || 12) + ':' + pad(m); }
+
+  /* How you read a digital clock aloud: "three thirty", not "half past three".
+     Both are right and a child meets both, so the game can say either — this is
+     the one it says by default, because it is the one that matches the figures
+     she is looking at. */
+  function spokenDigital(h, m) {
+    var W = global.CountGame && global.CountGame.words;
+    var hour = W ? W((h % 12) || 12) : String((h % 12) || 12);
+    if (m === 0) return hour + " o'clock";
+    // "three oh five" — the o is how everyone says a single-digit minute.
+    if (m < 10) return hour + ' oh ' + (W ? W(m) : m);
+    return hour + ' ' + (W ? W(m) : m);
+  }
 
   function same(a, b) { return a.h === b.h && a.m === b.m; }
 
@@ -75,6 +96,7 @@
       this.mode = 'read';        // alternates with 'set'
       this.showMinutes = true;   // the 5,10,15… ring, on while she is learning
 
+      this.digitalWords = saved('clockwords', 'digital') !== 'past';
       this.play = false;         // hands-on mode: move them yourself
       this.free = { h: 3, m: 0 };
       this._bindHands();
@@ -176,7 +198,7 @@
         this._t = setTimeout(function () { try { global.Confetti.stop(); } catch (e) {} }, 2200);
 
         global.Say.line(['m-yes', this._timeKey(this.t)],
-                        "Yes! It's " + spoken(this.t.h, this.t.m));
+                        "Yes! It's " + this.words(this.t.h, this.t.m));
 
         if (this.right % UP_AFTER === 0 && this.level < LEVELS.length - 1) {
           this.level++;
@@ -218,8 +240,8 @@
       var hourAt = ((t.h % 12) || 12);
       var msg = 'The short gold hand is the hour. It is pointing near ' + hourAt +
                 '. The long blue hand is the minutes. ' +
-                (t.m === 0 ? 'It is straight up, so it is ' + spoken(t.h, t.m) + '.'
-                           : 'It is on ' + t.m + ', so it is ' + spoken(t.h, t.m) + '.');
+                (t.m === 0 ? 'It is straight up, so it is ' + this.words(t.h, t.m) + '.'
+                           : 'It is on ' + t.m + ', so it is ' + this.words(t.h, t.m) + '.');
       this.teach = msg;
       global.RoarAudio.sfx('spellhint');
       // Built from whole sentences, so every join lands where a person would
@@ -230,7 +252,7 @@
     },
 
     hear: function () {
-      global.Say.line(['m-yes', this._timeKey(this.t)], "It's " + spoken(this.t.h, this.t.m));
+      global.Say.line(['m-yes', this._timeKey(this.t)], "It's " + this.words(this.t.h, this.t.m));
     },
 
     toggleMinutes: function () {
@@ -241,8 +263,25 @@
 
     _say: function (text, rate) { global.Say.speak(text, { rate: rate || 0.95 }); },
 
-    // Every time on the clock has its own clip: t-7-30 is "half past seven".
-    _timeKey: function (t) { return 't-' + ((t.h % 12) || 12) + '-' + t.m; },
+    // Every time has a clip in each wording: t-7-30 is "half past seven",
+    // d-7-30 is "seven thirty".
+    _timeKey: function (t) {
+      return (this.digitalWords ? 'd-' : 't-') + ((t.h % 12) || 12) + '-' + t.m;
+    },
+
+    // The words for a time, in whichever way she has it set.
+    words: function (h, m) {
+      return this.digitalWords ? spokenDigital(h, m) : spoken(h, m);
+    },
+
+    toggleWords: function () {
+      this.digitalWords = !this.digitalWords;
+      save('clockwords', this.digitalWords ? 'digital' : 'past');
+      this._render();
+      var t = this.play ? this.free : this.t;
+      global.Say.line(this._timeKey(t), this.words(t.h, t.m));
+      return this.digitalWords;
+    },
 
 
     /* ── moving the hands yourself ────────────────────────────────
@@ -342,7 +381,7 @@
       this._sayT = setTimeout(function () {
         if (!self.running || !self.play) return;
         var t = self.free;
-        global.Say.line(['m-yes', self._timeKey(t)], "It's " + spoken(t.h, t.m));
+        global.Say.line(['m-yes', self._timeKey(t)], "It's " + self.words(t.h, t.m));
       }, wait || 700);
     },
 
@@ -353,7 +392,7 @@
       if (e.clockWrap) e.clockWrap.hidden = false;
       if (e.digitalWrap) e.digitalWrap.classList.remove('is-on');
       if (e.digital) { e.digital.hidden = false; e.digital.textContent = digital(t.h, t.m); }
-      if (e.inWords) { e.inWords.hidden = false; e.inWords.textContent = spoken(t.h, t.m); }
+      if (e.inWords) { e.inWords.hidden = false; e.inWords.textContent = this.words(t.h, t.m); }
       if (e.options) e.options.hidden = true;
       if (e.teach) e.teach.hidden = true;
       if (e.win) e.win.hidden = true;
@@ -361,6 +400,10 @@
       if (e.streak) e.streak.hidden = true;
       if (e.tell) e.tell.hidden = true;
       if (e.ring) e.ring.hidden = true;
+      if (e.words) {
+        e.words.hidden = false;
+        e.words.textContent = this.digitalWords ? '🗣️ three thirty' : '🗣️ half past';
+      }
 
       this._fit();
       var c = e.canvas.getContext('2d');
@@ -531,7 +574,7 @@
       }
       if (e.inWords) {
         e.inWords.hidden = reading;
-        if (!reading) e.inWords.textContent = spoken(this.t.h, this.t.m);
+        if (!reading) e.inWords.textContent = this.words(this.t.h, this.t.m);
       }
       if (e.clockWrap) e.clockWrap.hidden = !reading;
       if (reading) { this._fit(); this._drawBig(); }
@@ -548,6 +591,13 @@
       }
       // One short label either way, dimmed when off, so it never wraps to two
       // lines on a small phone.
+      // Which way round the button reads is the wording she will get next.
+      if (e.words) {
+        e.words.textContent = this.digitalWords ? '🗣️ three thirty' : '🗣️ half past';
+        e.words.setAttribute('aria-label', this.digitalWords
+          ? 'Reading times as three thirty, tap for half past three'
+          : 'Reading times as half past three, tap for three thirty');
+      }
       if (e.ring) {
         e.ring.textContent = '🔢 minutes';
         e.ring.classList.toggle('is-off', !this.showMinutes);
@@ -568,7 +618,7 @@
           if (reading) {
             if (face) face.hidden = true;
             if (label) label.textContent = digital(t.h, t.m);
-            if (sub) { sub.hidden = false; sub.textContent = spoken(t.h, t.m); }
+            if (sub) { sub.hidden = false; sub.textContent = this.words(t.h, t.m); }
           } else {
             if (face) { face.hidden = false; this._drawOption(face, t); }
             if (label) label.textContent = '';
@@ -586,7 +636,7 @@
         e.win.hidden = !this.answered;
         if (this.answered) {
           if (e.winStars) e.winStars.textContent = '⭐'.repeat(this.lastStars || 1);
-          if (e.winTime) e.winTime.textContent = spoken(this.t.h, this.t.m);
+          if (e.winTime) e.winTime.textContent = this.words(this.t.h, this.t.m);
           if (e.winDigital) e.winDigital.textContent = digital(this.t.h, this.t.m);
           if (e.winLevel) {
             e.winLevel.hidden = !this.levelledUp;
@@ -599,6 +649,7 @@
 
   ClockGame.LEVELS = LEVELS;      // exposed for testing
   ClockGame.spoken = spoken;
+  ClockGame.spokenDigital = spokenDigital;
   ClockGame.digital = digital;
   global.ClockGame = ClockGame;
 })(window);
