@@ -96,7 +96,7 @@
       this.mode = 'read';        // alternates with 'set'
       this.showMinutes = true;   // the 5,10,15… ring, on while she is learning
 
-      this.digitalWords = saved('clockwords', 'digital') !== 'past';
+      this.readPrefs();
       this.play = false;         // hands-on mode: move them yourself
       this.free = { h: 3, m: 0 };
       this._bindHands();
@@ -251,8 +251,11 @@
       this._render();
     },
 
+    // "It's four o'clock" — not "Yes! It's four o'clock". Tapping SAY IT is
+    // asking for help, not getting it right, and praise for it teaches her
+    // that the praise means nothing.
     hear: function () {
-      global.Say.line(['m-yes', this._timeKey(this.t)], "It's " + this.words(this.t.h, this.t.m));
+      global.Say.line(['m-itis', this._timeKey(this.t)], "It's " + this.words(this.t.h, this.t.m));
     },
 
     toggleMinutes: function () {
@@ -274,12 +277,19 @@
       return this.digitalWords ? spokenDigital(h, m) : spoken(h, m);
     },
 
+    // Which wording to use is a setting, not game state — it can be changed
+    // from the settings sheet with the clock nowhere in sight.
+    readPrefs: function () {
+      this.digitalWords = saved('clockwords', 'digital') !== 'past';
+      return this;
+    },
+
     toggleWords: function () {
       this.digitalWords = !this.digitalWords;
       save('clockwords', this.digitalWords ? 'digital' : 'past');
       this._render();
       var t = this.play ? this.free : this.t;
-      global.Say.line(this._timeKey(t), this.words(t.h, t.m));
+      if (t) global.Say.line(this._timeKey(t), this.words(t.h, t.m));
       return this.digitalWords;
     },
 
@@ -381,7 +391,9 @@
       this._sayT = setTimeout(function () {
         if (!self.running || !self.play) return;
         var t = self.free;
-        global.Say.line(['m-yes', self._timeKey(t)], "It's " + self.words(t.h, t.m));
+        // Moving the hands is exploring, not answering, so it is told the
+        // time rather than congratulated for it.
+        global.Say.line(['m-itis', self._timeKey(t)], "It's " + self.words(t.h, t.m));
       }, wait || 700);
     },
 
@@ -647,6 +659,7 @@
     }
   };
 
+  ClockGame.readPrefs();          // so settings can show it before you play
   ClockGame.LEVELS = LEVELS;      // exposed for testing
   ClockGame.spoken = spoken;
   ClockGame.spokenDigital = spokenDigital;

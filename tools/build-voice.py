@@ -96,10 +96,14 @@ def main():
     ap.add_argument('--only', default=None, help='comma-separated keys')
     args = ap.parse_args()
 
-    todo = phrases()
+    full = phrases()
+    todo = full
     if args.only:
         keep = set(args.only.split(','))
-        todo = {k: v for k, v in todo.items() if k in keep}
+        todo = {k: v for k, v in full.items() if k in keep}
+        missing = keep - set(full)
+        if missing:
+            raise SystemExit('not phrases at all: %s' % sorted(missing))
 
     packs = [p for p in PACKS if not args.pack or p['id'] == args.pack]
     ff = ffmpeg()
@@ -113,8 +117,11 @@ def main():
     # Every pack says exactly the same lines, so the key list is written once
     # rather than per pack. The page checks it before asking for a file, so a
     # line we never recorded falls back to the browser voice instead of a 404.
-    if not args.only:
-        keys = sorted(todo)
+    # The manifest is rewritten even after a one-clip run: the check below is
+    # what makes that safe, since it refuses to publish a key list any pack
+    # cannot actually say.
+    if not args.pack:
+        keys = sorted(full)
         for pack in PACKS:
             here = os.path.join(OUT, pack['id'])
             if not os.path.isdir(here):

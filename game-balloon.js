@@ -33,8 +33,24 @@
   var FAR = 900;
   var GRID = 44;             // field size on the ground
   var SPIN = 0.55;           // how much the burner twists you round
+  var ENV_R = 26;            // the envelope's real radius, for the outside view
 
-  var POINTS = { food: 10, cloud: 5, unicorn: 25, alien: 40, bird: -10, land: 50 };
+  var POINTS = { food: 10, cloud: 5, unicorn: 25, alien: 40, bird: -10, land: 50,
+                 rock: 15, flag: 30, astro: 45, moon: 200 };
+
+  /* ── two worlds ───────────────────────────────────────────────
+     Earth and the moon are the same game with the air taken away. On the moon
+     there is a sixth of the gravity, so she floats up on a puff and comes down
+     slowly; there is no air, so no wind, no weather, and no rushing sound; and
+     the ground is grey dust instead of fields. */
+  var WORLDS = {
+    earth: { name: 'EARTH', gravity: 1, lift: 1, drag: DAMP, air: 1, weather: true,
+             ground: '#6ec06e', sky: true, life: GROUND_LIFE },
+    moon:  { name: 'THE MOON', gravity: 0.165, lift: 1.9, drag: DAMP * 0.34, air: 0,
+             weather: false, ground: '#9a978f', sky: false, life: ['🪨', '🛰️', '🚩'] }
+  };
+  var MOON_ALT = 2600;        // how high you have to be before the moon is close
+  var TRIP = 7.5;             // seconds the crossing takes
 
   /* ── weather ────────────────────────────────────────────────
      It changes on its own every half-minute or so. Each kind moves the balloon
@@ -89,7 +105,9 @@
       self.hold = { left: 0, right: 0, fwd: 0, back: 0, up: 0, down: 0 };
 
       self.score = 0;
-      self.collected = { food: 0, cloud: 0, unicorn: 0, alien: 0 };
+      self.collected = { food: 0, cloud: 0, unicorn: 0, alien: 0,
+                         rock: 0, flag: 0, astro: 0 };
+      self.beenToMoon = false;
       self.landed = false;
       self.landedOnce = false;
       self.reachedSpace = false;
@@ -104,6 +122,16 @@
       self.paused = false;
       self.running = true;
       self.air = global.RoarAudio.airLoop();
+
+      self.view = 'in';             // 'in' the basket, or 'out' looking at it
+      self.world = 'earth';
+      self.trip = null;             // the crossing, while one is under way
+      self.tilt = 0; self.tiltVel = 0;   // how far the basket is swinging
+      self.jolt = 0; self.joltVel = 0;   // and how much it is being thrown about
+      self.gust = 0; self.gustIn = rnd(3, 7);
+      self.inCloud = 0;             // 0 outside, 1 completely swallowed
+      self.cloudFor = 0;            // seconds still to go before you are out
+      self.orbit = 0;               // where the outside camera is standing
 
       self.weather = 'clear';
       self.wxIn = rnd(14, 22);      // seconds until the sky changes its mind
@@ -250,6 +278,8 @@
       var r = Math.random();
       var kind;
 
+      if (this.world === 'moon') return this._makeMoon(spread, r);
+
       // Aliens live up where the air runs out, and they take over completely
       // once you are properly in space. Birds and food stay down below.
       if (alt > ALIEN_ALT && r < clamp((alt - ALIEN_ALT) / (SPACE - ALIEN_ALT), 0.18, 0.72)) {
@@ -285,6 +315,32 @@
       return o;
     },
 
+    // What there is to find on the moon: rocks and craters low down, flags and
+    // landers left behind, astronauts bouncing about, and saucers — because up
+    // there they are the locals, not the visitors.
+    _makeMoon: function (spread, r) {
+      var kind = r < 0.40 ? 'rock' : r < 0.62 ? 'flag' : r < 0.86 ? 'astro' : 'alien';
+      var ang = (this.yaw || 0) + rnd(-1.25, 1.25);
+      var dist = spread ? rnd(140, FAR * 0.95) : rnd(FAR * 0.55, FAR * 0.95);
+      var o = {
+        kind: kind, on: true,
+        x: (this.camX || 0) + Math.sin(ang) * dist,
+        z: (this.camZ || 0) + Math.cos(ang) * dist,
+        drift: rnd(-4, 4), bobT: rnd(0, 6.28), flap: rnd(0, 6.28),
+        size: 28, y: rnd(10, 240)
+      };
+      if (kind === 'rock')  { o.emoji = '🪨'; o.size = 26; o.y = rnd(6, 90); o.drift = 0; }
+      if (kind === 'flag')  { o.emoji = '🚩'; o.size = 30; o.y = rnd(8, 70); o.drift = 0; }
+      if (kind === 'astro') { o.emoji = '👨‍🚀'; o.size = 32; o.y = rnd(20, 260);
+                              o.drift = rnd(-10, 10); }
+      if (kind === 'alien') { o.size = 30; o.drift = rnd(-24, 24);
+                              o.blink = rnd(0, 6.28); o.dart = rnd(0, 6.28);
+                              o.y = rnd(120, 900); }
+      // Everything within reach of where she actually is.
+      if ((this.alt || 0) > 260) o.y = clamp(this.alt + rnd(-160, 160), 8, MAX_ALT);
+      return o;
+    },
+
     // A fixed dome of stars, held in bearing and elevation so they sit still
     // while you turn rather than sliding about with the scenery.
     _makeStars: function () {
@@ -307,17 +363,32 @@
       return {
         x: (this.camX || 0) + Math.sin(ang) * dist,
         z: (this.camZ || 0) + Math.cos(ang) * dist,
-        emoji: GROUND_LIFE[(Math.random() * GROUND_LIFE.length) | 0],
+        emoji: WORLDS[this.world || 'earth'].life[
+                 (Math.random() * WORLDS[this.world || 'earth'].life.length) | 0],
         size: rnd(14, 26)
       };
     },
 
     // World → camera, rotated by the heading so you can face any direction.
+    /* Where you are watching from. In the basket that is the basket; from
+       outside it is a point behind and a little above the balloon, looking
+       back at it — the same world, a different pair of eyes. */
+    _eye: function () {
+      if (this.view !== 'out') {
+        this.ex = this.camX; this.ey = this.alt + EYE; this.ez = this.camZ;
+        return;
+      }
+      var back = 190, up = 58;
+      this.ex = this.camX - Math.sin(this.yaw + this.orbit) * back;
+      this.ez = this.camZ - Math.cos(this.yaw + this.orbit) * back;
+      this.ey = this.alt + EYE + up;
+    },
+
     _cam: function (x, y, z) {
-      var dx = x - this.camX, dz = z - this.camZ;
+      var dx = x - this.ex, dz = z - this.ez;
       return {
         rx: dx * this.cosY - dz * this.sinY,
-        ry: y - (this.alt + EYE),
+        ry: y - this.ey,
         rz: dx * this.sinY + dz * this.cosY
       };
     },
@@ -381,13 +452,20 @@
 
     _update: function (dt) {
       var h = this.hold, i;
+      var w = WORLDS[this.world] || WORLDS.earth;
       this.t += dt;
+
+      if (this.trip) { this._stepTrip(dt); return; }
 
       this.vx += (h.right - h.left) * ACC * dt;
       this.vz += (h.fwd - h.back) * ACC * dt;
-      this.vy += (h.up - h.down) * ACC * dt;
+      // The extra lift is the burner's, not the vent's: letting air out on the
+      // moon should not haul you down faster than it does at home.
+      this.vy += (h.up * w.lift - h.down) * ACC * dt;
 
-      var k = Math.exp(-DAMP * dt);
+      // Barely any drag on the moon: nothing out there to slow you down, so a
+      // nudge keeps you drifting long after you let go of the button.
+      var k = Math.exp(-w.drag * dt);
       this.vx *= k; this.vy *= k; this.vz *= k;
 
       // A real balloon turns slowly as the burner fires and as it vents, and
@@ -403,18 +481,25 @@
 
       this._weather(dt);
 
-      // You fly the way you are facing, and the wind pushes you besides.
-      var wx = Math.sin(this.wxWindDir) * this.wind * 26;
-      var wz = Math.cos(this.wxWindDir) * this.wind * 26;
+      // You fly the way you are facing, and the wind pushes you besides — and
+      // every few seconds it gusts, which is the part you actually feel.
+      this._gusts(dt);
+      var push = this.wind * (1 + this.gust * 1.5);
+      var wx = Math.sin(this.wxWindDir) * push * 26;
+      var wz = Math.cos(this.wxWindDir) * push * 26;
       this.camX += ((this.vz * this.sinY + this.vx * this.cosY) * 6 + wx) * dt;
       this.camZ += ((this.vz * this.cosY - this.vx * this.sinY) * 6 + wz) * dt;
 
       // Thin air near the top: the balloon fairly shoots up there, so getting
-      // to space is a treat rather than a chore.
-      var lift = 1 + 2.6 * clamp((this.alt - SKY_TOP * 0.6) / (SPACE - SKY_TOP * 0.6), 0, 1);
-      this.alt = clamp(this.alt + this.vy * dt * 6 * (this.vy > 0 ? lift : 1), 0, MAX_ALT);
+      // to space is a treat rather than a chore. On the moon there is no air
+      // to thin out, and a sixth of the weight pulling you down.
+      var lift = w.sky
+        ? 1 + 2.6 * clamp((this.alt - SKY_TOP * 0.6) / (SPACE - SKY_TOP * 0.6), 0, 1)
+        : 1;
+      var fall = w.gravity;
+      this.alt = clamp(this.alt + this.vy * dt * 6 * (this.vy > 0 ? lift : fall), 0, MAX_ALT);
 
-      if (this.alt > SPACE && !this.reachedSpace) {
+      if (this.alt > SPACE && !this.reachedSpace && w.sky) {
         this.reachedSpace = true;
         this.score += 100;
         this._say('🚀 YOU MADE IT TO SPACE! +100', '#ffe89a');
@@ -430,13 +515,18 @@
       }
 
       this.sway = this.sway * 0.92 + (this.vx * 0.02 - this.yawVel * 0.5);
+      this._wobble(dt);
+      this._clouds(dt);
+      this._offerTrip();
       this.burner = Math.max(0, this.burner - dt * 1.6);
       if (h.up) this.burner = Math.min(1, this.burner + dt * 3);
 
       if (this.air) {
         var speed = Math.min(1, Math.hypot(this.vx, this.vz, this.vy) / 26);
-        // Space is silent: there is no air up there to rush past you.
-        var airy = 1 - clamp((this.alt - SKY_TOP) / (SPACE - SKY_TOP), 0, 1);
+        // Space is silent: there is no air up there to rush past you, and the
+        // moon has none at all. Inside a cloud everything goes muffled.
+        var airy = w.air * (1 - clamp((this.alt - SKY_TOP) / (SPACE - SKY_TOP), 0, 1));
+        airy *= 1 - this.inCloud * 0.55;
         this.air.setWind((0.22 + speed * 0.78 + this.wind * 0.9) * airy);
         this.air.setBurner(this.burner);
         this.air.setVent(h.down ? 1 : 0);
@@ -509,12 +599,206 @@
       if (this.cfg.onScore) this.cfg.onScore(this.score, this.alt / MAX_ALT);
     },
 
+    /* ── being pushed about ───────────────────────────────────────
+       A balloon has no engine and nothing holding it steady: the wind does not
+       nudge it along, it shoves it, and the basket swings underneath for a
+       good while afterwards. That swing is the whole feeling of flying one,
+       so it is modelled as a real pendulum rather than a wiggle — pushed by
+       the gusts and the rain, pulled back by gravity, and slow to settle. */
+
+    _gusts: function (dt) {
+      if (!WORLDS[this.world].weather) { this.gust *= Math.exp(-3 * dt); return; }
+      this.gustIn -= dt;
+      if (this.gustIn <= 0) {
+        // Gusts come in bursts, and a storm sends them close together.
+        var wx = WEATHER[this.weather] || WEATHER.clear;
+        this.gustIn = rnd(2.2, 6.5) / (0.4 + wx.wind);
+        this.gustPeak = rnd(0.5, 1) * (0.3 + wx.wind);
+        this.gustAge = 0;
+      }
+      this.gustAge = (this.gustAge || 0) + dt;
+      // A gust rises fast and dies away slowly, the way a real one does.
+      var want = (this.gustPeak || 0) * Math.exp(-this.gustAge * 0.8) *
+                 clamp(this.gustAge * 5, 0, 1);
+      this.gust += (want - this.gust) * clamp(dt * 6, 0, 1);
+    },
+
+    _wobble: function (dt) {
+      var amt = (this.wxStrength || 0) * WORLDS[this.world].air;
+      // What is actually shoving the basket sideways is the wind, and hardest
+      // when it gusts. Rain barely pushes at all — it drums, so most of what
+      // it does goes into the bouncing below rather than the swing.
+      var shove = this.wind * (0.6 + this.gust * 2.2) + this.rainAmt * 0.14;
+
+      // a pendulum: pushed sideways, pulled back to hanging, and damped
+      this.tiltVel += (Math.sin(this.t * 2.7) * 0.9 + Math.sin(this.t * 1.3 + 2) * 0.6) *
+                      shove * dt * 0.95;
+      this.tiltVel += (rnd(-1, 1) * shove + this.gust * 0.8) * dt * 0.62;
+      this.tiltVel -= this.tilt * 5.2 * dt;             // gravity, hanging it back
+      this.tiltVel *= Math.exp(-1.5 * dt);              // and the drag on it
+      this.tilt = clamp(this.tilt + this.tiltVel * dt, -0.40, 0.40);
+
+      // The up-and-down of it. A couple of pixels is nothing on a phone, so
+      // this is deliberately generous: in a storm the basket should visibly
+      // drop out from under her, not shimmer.
+      this.joltVel += (Math.sin(this.t * 4.1) * 0.7 + rnd(-1, 1)) *
+                      (shove + this.rainAmt * 0.5) * dt * 150;
+      this.joltVel -= this.jolt * 22 * dt;
+      this.joltVel *= Math.exp(-1.8 * dt);
+      this.jolt = clamp(this.jolt + this.joltVel * dt, -34, 34);
+
+      // and a real gust blows you off course, not just about
+      var side = Math.sin(this.wxWindDir + 1.5708);
+      this.vx += side * this.gust * amt * 24 * dt;
+      this.vz += Math.cos(this.wxWindDir + 1.5708) * this.gust * amt * 24 * dt;
+    },
+
+    /* ── inside a cloud ───────────────────────────────────────────
+       Flying into one is not like flying past one. It goes white, the ground
+       disappears, the sound deadens and the air turns cold and damp — and then
+       you come out the other side, which is the bit worth waiting for. */
+
+    _clouds: function (dt) {
+      var want = 0;
+      for (var i = 0; i < this.things.length; i++) {
+        var o = this.things[i];
+        if (o.kind !== 'cloud') continue;
+        var d = Math.hypot(o.x - this.camX, o.z - this.camZ);
+        var dy = Math.abs(o.y - (this.alt + EYE));
+        var r = o.size * 1.35;
+        if (d < r && dy < o.size * 0.85) {
+          want = Math.max(want, clamp(1 - Math.max(d / r, dy / (o.size * 0.85)), 0, 1) * 1.6);
+        }
+      }
+      // Touching a cloud scores it, which takes it out of the sky — but you are
+      // still inside it, and coming out the far side is the whole point. So the
+      // crossing runs on its own clock from the moment you go in.
+      if (this.cloudFor > 0) {
+        this.cloudFor -= dt;
+        want = Math.max(want, 1);
+      }
+      want = clamp(want, 0, 1);
+      var was = this.inCloud;
+      this.inCloud += (want - this.inCloud) * clamp(dt * 2.6, 0, 1);
+      if (was < 0.35 && this.inCloud >= 0.35) {
+        global.RoarAudio.sfx('whoosh');
+        this._say('☁️ inside the cloud!', '#eaf4ff');
+      }
+      // Damp air condenses on everything and the balloon gets heavier.
+      if (this.inCloud > 0.3) this.vy -= this.inCloud * 3.4 * dt;
+    },
+
+    /* ── going to the moon ────────────────────────────────────────
+       Climb high enough and the moon is close enough to reach. One button
+       takes you there and the same button brings you home: at five years old
+       the trip is the reward, not the navigating. */
+
+    _offerTrip: function () {
+      var can = this.world === 'moon' || this.alt > MOON_ALT;
+      if (this.cfg.onTrip) this.cfg.onTrip(can, this.world);
+    },
+
+    goTrip: function () {
+      if (this.trip || !this.running) return false;
+      var to = this.world === 'moon' ? 'earth' : 'moon';
+      if (to === 'moon' && this.alt <= MOON_ALT) return false;
+      this.trip = { to: to, age: 0, from: this.world };
+      this.hold = { left: 0, right: 0, fwd: 0, back: 0, up: 0, down: 0 };
+      global.RoarAudio.sfx('whoosh');
+      if (this.cfg.onPlace) {
+        this.cfg.onPlace(to === 'moon' ? '🌙 to the moon' : '🌍 home to earth');
+      }
+      return true;
+    },
+
+    // The crossing itself: everything drains to black, the balloon coasts, and
+    // the new world fades up around it. Nothing to fly, nothing to get wrong.
+    _stepTrip: function (dt) {
+      var tr = this.trip;
+      tr.age += dt;
+      var half = TRIP / 2;
+
+      // coasting, so it still feels like it is moving
+      this.camX += this.vx * 3 * dt;
+      this.camZ += this.vz * 3 * dt;
+      this.yaw += 0.16 * dt;
+      this.cosY = Math.cos(this.yaw); this.sinY = Math.sin(this.yaw);
+      this.burner = Math.max(0, this.burner - dt * 0.8);
+      this.tilt *= Math.exp(-1.2 * dt);
+      this.jolt *= Math.exp(-1.2 * dt);
+      this.inCloud *= Math.exp(-2 * dt);
+      this.cloudFor = 0;
+      this.wind = 0; this.rainAmt = 0; this.wxStrength = 0; this.gust = 0;
+      this.drops.length = 0;
+      if (this.air) { this.air.setWind(0); this.air.setBurner(this.burner); this.air.setRain(0); }
+
+      this.fade = tr.age < half ? tr.age / half : clamp((TRIP - tr.age) / half, 0, 1);
+
+      // At the midpoint the world underneath you is swapped, behind the black.
+      if (!tr.swapped && tr.age >= half) {
+        tr.swapped = true;
+        this._setWorld(tr.to);
+      }
+      if (tr.age >= TRIP) {
+        this.trip = null;
+        this.fade = 0;
+        if (this.cfg.onPlace) this.cfg.onPlace(null);
+        var w = WORLDS[this.world];
+        this._say(this.world === 'moon' ? '🌙 WELCOME TO THE MOON!' : '🌍 HOME AGAIN!',
+                  this.world === 'moon' ? '#e6e6f2' : '#9df08a');
+        if (this.msg) this.msg.life = 4;
+        if (this.world === 'moon' && !this.beenToMoon) {
+          this.beenToMoon = true;
+          this.score += POINTS.moon;
+          this._float(this.W / 2, this.H * 0.42, '+' + POINTS.moon, '#ffd24c');
+          global.RoarAudio.sfx('win');
+        }
+        this._offerTrip();
+      }
+      if (this.cfg.onScore) this.cfg.onScore(this.score, this.alt / MAX_ALT);
+    },
+
+    _setWorld: function (which) {
+      this.world = WORLDS[which] ? which : 'earth';
+      var w = WORLDS[this.world];
+      // You arrive high above it and drift down, rather than materialising in
+      // the dust — which is what falling towards a moon actually looks like.
+      this.alt = w.sky ? MOON_ALT * 0.55 : 620;
+      this.vx = this.vy = this.vz = 0;
+      this.landed = false;
+      this.weather = 'clear';
+      this.wxAmt = 0; this.wind = 0; this.rainAmt = 0; this.wxStrength = 0;
+      this.wxIn = rnd(16, 26);
+      this.drops.length = 0;
+      this.dropKind = null;
+      this.things.length = 0;
+      this.ground.length = 0;
+      for (var i = 0; i < 34; i++) this.things.push(this._make(true));
+      for (i = 0; i < 26; i++) this.ground.push(this._makeGround(true));
+      if (this.cfg.onWorld) this.cfg.onWorld(this.world);
+    },
+
+    setView: function (which) {
+      this.view = which === 'out' ? 'out' : 'in';
+      if (this.cfg.onView) this.cfg.onView(this.view);
+      global.RoarAudio.sfx('puff');
+      return this.view;
+    },
+
+    toggleView: function () { return this.setView(this.view === 'out' ? 'in' : 'out'); },
+
     /* ── weather ──────────────────────────────────────────────────
        The sky makes its own mind up every twenty-odd seconds. Above the clouds
        it clears — real weather happens down in the air, and it would be silly
        to have snow in space — so climbing is a way to escape a storm. */
 
     _weather: function (dt) {
+      // No air, no weather. The moon just hangs there being still.
+      if (!WORLDS[this.world].weather) {
+        this.wxStrength = 0; this.wind = 0; this.rainAmt = 0;
+        this.flash = 0; this.drops.length = 0;
+        return;
+      }
       this.wxIn -= dt;
       if (this.wxIn <= 0) this._turnWeather();
 
@@ -623,15 +907,19 @@
       if (o.kind === 'bird') { this._hitBird(o, sx, sy); return; }
 
       o.on = false;
-      var pts = POINTS[o.kind];
+      var pts = POINTS[o.kind] || 0;
       this.score += pts;
-      this.collected[o.kind]++;
+      if (this.collected[o.kind] != null) this.collected[o.kind]++;
       this._float(sx, sy, '+' + pts,
         o.kind === 'unicorn' ? '#e6b3ff' : o.kind === 'alien' ? '#9dff9d' : '#ffe89a');
       global.RoarAudio.sfx(o.kind === 'unicorn' ? 'sparkle' : o.kind === 'alien' ? 'alien'
-                         : o.kind === 'cloud' ? 'puff' : 'nom');
+                         : o.kind === 'cloud' ? 'puff' : o.kind === 'rock' ? 'thud' : 'nom');
+      // A big cloud takes longer to come out of than a small one.
+      if (o.kind === 'cloud') this.cloudFor = Math.max(this.cloudFor || 0, 0.9 + o.size / 90);
       if (o.kind === 'unicorn') this._say('Unicorn caught! 🦄', '#e6b3ff');
       if (o.kind === 'alien') this._say('An alien! 👽 +' + pts, '#9dff9d');
+      if (o.kind === 'astro') this._say('An astronaut! 👨‍🚀 +' + pts, '#bfe6ff');
+      if (o.kind === 'flag') this._say('You found a flag! 🚩 +' + pts, '#ffd24c');
       if (tapped && o.kind === 'food') this._say('Yum! 😋', '#ffe89a');
 
       var self = this;
@@ -720,30 +1008,107 @@
 
     _draw: function (dt) {
       var c = this.ctx, W = this.W, H = this.H;
+      var moon = this.world === 'moon';
       c.clearRect(0, 0, W, H);
+      this._eye();
 
       // How far into space we are. At 1 the ground is long gone and the world
-      // below is a curved blue edge.
-      var sp = clamp((this.alt - SKY_TOP) / (SPACE - SKY_TOP), 0, 1);
+      // below is a curved blue edge. On the moon there is no atmosphere to
+      // climb out of, so it is black from the ground up.
+      var sp = moon ? 1 : clamp((this.alt - SKY_TOP) / (SPACE - SKY_TOP), 0, 1);
       this.sp = sp;
+      this.moonSp = moon ? clamp((this.alt - 900) / 1600, 0, 1) : 0;
 
-      this._sky(c, W, H);
-      this._stars(c, W, H, sp);
-      if (sp < 1) {
-        c.save();
-        c.globalAlpha = 1 - sp;                 // the world fades as you leave it
-        this._mountains(c, W, H);
-        this._land(c, W, H);
-        this._groundLife(c);
-        c.restore();
+      /* Everything in the world is drawn through one tilt, so when the wind
+         shoves the basket the whole view leans with it — which is what being
+         swung about actually looks like from inside. The instruments and the
+         balloon itself are drawn outside it, because they swing with you. */
+      c.save();
+      c.translate(W / 2, H * 0.5 + this.jolt);
+      c.rotate(this.tilt * 0.42);
+      c.translate(-W / 2, -(H * 0.5));
+
+      if (moon) {
+        this._moonSky(c, W, H);
+        this._stars(c, W, H, 1);
+        this._earthInSky(c, W, H);
+        if (this.moonSp < 1) {
+          c.save();
+          c.globalAlpha = 1 - this.moonSp;
+          this._moonGround(c, W, H);
+          this._groundLife(c);
+          c.restore();
+        }
+      } else {
+        this._sky(c, W, H);
+        this._stars(c, W, H, sp);
+        if (sp < 1) {
+          c.save();
+          c.globalAlpha = 1 - sp;               // the world fades as you leave it
+          this._mountains(c, W, H);
+          this._land(c, W, H);
+          this._groundLife(c);
+          c.restore();
+        }
+        if (sp > 0.35) this._earth(c, W, H, sp);
+        this._moonInSky(c, W, H, sp);
       }
-      if (sp > 0.35) this._earth(c, W, H, sp);
       this._things(c);
       this._featherDraw(c);
-      this._balloon(c, W, H);
+      if (this.view === 'out') this._balloonOut(c, W, H);
+      c.restore();
+
+      if (this.view !== 'out') this._balloon(c, W, H);
       this._weatherDraw(c, W, H);
+      this._cloudVeil(c, W, H);
       this._floaters(c);
       this._hud(c, W, H);
+      this._tripFade(c, W, H);
+    },
+
+    // Black to arrive out of and black to leave into: the crossing is long
+    // enough to feel like a journey and short enough to keep a five-year-old.
+    _tripFade: function (c, W, H) {
+      if (!this.fade) return;
+      c.save();
+      c.fillStyle = 'rgba(2,1,8,' + clamp(this.fade, 0, 1) + ')';
+      c.fillRect(0, 0, W, H);
+      c.restore();
+    },
+
+    /* ── inside a cloud ───────────────────────────────────────────
+       White, close, and moving: torn wisps streaming past the basket so it is
+       plainly cloud rather than a blank screen. */
+    _cloudVeil: function (c, W, H) {
+      var k = this.inCloud;
+      if (k < 0.01) return;
+      c.save();
+      c.fillStyle = 'rgba(238,244,255,' + (0.86 * k) + ')';
+      c.fillRect(0, 0, W, H);
+
+      // wisps tearing past, faster the harder you are flying
+      var sp = 60 + Math.hypot(this.vx, this.vz) * 22;
+      c.globalAlpha = 0.5 * k;
+      c.strokeStyle = '#ffffff';
+      c.lineCap = 'round';
+      for (var i = 0; i < 14; i++) {
+        var ph = (this.t * sp * (0.5 + (i % 5) * 0.2) + i * 137) % (H + 260) - 130;
+        var x = ((i * 91) % 100) / 100 * W;
+        var len = 40 + (i % 4) * 34;
+        c.lineWidth = 8 + (i % 3) * 7;
+        c.beginPath();
+        c.moveTo(x - 30, ph);
+        c.quadraticCurveTo(x + 30, ph + len * 0.5, x + 10, ph + len);
+        c.stroke();
+      }
+      // and it goes cold and grey right in the middle of it
+      c.globalAlpha = 1;
+      var v = c.createRadialGradient(W / 2, H * 0.45, H * 0.1, W / 2, H * 0.45, H * 0.8);
+      v.addColorStop(0, 'rgba(190,205,235,0)');
+      v.addColorStop(1, 'rgba(150,168,205,' + (0.55 * k) + ')');
+      c.fillStyle = v;
+      c.fillRect(0, 0, W, H);
+      c.restore();
     },
 
     // Sunset: warm at the horizon, dusk overhead, and it deepens as you climb.
@@ -997,6 +1362,144 @@
     },
 
     // Three ridge lines built from stacked sine waves — cheap and stable.
+    /* ── the moon ─────────────────────────────────────────────────
+       Black sky right down to the ground, grey dust, craters, and the Earth
+       hanging in it — the one view every astronaut says they remember. */
+
+    _moonSky: function (c, W, H) {
+      c.fillStyle = '#03030a';
+      c.fillRect(0, 0, W, H);
+      // a faint glow where the sun catches the dust on the horizon
+      if (this.moonSp < 1) {
+        var g = c.createLinearGradient(0, this.hz - 90, 0, this.hz);
+        g.addColorStop(0, 'rgba(120,130,160,0)');
+        g.addColorStop(1, 'rgba(150,160,190,' + (0.30 * (1 - this.moonSp)) + ')');
+        c.fillStyle = g;
+        c.fillRect(0, this.hz - 90, W, 90);
+      }
+    },
+
+    _moonGround: function (c, W, H) {
+      var g = c.createLinearGradient(0, this.hz, 0, H);
+      g.addColorStop(0, '#8d8a83');
+      g.addColorStop(0.35, '#6f6d68');
+      g.addColorStop(1, '#3a3835');
+      c.fillStyle = g;
+      c.fillRect(0, this.hz, W, H - this.hz);
+
+      // Craters, placed in the world so they hold still while you turn. The
+      // seed comes from the cell's own coordinates, so the same crater is in
+      // the same place every time you look back at it.
+      var gx = Math.floor(this.camX / GRID) * GRID;
+      var gz = Math.floor(this.camZ / GRID) * GRID;
+      c.save();
+      for (var i = -16; i <= 16; i++) {
+        for (var j = -16; j <= 16; j++) {
+          var cx = gx + i * GRID, cz = gz + j * GRID;
+          var seed = Math.abs(Math.sin(cx * 12.9898 + cz * 78.233) * 43758.5453) % 1;
+          if (seed > 0.45) continue;
+          var rad = 8 + seed * 58;
+          var p = this._project(cx + seed * 26, 0, cz + seed * 19);
+          if (!p) continue;
+          var r = rad * p.s * 1.6;
+          if (r < 1.2 || r > W) continue;
+          c.globalAlpha = clamp(1 - p.dz / FAR, 0.25, 0.95);
+          c.fillStyle = '#4a4844';
+          c.beginPath();
+          c.ellipse(p.sx, p.sy, r, r * 0.34, 0, 0, 6.2832);
+          c.fill();
+          c.strokeStyle = 'rgba(215,212,205,0.5)';
+          c.lineWidth = Math.max(0.6, r * 0.09);
+          c.beginPath();
+          c.ellipse(p.sx, p.sy - r * 0.06, r, r * 0.34, 0, 3.4, 6.1);
+          c.stroke();
+        }
+      }
+      c.restore();
+    },
+
+    // Earth from the moon: small, blue, and always in the same part of the sky,
+    // because from the moon it genuinely never moves.
+    _earthInSky: function (c, W, H) {
+      var rel = 0.7 - this.yaw;
+      while (rel > Math.PI) rel -= 6.2832;
+      while (rel < -Math.PI) rel += 6.2832;
+      if (Math.abs(rel) > 1.4) return;
+      var x = W / 2 + Math.tan(rel) * this.f;
+      // Low enough in the sky to clear the envelope hanging over the basket —
+      // there is no point drawing it where she cannot see it.
+      var y = this.hz - H * 0.20;
+      var r = W * 0.085;
+
+      c.save();
+      var glow = c.createRadialGradient(x, y, r * 0.8, x, y, r * 3);
+      glow.addColorStop(0, 'rgba(120,170,255,0.30)');
+      glow.addColorStop(1, 'rgba(120,170,255,0)');
+      c.fillStyle = glow;
+      c.beginPath(); c.arc(x, y, r * 3, 0, 6.2832); c.fill();
+
+      var g = c.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+      g.addColorStop(0, '#8fd0ff');
+      g.addColorStop(0.55, '#2f7fd8');
+      g.addColorStop(1, '#123a72');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill();
+
+      // continents: rough, but unmistakably not a plain blue ball
+      c.save();
+      c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.clip();
+      c.fillStyle = 'rgba(110,190,110,0.85)';
+      c.beginPath();
+      c.ellipse(x - r * 0.25, y - r * 0.2, r * 0.38, r * 0.26, 0.5, 0, 6.2832);
+      c.fill();
+      c.beginPath();
+      c.ellipse(x + r * 0.3, y + r * 0.28, r * 0.3, r * 0.35, -0.4, 0, 6.2832);
+      c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.35)';
+      c.beginPath();
+      c.ellipse(x + r * 0.1, y - r * 0.45, r * 0.5, r * 0.16, 0.3, 0, 6.2832);
+      c.fill();
+      c.restore();
+      c.restore();
+    },
+
+    // ...and the moon from Earth, which is what tells her there is somewhere
+    // else to go. It grows as she climbs, so it plainly gets closer.
+    _moonInSky: function (c, W, H, sp) {
+      var rel = -1.1 - this.yaw;
+      while (rel > Math.PI) rel -= 6.2832;
+      while (rel < -Math.PI) rel += 6.2832;
+      if (Math.abs(rel) > 1.4) return;
+      var near = clamp((this.alt - SKY_TOP) / (MAX_ALT - SKY_TOP), 0, 1);
+      var x = W / 2 + Math.tan(rel) * this.f;
+      var y = this.hz - H * (0.30 + near * 0.10);
+      var r = W * (0.045 + near * 0.11);
+
+      c.save();
+      c.globalAlpha = 0.35 + near * 0.65;
+      var glow = c.createRadialGradient(x, y, r, x, y, r * 2.6);
+      glow.addColorStop(0, 'rgba(240,240,255,0.28)');
+      glow.addColorStop(1, 'rgba(240,240,255,0)');
+      c.fillStyle = glow;
+      c.beginPath(); c.arc(x, y, r * 2.6, 0, 6.2832); c.fill();
+
+      var g = c.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+      g.addColorStop(0, '#fbfaf4');
+      g.addColorStop(0.7, '#ddd9cd');
+      g.addColorStop(1, '#a9a598');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill();
+
+      c.fillStyle = 'rgba(150,146,136,0.55)';
+      [[-0.30, -0.20, 0.26], [0.28, 0.10, 0.20], [-0.05, 0.38, 0.15],
+       [0.34, -0.34, 0.12]].forEach(function (m) {
+        c.beginPath();
+        c.arc(x + m[0] * r, y + m[1] * r, m[2] * r, 0, 6.2832);
+        c.fill();
+      });
+      c.restore();
+    },
+
     _mountains: function (c, W, H) {
       var layers = [
         { col: '#8a5580', amp: 46, base: 10, n: 3.1, par: 0.00010, seed: 0.0 },
@@ -1262,10 +1765,123 @@
 
     // Envelope overhead (only its underside is in view), throat and burner,
     // ropes framing the edges, and the basket rim you are standing behind.
+    /* ── the balloon, from outside it ─────────────────────────────
+       The same balloon, drawn as a thing in the world rather than as the
+       ceiling above your head: projected at the balloon's own position, so it
+       gets smaller with distance, leans with the wind, and passes behind the
+       clouds like everything else. */
+
+    _balloonOut: function (c, W, H) {
+      var p = this._project(this.camX, this.alt + EYE + 30, this.camZ);
+      if (!p) return;
+      // The envelope is a real size out there — about twenty metres across —
+      // rather than a number of pixels, so it shrinks with distance like
+      // everything else in the world and the sky around it stays visible.
+      var r = clamp(ENV_R * p.s, 10, W * 0.46);
+      var x = p.sx, y = p.sy;
+      var lean = this.tilt * 0.9 + clamp(this.sway, -1, 1) * 0.12;
+
+      c.save();
+      c.translate(x, y);
+      c.rotate(lean);
+
+      /* The envelope is not a ball: it bulges at the shoulders and draws in to
+         a narrow throat, which is the shape that reads as "hot air balloon"
+         from a hundred metres away. */
+      var throat = r * 0.95;
+      var envelope = function () {
+        c.beginPath();
+        c.moveTo(0, -r * 1.30);
+        c.bezierCurveTo(r * 0.95, -r * 1.26, r * 1.14, -r * 0.10, r * 0.32, throat);
+        c.lineTo(-r * 0.32, throat);
+        c.bezierCurveTo(-r * 1.14, -r * 0.10, -r * 0.95, -r * 1.26, 0, -r * 1.30);
+        c.closePath();
+      };
+
+      c.save();
+      envelope();
+      c.save();
+      c.clip();
+      var cols = ['#e8542f', '#ffd24c', '#ff8a2b', '#fdf6ec',
+                  '#4fb3e8', '#a78bfa', '#e8542f', '#ffd24c'];
+      for (var i = 0; i < cols.length; i++) {
+        c.fillStyle = cols[i];
+        c.fillRect(-r * 1.2 + (i / cols.length) * r * 2.4, -r * 1.4,
+                   (r * 2.4) / cols.length + 1, r * 2.6);
+      }
+      var shade = c.createLinearGradient(-r, 0, r, 0);
+      shade.addColorStop(0.00, 'rgba(10,0,30,0.55)');
+      shade.addColorStop(0.40, 'rgba(255,240,210,0.18)');
+      shade.addColorStop(1.00, 'rgba(10,0,30,0.55)');
+      c.fillStyle = shade;
+      c.fillRect(-r * 1.2, -r * 1.4, r * 2.4, r * 2.6);
+      // the underside goes into shadow, lit from below when the burner is on
+      var under = c.createLinearGradient(0, throat - r * 0.9, 0, throat);
+      under.addColorStop(0, 'rgba(20,6,40,0)');
+      under.addColorStop(1, 'rgba(20,6,40,0.45)');
+      c.fillStyle = under;
+      c.fillRect(-r * 1.2, throat - r * 0.9, r * 2.4, r * 0.9);
+      if (this.burner > 0.02) {
+        var warm = c.createRadialGradient(0, throat, r * 0.05, 0, throat, r * 1.2);
+        warm.addColorStop(0, 'rgba(255,190,90,' + (0.6 * this.burner) + ')');
+        warm.addColorStop(1, 'rgba(255,190,90,0)');
+        c.fillStyle = warm;
+        c.fillRect(-r * 1.2, -r * 1.4, r * 2.4, r * 2.6);
+      }
+      c.restore();
+      c.lineWidth = Math.max(1, r * 0.035);
+      c.strokeStyle = 'rgba(40,16,60,0.5)';
+      envelope();
+      c.stroke();
+      c.restore();
+
+      /* ropes and basket */
+      var bw = r * 0.42, bh = r * 0.34, by = throat + r * 0.42;
+      c.strokeStyle = 'rgba(40,24,60,0.75)';
+      c.lineWidth = Math.max(0.8, r * 0.022);
+      c.beginPath();
+      c.moveTo(-r * 0.30, throat); c.lineTo(-bw / 2, by);
+      c.moveTo(r * 0.30, throat);  c.lineTo(bw / 2, by);
+      c.moveTo(-r * 0.10, throat); c.lineTo(-bw * 0.22, by);
+      c.moveTo(r * 0.10, throat);  c.lineTo(bw * 0.22, by);
+      c.stroke();
+
+      // the burner flame, when she is firing it
+      if (this.burner > 0.05) {
+        c.fillStyle = 'rgba(255,196,84,' + (0.5 + 0.5 * this.burner) + ')';
+        c.beginPath();
+        c.moveTo(-r * 0.09, by - r * 0.02);
+        c.lineTo(r * 0.09, by - r * 0.02);
+        c.lineTo(0, throat + r * 0.06);
+        c.closePath();
+        c.fill();
+      }
+
+      c.fillStyle = '#a9762f';
+      c.beginPath();
+      if (c.roundRect) c.roundRect(-bw / 2, by, bw, bh, r * 0.05);
+      else c.rect(-bw / 2, by, bw, bh);
+      c.fill();
+      c.strokeStyle = '#d29a54';
+      c.lineWidth = Math.max(0.8, r * 0.03);
+      c.stroke();
+
+      // and Sienna in it, waving, once the balloon is big enough to see her
+      if (r > 34) {
+        c.font = (r * 0.28) + 'px ' + EMOJI;
+        c.textAlign = 'center';
+        c.textBaseline = 'alphabetic';
+        c.fillText('🧒', 0, by + bh * 0.28);
+      }
+      c.restore();
+    },
+
     _balloon: function (c, W, H) {
-      var sway = clamp(this.sway, -1.2, 1.2) * 16;
+      // The world leans one way, the balloon hanging over your head leans the
+      // other — that opposition is what a swing actually feels like.
+      var sway = clamp(this.sway, -1.2, 1.2) * 16 - this.tilt * 46;
       var ex = W / 2 + sway;
-      var cy = -H * 0.44 + Math.sin(this.t * 0.7) * 4;   // mostly above the screen
+      var cy = -H * 0.44 + Math.sin(this.t * 0.7) * 4 - this.jolt * 0.5;
       var rx = W * 0.62, ry = H * 0.56;
       var throatY = cy + ry;
       var rimY = H * 0.745;
