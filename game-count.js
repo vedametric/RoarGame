@@ -163,6 +163,10 @@
 
     // "one, two, three" in the chosen voice, without disturbing the count.
     sample: function () {
+      if (global.Say.has('n-1')) {
+        global.Say.line(['n-1', 'n-2', 'n-3'], 'one, two, three');
+        return;
+      }
       try {
         if (!global.speechSynthesis || global.RoarAudio.muted) return;
         speechSynthesis.cancel();
@@ -190,20 +194,29 @@
       var text = words(self.n);
       var spoke = false;
 
-      try {
-        if (global.speechSynthesis && global.SpeechSynthesisUtterance && !global.RoarAudio.muted) {
-          speechSynthesis.cancel();
-          var u = new SpeechSynthesisUtterance(text);
-          if (self.voices[self.vi]) u.voice = self.voices[self.vi];
-          u.rate = RATE;
-          u.pitch = PITCH;
-          u.volume = 1;
-          u.onend = function () { self._afterWord(); };
-          u.onerror = function () { self._afterWord(); };
-          speechSynthesis.speak(u);
-          spoke = true;
-        }
-      } catch (e) { spoke = false; }
+      // Every number up to a hundred was recorded properly; past that they are
+      // read out of the recorded parts, and only past a billion does the
+      // browser's own voice get a turn.
+      var keys = global.Say.numberKeys(self.n);
+      if (keys && !global.RoarAudio.muted) {
+        global.Say.line(keys, text, { onEnd: function () { self._afterWord(); } });
+        spoke = true;
+      } else {
+        try {
+          if (global.speechSynthesis && global.SpeechSynthesisUtterance && !global.RoarAudio.muted) {
+            speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(text);
+            if (self.voices[self.vi]) u.voice = self.voices[self.vi];
+            u.rate = RATE;
+            u.pitch = PITCH;
+            u.volume = 1;
+            u.onend = function () { self._afterWord(); };
+            u.onerror = function () { self._afterWord(); };
+            speechSynthesis.speak(u);
+            spoke = true;
+          }
+        } catch (e) { spoke = false; }
+      }
 
       // iOS sometimes never fires onend, so never rely on it alone.
       var guess = 900 + text.length * 110;
@@ -238,7 +251,7 @@
       if (this.paused) {
         clearTimeout(this.timer);
         clearTimeout(this.watchdog);
-        try { speechSynthesis.cancel(); } catch (e) {}
+        global.Say.stop();
         this.waitFor = 0;
       } else {
         this._say();

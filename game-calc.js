@@ -13,10 +13,10 @@
   'use strict';
 
   var OPS = {
-    '+': { say: 'plus',     apply: function (a, b) { return a + b; } },
-    '-': { say: 'take away', apply: function (a, b) { return a - b; } },
-    '×': { say: 'times',    apply: function (a, b) { return a * b; } },
-    '÷': { say: 'shared by', apply: function (a, b) { return b === 0 ? null : a / b; } }
+    '+': { say: 'plus',      key: 'm-plus',     apply: function (a, b) { return a + b; } },
+    '-': { say: 'take away', key: 'm-takeaway', apply: function (a, b) { return a - b; } },
+    '×': { say: 'times',     key: 'm-times',    apply: function (a, b) { return a * b; } },
+    '÷': { say: 'shared by', key: 'm-sharedby', apply: function (a, b) { return b === 0 ? null : a / b; } }
   };
 
   var MAX_DIGITS = 9;
@@ -54,7 +54,7 @@
     stop: function () {
       this.running = false;
       clearTimeout(this._wholeT);
-      try { speechSynthesis.cancel(); } catch (e) {}
+      global.Say.stop();
     },
 
     setSpeak: function (on) {
@@ -88,7 +88,7 @@
       else if (this.entry.replace('-', '').replace('.', '').length < MAX_DIGITS) {
         this.entry += d;
       }
-      this._say(d);
+      this._sayKey('n-' + d, d);
       this._render();
       this._sayWholeSoon();
     },
@@ -96,7 +96,7 @@
     _dot: function () {
       if (this.fresh) { this.entry = '0.'; this.fresh = false; }
       else if (this.entry.indexOf('.') < 0) this.entry += '.';
-      this._say('point');
+      this._sayKey('m-point', 'point');
       this._render();
       this._sayWholeSoon();
     },
@@ -112,19 +112,19 @@
       this.op = k;
       this.fresh = true;
       this.sum = tidy(this.left) + ' ' + k;
-      this._say(OPS[k].say);
+      this._sayKey(OPS[k].key, OPS[k].say);
       this._render();
     },
 
     _equals: function () {
-      if (this.op === null) { this._say(this.entry); this._render(); return; }
+      if (this.op === null) { this._sayNumber(parseFloat(this.entry)); this._render(); return; }
       var shown = tidy(this.left) + ' ' + this.op + ' ' + this.entry;
       var got = this._compute();
       if (got === null) return;
       this.sum = shown + ' =';
       this.op = null;
       this.fresh = true;
-      this._say('equals ' + this.spell(parseFloat(this.entry)), true);
+      this._sayNumber(parseFloat(this.entry), 'm-equals');
       this._render();
     },
 
@@ -137,7 +137,7 @@
         this.left = null;
         this.op = null;
         this.fresh = true;
-        this._say("you can't share by zero", true);
+        this._sayKey('m-nozero', "you can't share by zero");
         this._render();
         return null;
       }
@@ -152,7 +152,7 @@
       this.op = null;
       this.fresh = true;
       this.sum = '';
-      this._say('clear');
+      this._sayKey('m-clear', 'clear');
       this._render();
     },
 
@@ -182,7 +182,7 @@
       if (!this.running) return;
       var n = parseFloat(this.entry);
       if (!isFinite(n)) return;
-      this._say(this.spell(n), true);
+      this._sayNumber(n);
     },
 
     // Words for the number, borrowed from COUNTING so both games say a number
@@ -205,15 +205,27 @@
 
     _say: function (text, slow) {
       if (!this.speak || global.RoarAudio.muted) return;
-      try {
-        if (!global.speechSynthesis || !global.SpeechSynthesisUtterance) return;
-        speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(String(text));
-        u.rate = slow ? 0.85 : 1;
-        u.pitch = 1;
-        u.volume = 1;
-        speechSynthesis.speak(u);
-      } catch (e) {}
+      global.Say.speak(text, { rate: slow ? 0.9 : 1 });
+    },
+
+    _sayKey: function (key, text) {
+      if (!this.speak || global.RoarAudio.muted) return;
+      global.Say.line(key, text);
+    },
+
+    // Whole numbers come out of the recorded parts; anything with a decimal
+    // point falls back, because "three point one four" is not worth 900 clips.
+    _sayNumber: function (n, lead) {
+      if (!this.speak || global.RoarAudio.muted) return;
+      var keys = Math.floor(n) === n ? global.Say.numberKeys(Math.abs(n)) : null;
+      var words = this.spell(n);
+      if (keys) {
+        if (n < 0) keys = ['m-minus'].concat(keys);
+        global.Say.line(lead ? [lead].concat(keys) : keys,
+                        (lead ? 'equals ' : '') + words);
+      } else {
+        global.Say.speak((lead ? 'equals ' : '') + words, { rate: 0.9 });
+      }
     },
 
     sayAnswer: function () { this._say(this.entry, true); },

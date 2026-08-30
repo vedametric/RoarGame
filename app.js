@@ -216,18 +216,15 @@
     RoarAudio.setMuted(!on);
     $('btn-sound').textContent = on ? '🔊' : '🔇';
     $('btn-sound').classList.toggle('is-off', !on);
-    if (!on && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
+    if (!on) Say.stop();
   }
 
+  // Recorded where we have it, the browser voice where we do not.
+  var SAID = { 'Pick a game!': 'm-pickagame' };
+
   function say(text) {
-    try {
-      if (RoarAudio.muted) return;
-      if (!window.speechSynthesis) return;
-      speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.rate = 1.0; u.pitch = 1.25; u.volume = 0.9;
-      speechSynthesis.speak(u);
-    } catch (e) { /* speech is a bonus, never a requirement */ }
+    if (RoarAudio.muted) return;
+    Say.line(SAID[text] || null, text, { rate: 1, pitch: 1.15 });
   }
 
   function keepAwake() {
@@ -1050,6 +1047,7 @@
   // The tiles are the first thing on screen, so they are built before anything
   // else can be tapped.
   buildTiles();
+  Say.init();
 
   /* ── which build am I running? ────────────────────────────────
      The deploy stamps the commit into <meta name="build">, and every script
