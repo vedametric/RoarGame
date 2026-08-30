@@ -88,6 +88,45 @@
     <button class="linkish" id="btn-games-back" type="button">Back</button>
   </section>
 
+  <!-- ═════════════════════ MINI GAMES ═════════════════════
+       Small, quick, no learning attached: the ones you play while you are
+       waiting for something. -->
+  <section class="screen" id="screen-minis">
+    <h2 class="heading">Mini games</h2>
+    <p class="subheading">quick ones 🎮</p>
+    <div class="tiles tiles--all" id="mini-tiles"></div>
+  </section>
+
+  <!-- ═════════════════════ SNAKE ═════════════════════ -->
+  <section class="screen screen--flat" id="screen-snake">
+    <div class="sn-head">
+      <div class="sn-score" id="sn-score">0</div>
+      <div class="sn-len">🐍 <b id="sn-len">4</b></div>
+      <div class="sn-best" id="sn-best">★ 0</div>
+    </div>
+
+    <canvas id="snake-canvas"></canvas>
+
+    <p class="sn-hint" id="sn-hint">swipe to steer 👆</p>
+
+    <div class="sn-pad" id="sn-pad">
+      <button class="sn-btn sn-btn--up" data-dir="up" type="button" aria-label="Up">▲</button>
+      <button class="sn-btn sn-btn--left" data-dir="left" type="button" aria-label="Left">◀</button>
+      <button class="sn-btn sn-btn--right" data-dir="right" type="button" aria-label="Right">▶</button>
+      <button class="sn-btn sn-btn--down" data-dir="down" type="button" aria-label="Down">▼</button>
+    </div>
+
+    <div class="sn-over" id="sn-over" hidden>
+      <div class="sn-over-card">
+        <div class="sn-over-emoji">🐍</div>
+        <h2 class="heading heading--sm">Oh no!</h2>
+        <div class="sn-over-score" id="sn-over-score">0</div>
+        <p class="sn-over-best" id="sn-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="sn-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ HOW MANY PLAYERS ═════════════════════ -->
   <section class="screen" id="screen-count">
     <h2 class="heading">How many players?</h2>
@@ -595,6 +634,7 @@
 <script src="spell-words.js?v=dev"></script>
 <script src="rocket.js?v=dev"></script>
 <script src="game-spell.js?v=dev"></script>
+<script src="game-snake.js?v=dev"></script>
 <script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>
 <script src="app.js?v=dev"></script>
