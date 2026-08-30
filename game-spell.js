@@ -127,6 +127,9 @@
       clearTimeout(this._spellT);
       clearTimeout(this._winT);
       global.Say.stop();
+      // Leaving mid-flight takes the rocket with you: nothing keeps running
+      // over the top of whatever screen you went to.
+      if (global.RocketLaunch) { try { global.RocketLaunch.stop(); } catch (e) {} }
       try { global.Confetti.stop(); } catch (e) {}
     },
 
@@ -284,9 +287,43 @@
       global.Say.line(['p-' + pi, this._key('w', this.word)],   // so she reads it too
                       this.praise + ' ' + this.word);
       this._render();
+
+      // The fifth word does not just show a finished rocket — it flies it.
+      // The card waits behind the launch and is there when she comes back.
+      if (this.launch) this._launch();
+    },
+
+    _launch: function () {
+      var self = this;
+      var L = global.RocketLaunch;
+      if (!L || !this.el.launchWrap) return;
+      // Nothing else should be making a noise while the countdown is running.
+      global.Say.stop();
+      try { global.Confetti.stop(); } catch (e) {}
+      L.play({
+        wrap: this.el.launchWrap,
+        canvas: this.el.launchCanvas,
+        word: this.el.launchWord,
+        onDone: function () {
+          if (!self.running) return;
+          // Back to the card, with the confetti waiting for her.
+          try {
+            global.Confetti.start(['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff',
+                                   '#9df08a', '#ffb3f0', '#ffffff']);
+          } catch (e) {}
+          clearTimeout(self._winT);
+          self._winT = setTimeout(function () {
+            try { global.Confetti.stop(); } catch (e) {}
+          }, 3600);
+          global.RoarAudio.sfx('checkpoint');
+          global.Say.line('m-rocketbuilt', 'You built the whole rocket!');
+        }
+      });
     },
 
     next: function () { if (this.running && this.won) { try { global.Confetti.stop(); } catch (e) {} this._next(); } },
+
+    skipLaunch: function () { if (global.RocketLaunch) global.RocketLaunch.skip(); },
 
     /* ── help ─────────────────────────────────────────────────── */
 

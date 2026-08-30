@@ -42,6 +42,16 @@
   <button class="tb-btn tb-btn--icon" id="tb-set" type="button" aria-label="Settings">⚙️</button>
 </nav>
 
+<!-- ═════════════════════ THE LAUNCH ═════════════════════
+     Full screen, over everything — the bar included, which is why it lives
+     outside #app rather than in it. Five right words builds the rocket in the
+     spelling bee; this is it actually going. -->
+<div class="launch" id="launch" hidden>
+  <canvas id="launch-canvas"></canvas>
+  <div class="launch-word" id="launch-word"></div>
+  <button class="launch-skip" id="launch-skip" type="button">skip ›</button>
+</div>
+
 <main id="app">
 
   <!-- ═════════════════════ SPLASH ═════════════════════ -->
@@ -583,6 +593,7 @@
 <script src="game-count.js?v=dev"></script>
 <script src="game-calc.js?v=dev"></script>
 <script src="spell-words.js?v=dev"></script>
+<script src="rocket.js?v=dev"></script>
 <script src="game-spell.js?v=dev"></script>
 <script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>

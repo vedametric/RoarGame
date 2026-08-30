@@ -911,7 +911,9 @@
         pad: $('sp-pad'), win: $('sp-win'), winWord: $('sp-win-word'),
         winStars: $('sp-win-stars'), winPraise: $('sp-win-praise'),
         build: $('sp-build'), stickers: $('sp-stickers'), winBuild: $('sp-win-build'),
-        layout: $('sp-layout'), case: $('sp-case')
+        layout: $('sp-layout'), case: $('sp-case'),
+        launchWrap: $('launch'), launchCanvas: $('launch-canvas'),
+        launchWord: $('launch-word')
       }
     });
   }
@@ -928,6 +930,9 @@
   on('sp-next', function () { SpellGame.next(); });
   on('sp-layout', function () { SpellGame.toggleLayout(); });
   on('sp-case', function () { SpellGame.toggleCase(); });
+  on('launch-skip', function () { SpellGame.skipLaunch(); });
+  on('launch-canvas', function () { SpellGame.skipLaunch(); });
+
   LEAVE['screen-spell'] = function () {
     askQuit({
       emoji: '🐝',

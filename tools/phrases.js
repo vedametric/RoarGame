@@ -65,6 +65,8 @@ var MISC = {
   'm-whattime':  'What time is it?',
   'm-yes':       "Yes! It's",
   'm-itis':      "It's",
+  'm-liftoff':   'Lift off!',
+  'm-rocketbuilt': 'You built the whole rocket!',
   'm-teachhour': 'The short gold hand is the hour.',
   'm-teachmin':  'The long blue hand is the minutes.',
   'm-soitis':    'So the time is',
