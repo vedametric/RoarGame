@@ -48,7 +48,7 @@
 
   var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
                   'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1,
-                  'screen-calc': 1 };
+                  'screen-calc': 1, 'screen-spell': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -58,6 +58,7 @@
     try { if (BalloonGame.running) BalloonGame.stop(); } catch (e) {}
     try { if (CountGame.running) CountGame.stop(); } catch (e) {}
     try { if (CalcGame.running) CalcGame.stop(); } catch (e) {}
+    try { if (SpellGame.running) SpellGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -703,6 +704,44 @@
     });
   });
 
+  /* ── spelling bee ─────────────────────────────────────────── */
+
+  function startSpell() {
+    stopEverything();
+    show('screen-spell');
+    RoarAudio.releaseMic();      // it only ever speaks, it never listens
+    keepAwake();
+    SpellGame.start({
+      els: {
+        word: $('sp-word'), emoji: $('sp-emoji'), clue: $('sp-clue'),
+        stars: $('sp-stars'), streak: $('sp-streak'), keys: $('sp-keys'),
+        pad: $('sp-pad'), win: $('sp-win'), winWord: $('sp-win-word'),
+        winStars: $('sp-win-stars'), winPraise: $('sp-win-praise')
+      }
+    });
+  }
+
+  // One listener for all twenty-six letters.
+  $('sp-keys').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-l]') : null;
+    if (b) SpellGame.guess(b.getAttribute('data-l'));
+  });
+
+  on('sp-hear', function () { SpellGame.hear(); });
+  on('sp-spell', function () { SpellGame.spellOut(); });
+  on('sp-hint', function () { SpellGame.hint(); });
+  on('sp-next', function () { SpellGame.next(); });
+  on('sp-exit', function () {
+    askQuit({
+      emoji: '🐝',
+      title: 'Stop spelling?',
+      msg: 'You will keep your stars for next time... but the words start again.',
+      stay: 'KEEP SPELLING',
+      leave: 'STOP',
+      onLeave: function () { stopEverything(); show('screen-games'); }
+    });
+  });
+
   /* ── results ──────────────────────────────────────────────── */
 
   function finish(scores) {
@@ -805,6 +844,7 @@
   on('game-balloon', function () { RoarAudio.resume(); startBalloon(); });
   on('game-count', function () { RoarAudio.resume(); startCounting(); });
   on('game-calc', function () { RoarAudio.resume(); startCalc(); });
+  on('game-spell', function () { RoarAudio.resume(); startSpell(); });
 
   on('count-1', function () { playerCount = 1; show('screen-how'); });
   on('count-2', function () { playerCount = 2; show('screen-how'); });

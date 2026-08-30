@@ -100,6 +100,15 @@
       </span>
     </button>
 
+    <button class="mode-card mode-card--spell" id="game-spell" type="button">
+      <span class="mode-emoji" aria-hidden="true">🐝</span>
+      <span class="mode-text">
+        <b>SPELLING BEE</b>
+        <i>Most of the word is already there — work out the letters that are missing. Hear it, get a hint, collect stars.</i>
+        <em class="by-sienna">a spelling game for Sienna 🦄</em>
+      </span>
+    </button>
+
     <button class="linkish" id="btn-games-back" type="button">Back</button>
   </section>
 
@@ -456,6 +465,42 @@
     </div>
   </div>
 
+  <!-- ═════════════════════ SPELLING BEE ═════════════════════ -->
+  <section class="screen screen--spell" id="screen-spell">
+    <div class="sp-head">
+      <div class="sp-stars" id="sp-stars">⭐ 0</div>
+      <h2 class="sp-title">Spelling Bee 🐝</h2>
+      <button class="sp-exit" id="sp-exit" type="button" aria-label="Back to games">✕</button>
+    </div>
+
+    <div class="sp-streak" id="sp-streak" hidden></div>
+
+    <div class="sp-stage">
+      <div class="sp-emoji" id="sp-emoji" aria-hidden="true">🐝</div>
+      <div class="sp-word" id="sp-word"></div>
+      <p class="sp-clue" id="sp-clue">What letters are missing?</p>
+    </div>
+
+    <div class="sp-help">
+      <button class="sp-help-btn" id="sp-hear" type="button">🔊 HEAR IT</button>
+      <button class="sp-help-btn" id="sp-spell" type="button">🔤 SPELL IT</button>
+      <button class="sp-help-btn sp-help-btn--hint" id="sp-hint" type="button">💡 HINT</button>
+    </div>
+
+    <div class="sp-pad" id="sp-pad">
+      <div class="sp-keys" id="sp-keys"></div>
+    </div>
+
+    <div class="sp-win" id="sp-win" hidden>
+      <div class="sp-win-card">
+        <div class="sp-win-stars" id="sp-win-stars">⭐⭐⭐</div>
+        <div class="sp-win-praise" id="sp-win-praise">Well done!</div>
+        <div class="sp-win-word" id="sp-win-word">CAT</div>
+        <button class="btn btn--go" id="sp-next" type="button">NEXT WORD →</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ LEAVING A GAME ═════════════════════ -->
   <div class="sheet sheet--quit" id="quit-sheet" hidden>
     <div class="sheet-card quit-card">
@@ -476,6 +521,7 @@
 <script src="game-balloon.js?v=dev"></script>
 <script src="game-count.js?v=dev"></script>
 <script src="game-calc.js?v=dev"></script>
+<script src="game-spell.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>
 <script src="app.js?v=dev"></script>
 </body>
