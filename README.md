@@ -170,6 +170,45 @@ same way.
 Sharing by zero doesn't error or show `Infinity`; it says **oops!** and
 "you can't share by zero", and clears itself ready for another go.
 
+## 🐝 SPELLING BEE — *a spelling game for Sienna 🦄*
+
+Also in **ALL GAMES**. Hangman's shape without hangman's punishment.
+
+A word appears with **most of it already filled in** — always the first letter,
+and never fewer than **60% of the letters** — and the job is working out the few
+that are missing. KANGAROO comes up as `K _ N _ A R _ O`; CAT as `C A _`. Two
+blanks never sit next to each other while there is any other choice, because a
+gap in the middle of a word is far easier to read than a hole.
+
+**Nothing is ever lost.** There is no man to hang, no lives to run out, no way
+to fail a word. A wrong letter wobbles the key and gives a soft low blip that
+says *not that one* — and that is all. Everything that goes *right*, though, is
+celebrated loudly:
+
+- every correct letter pops into a gold tile with a note **a step higher than
+  the last**, so filling a word in is a little rising tune rather than the same
+  ping over and over;
+- finishing sets off **confetti**, a five-note fanfare with a sparkle over the
+  top, **one to three stars**, and a spoken *"Brilliant! — butterfly"*;
+- stars pile up in the corner and a **🔥 streak** counts every word in a row.
+
+**Three ways to get help**, and using them is never punished beyond a star:
+
+| | |
+|---|---|
+| 🔊 **HEAR IT** | says the word out loud |
+| 🔤 **SPELL IT** | reads out every letter, one at a time with a beat between — *"C… A… T"* — then says the whole word again |
+| 💡 **HINT** | first tap explains the word (*"it hops and keeps its baby in a pocket"*); after that it fills the next letter in for her |
+
+The word is spoken the moment it appears, there is a **picture above every
+word**, and after three wrong tries the clue turns up by itself — she is never
+left stuck long enough to stop enjoying it.
+
+**It grows with her.** Words are banded by length, from three letters up to
+**CHRISTMAS**, and every three words moves up a band. Nothing repeats until the
+whole band has been round. Single letters are read a little higher and slower,
+because a letter at normal pitch can sound like a different one.
+
 ## One player or two
 
 Choose at the start. **Two players** share the phone head to head; a
@@ -360,6 +399,7 @@ game-roar.js    ROAR METER — bar-graph game loop
 game-balloon.js THE HOT AIR BALLOON — by Sienna 🦄
 game-count.js   COUNTING — spoken numbers, forever
 game-calc.js    SIENNA'S CALCULATOR — arithmetic, read aloud
+game-spell.js   SPELLING BEE — the words, and the game around them
 app.js          screen flow, photos, results
 ```
 

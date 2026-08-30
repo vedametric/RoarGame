@@ -808,6 +808,29 @@
         case 'thunder': voice('sawtooth', 70,   22, 0.85, 0.20, 0);
                         voice('square',   44,   18, 1.10, 0.13, 0.06);
                         voice('sine',    120,   30, 0.60, 0.09, 0.02);  break;
+        /* SPELLING BEE. The right letter climbs a note each time, so filling
+           a word in is a little rising tune rather than the same ping over
+           and over — that is most of why it feels good. */
+        case 'spellgood': {
+          var step = this._spellStep = ((this._spellStep || 0) + 1) % 8;
+          var base = [523, 587, 659, 698, 784, 880, 988, 1046][step];
+          voice('triangle', base, base, 0.13, 0.16, 0);
+          voice('sine', base * 2, base * 2, 0.18, 0.07, 0.03);
+          break;
+        }
+        // Never a buzzer. A soft low blip that says "not that one, try again".
+        case 'spellbad': voice('sine',   300, 240, 0.13, 0.09, 0);
+                         voice('sine',   240, 210, 0.14, 0.06, 0.10); break;
+        case 'spellhint': voice('triangle', 700, 1050, 0.16, 0.09, 0);
+                          voice('sine',    1050, 1400, 0.20, 0.05, 0.09); break;
+        // The full fanfare: a rising arpeggio with a sparkle over the top.
+        case 'spellwin': [523, 659, 784, 1046, 1319].forEach(function (f, i) {
+                           voice('triangle', f, f, 0.28, 0.15, i * 0.085);
+                         });
+                         [1568, 2093, 2637].forEach(function (f, i) {
+                           voice('sine', f, f * 1.02, 0.30, 0.06, 0.42 + i * 0.06);
+                         });
+                         this._spellStep = 0;                            break;
         case 'win':    [523, 659, 784, 1046].forEach(function (f, i) {
                          voice('triangle', f, f, 0.3, 0.16, i * 0.11);
                        });                                             break;
