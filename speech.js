@@ -39,7 +39,7 @@
     have: null,          // set of keys we have audio for
     packs: [],           // the voices on offer
     pack: null,          // the one she has chosen
-    els: {},             // key -> Audio, kept once loaded
+    bufs: {},            // key -> Promise of a decoded clip, kept once loaded
     queue: [],
     playing: null,
 
@@ -123,7 +123,7 @@
       if (!p || p === this.pack) return false;
       this.stop();
       this.pack = p;
-      this.els = {};
+      this.bufs = {};              // the decoded clips belong to the old voice
       try { localStorage.setItem(SAVED, id); } catch (e) {}
       return true;
     },
@@ -156,49 +156,113 @@
       }
       this.queue = list;
       opts.fallbackText = opts.fallbackText || fallbackText;
+
+      // Fetch and decode the whole line at once, not one clip at a time. The
+      // first word starts as soon as it is ready and the rest are decoded
+      // while it plays, so "Yes! — it's — half past seven" runs together
+      // instead of stalling between the pieces.
+      for (var k = 1; k < list.length; k++) {
+        try { var pre = this._buffer(list[k]); if (pre) pre.catch(function () {}); } catch (e) {}
+      }
       this._step(opts);
+    },
+
+    _url: function (key) {
+      var dir = this.pack ? DIR + this.pack.id + '/' : DIR;
+      return this.base + dir + key + '.mp3';
+    },
+
+    /* Clips go through the game's own AudioContext rather than an <audio>
+       element. iOS only lets a media element play inside the user gesture that
+       created it, and these are created a long way from any tap — so on a phone
+       the element route is refused and the game falls silent, or drops back to
+       the very robot voice we recorded these to replace. The context is
+       unlocked once, by a tap, and then plays anything.
+
+       Buffers are decoded once and kept, so a word said twice costs nothing. */
+    _buffer: function (key) {
+      var self = this;
+      if (self.bufs[key]) return self.bufs[key];
+      var ctx = self._ctx();
+      if (!ctx) return null;
+
+      self.bufs[key] = fetch(self._url(key))
+        .then(function (r) {
+          if (!r.ok) throw new Error('missing');
+          return r.arrayBuffer();
+        })
+        .then(function (buf) {
+          return new Promise(function (ok, no) {
+            // The callback form, because older Safari does not return a promise.
+            var p = ctx.decodeAudioData(buf, ok, no);
+            if (p && p.then) p.then(ok, no);
+          });
+        })
+        .catch(function (e) { delete self.bufs[key]; throw e; });
+      return self.bufs[key];
+    },
+
+    _ctx: function () {
+      var A = global.RoarAudio;
+      if (A) { try { A.resume(); } catch (e) {} }
+      return (A && A.ctx) || null;
     },
 
     _step: function (opts) {
       var self = this;
       if (!self.queue.length) { self.playing = null; if (opts.onEnd) opts.onEnd(); return; }
       var key = self.queue.shift();
-      var a = self.els[key];
-      if (!a) {
-        var dir = self.pack ? DIR + self.pack.id + '/' : DIR;
-        a = self.els[key] = new Audio(self.base + dir + key + '.m4a');
-        a.preload = 'auto';
-      }
-      self.playing = a;
-      a.playbackRate = opts.rate || 1;
-      a.currentTime = 0;
-      a.onended = function () {
-        if (self.playing !== a) return;             // superseded
-        if (self.queue.length) setTimeout(function () { self._step(opts); }, GAP);
-        else { self.playing = null; if (opts.onEnd) opts.onEnd(); }
-      };
+      var token = self.token = (self.token || 0) + 1;
+
       // A clip that is missing or unplayable hands over to the browser voice
-      // instead of leaving the game silent — which is what happens if the
-      // manifest never arrived and we guessed wrong about a key.
+      // rather than leaving the game silent.
       var bail = function () {
-        if (self.playing !== a) return;
+        if (self.token !== token) return;           // superseded
         self.queue.length = 0;
         self.playing = null;
         if (opts.fallbackText) self.speak(opts.fallbackText, opts);
         else if (opts.onEnd) opts.onEnd();
       };
-      a.onerror = bail;
 
-      var p = a.play();
-      // Autoplay can still be refused before the first tap.
-      if (p && p.catch) p.catch(bail);
+      var ctx = self._ctx();
+      if (!ctx) return bail();
+
+      var want = self._buffer(key);
+      if (!want) return bail();
+
+      want.then(function (buf) {
+        if (self.token !== token) return;
+        var src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.playbackRate.value = opts.rate || 1;
+        var gain = ctx.createGain();
+        gain.gain.value = (global.RoarAudio && global.RoarAudio.muted) ? 0 : 1;
+        src.connect(gain);
+        gain.connect(ctx.destination);
+        self.playing = src;
+        src.onended = function () {
+          if (self.token !== token) return;
+          if (self.queue.length) setTimeout(function () { self._step(opts); }, GAP);
+          else { self.playing = null; if (opts.onEnd) opts.onEnd(); }
+        };
+        try { src.start(0); } catch (e) { bail(); }
+      }, bail);
+    },
+
+    // Fetch and decode ahead of time, so the first word of a game is not held
+    // up by a round trip. Failures are ignored: it is only a head start.
+    warm: function (keys) {
+      for (var i = 0; i < keys.length; i++) {
+        if (this.has(keys[i])) { try { var p = this._buffer(keys[i]); if (p) p.catch(function () {}); } catch (e) {} }
+      }
     },
 
     stop: function () {
       var a = this.playing;
       this.queue.length = 0;
       this.playing = null;
-      if (a) { try { a.pause(); a.currentTime = 0; } catch (e) {} }
+      this.token = (this.token || 0) + 1;      // orphan anything still decoding
+      if (a) { try { a.stop ? a.stop(0) : a.pause(); } catch (e) {} }
       try { if (global.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
     },
 

@@ -70,9 +70,13 @@ def build(pack, todo, args, ff):
         raw = os.path.join(tmp, 'x.wav')
         with wave.open(raw, 'wb') as wf:
             voice.synthesize_wav(text, wf, syn_config=cfg)
-        dest = os.path.join(dest_dir, key + '.m4a')
+        # MP3, not AAC. Every browser decodes MP3 through the Web Audio API;
+        # open-source Chromium cannot decode AAC at all, and the clips are
+        # played through an AudioContext because iOS will not let a media
+        # element play outside the tap that made it. Same size either way.
+        dest = os.path.join(dest_dir, key + '.mp3')
         subprocess.check_call([ff, '-loglevel', 'error', '-y', '-i', raw,
-                               '-c:a', 'aac', '-b:a', args.bitrate,
+                               '-c:a', 'libmp3lame', '-b:a', args.bitrate,
                                '-ac', '1', '-ar', '24000', dest])
         total += os.path.getsize(dest)
         if i % 200 == 0 or i == len(todo):
@@ -86,7 +90,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--pack', default=None, help='build only this pack')
     ap.add_argument('--voice-dir', default=os.path.join(HERE, '.voices'))
-    ap.add_argument('--bitrate', default='40k')
+    ap.add_argument('--bitrate', default='48k')
     # A touch slower than default: clearer for a child without dragging.
     ap.add_argument('--length-scale', type=float, default=1.06)
     ap.add_argument('--only', default=None, help='comma-separated keys')
@@ -115,7 +119,7 @@ def main():
             here = os.path.join(OUT, pack['id'])
             if not os.path.isdir(here):
                 continue
-            have = {f[:-4] for f in os.listdir(here) if f.endswith('.m4a')}
+            have = {f[:-4] for f in os.listdir(here) if f.endswith('.mp3')}
             missing = set(keys) - have
             if missing:
                 raise SystemExit('%s is missing %d clips, e.g. %s'
