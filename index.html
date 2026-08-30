@@ -30,7 +30,7 @@
 <main id="app">
 
   <!-- ═════════════════════ SPLASH ═════════════════════ -->
-  <section class="screen is-active" id="screen-splash">
+  <section class="screen screen--home is-active" id="screen-splash">
     <div class="splash-beasts" aria-hidden="true">
       <span class="beast b1">🦁</span>
       <span class="beast b2">🐯</span>
@@ -39,13 +39,19 @@
       <span class="title-word">ROAR</span>
       <span class="title-word title-word--2">BATTLE</span>
     </h1>
-    <p class="tagline">2 players &bull; loudest beast wins</p>
+    <p class="tagline">pick a game</p>
 
-    <button class="btn btn--huge btn--go" id="btn-begin" type="button">BEGIN GAME</button>
-    <button class="btn btn--ghost" id="btn-games" type="button">🎮 ALL GAMES</button>
+    <!-- The games are the point, so they are on the first screen rather than
+         hidden one tap in. Same tiles as ALL GAMES, same order. -->
+    <div class="tiles" id="home-tiles"></div>
+
+    <!-- Not a duplicate of the GRAB IT / ROAR METER tiles: this one sets the two
+         of you up and then leaves you on the mode screen, which is where the
+         TAP/SHOUT switch and the "your voices sound too alike" warning live. -->
+    <button class="linkish" id="btn-begin" type="button">⚔️ set up 2 players</button>
+    <button class="linkish" id="btn-games" type="button">🎮 see all games</button>
 
     <p class="fineprint">
-      Turn the volume up and put the phone between you.<br />
       Photos and voices never leave this phone.
     </p>
     <button class="build-tag" id="build-tag" type="button" title="Tap to reload the newest version"></button>
@@ -53,62 +59,8 @@
 
   <!-- ═════════════════════ GAME LIST ═════════════════════ -->
   <section class="screen" id="screen-games">
-    <h2 class="heading">Pick a game</h2>
-
-    <button class="mode-card mode-card--grab" id="game-grab" type="button">
-      <span class="mode-emoji" aria-hidden="true">🖐️</span>
-      <span class="mode-text">
-        <b>GRAB IT!</b>
-        <i>Phone flat between you. Tap to step your claw out and grab the treats — but never the bombs.</i>
-        <em>1 or 2 players &bull; 45 seconds</em>
-      </span>
-    </button>
-
-    <button class="mode-card mode-card--roar" id="game-roar" type="button">
-      <span class="mode-emoji" aria-hidden="true">📊</span>
-      <span class="mode-text">
-        <b>ROAR METER</b>
-        <i>Hold the phone up between you and push your bar to the sky.</i>
-        <em>1 or 2 players &bull; 20 seconds</em>
-      </span>
-    </button>
-
-    <button class="mode-card mode-card--balloon" id="game-balloon" type="button">
-      <span class="mode-emoji" aria-hidden="true">🎈</span>
-      <span class="mode-text">
-        <b>THE HOT AIR BALLOON</b>
-        <i>Fly over the mountains at sunset. Collect food, clouds and unicorns — but be gentle with the birds!</i>
-        <em class="by-sienna">a game by Sienna 🦄</em>
-      </span>
-    </button>
-
-    <button class="mode-card mode-card--count" id="game-count" type="button">
-      <span class="mode-emoji" aria-hidden="true">🔢</span>
-      <span class="mode-text">
-        <b>COUNTING</b>
-        <i>A deep, slow voice counts out loud from zero, on and on forever. Numbers, words and dots to count along with.</i>
-        <em>no rush &bull; no winning</em>
-      </span>
-    </button>
-
-    <button class="mode-card mode-card--calc" id="game-calc" type="button">
-      <span class="mode-emoji" aria-hidden="true">🧮</span>
-      <span class="mode-text">
-        <b>SIENNA'S CALCULATOR</b>
-        <i>Add, take away, times and share. Big buttons, and it can read every number out loud.</i>
-        <em>for working things out</em>
-      </span>
-    </button>
-
-    <button class="mode-card mode-card--spell" id="game-spell" type="button">
-      <span class="mode-emoji" aria-hidden="true">🐝</span>
-      <span class="mode-text">
-        <b>SPELLING BEE</b>
-        <i>Most of the word is already there — work out the letters that are missing. Hear it, get a hint, collect stars.</i>
-        <em class="by-sienna">a spelling game for Sienna 🦄</em>
-      </span>
-    </button>
-
+    <h2 class="heading">All games</h2>
+    <div class="tiles tiles--all" id="all-tiles"></div>
     <button class="linkish" id="btn-games-back" type="button">Back</button>
   </section>
 
@@ -488,6 +440,10 @@
     </div>
 
     <div class="sp-pad" id="sp-pad">
+      <div class="sp-opts">
+        <button class="sp-opt" id="sp-layout" type="button">⌨️ qwerty</button>
+        <button class="sp-opt" id="sp-case" type="button">a → A</button>
+      </div>
       <div class="sp-keys" id="sp-keys"></div>
     </div>
 
@@ -497,6 +453,60 @@
         <div class="sp-win-praise" id="sp-win-praise">Well done!</div>
         <div class="sp-win-word" id="sp-win-word">CAT</div>
         <button class="btn btn--go" id="sp-next" type="button">NEXT WORD →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ WHAT'S THE TIME? ═════════════════════ -->
+  <section class="screen screen--clock" id="screen-clock">
+    <div class="ck-head">
+      <div class="ck-stars" id="ck-stars">⭐ 0</div>
+      <h2 class="ck-title">What's the time? 🕐</h2>
+      <button class="ck-exit" id="ck-exit" type="button" aria-label="Back to games">✕</button>
+    </div>
+
+    <div class="ck-bar">
+      <span class="ck-level" id="ck-level">o'clock</span>
+      <span class="ck-streak" id="ck-streak" hidden></span>
+    </div>
+
+    <p class="ck-ask" id="ck-ask">What time is it?</p>
+
+    <div class="ck-clockwrap" id="ck-clockwrap">
+      <canvas id="ck-canvas"></canvas>
+      <div class="ck-legend">
+        <span><i class="ck-dot ck-dot--h"></i>short = hour</span>
+        <span><i class="ck-dot ck-dot--m"></i>long = minutes</span>
+      </div>
+    </div>
+
+    <div class="ck-digital-wrap">
+      <div class="ck-digital" id="ck-digital" hidden>3:00</div>
+      <div class="ck-inwords" id="ck-inwords" hidden>three o'clock</div>
+    </div>
+
+    <p class="ck-teach" id="ck-teach" hidden></p>
+
+    <div class="ck-options" id="ck-options">
+      <button class="ck-opt" type="button" data-i="0"><canvas hidden></canvas><span class="ck-label"></span><span class="ck-sub"></span></button>
+      <button class="ck-opt" type="button" data-i="1"><canvas hidden></canvas><span class="ck-label"></span><span class="ck-sub"></span></button>
+      <button class="ck-opt" type="button" data-i="2"><canvas hidden></canvas><span class="ck-label"></span><span class="ck-sub"></span></button>
+      <button class="ck-opt" type="button" data-i="3"><canvas hidden></canvas><span class="ck-label"></span><span class="ck-sub"></span></button>
+    </div>
+
+    <div class="ck-help">
+      <button class="ck-help-btn" id="ck-hear" type="button">🔊 SAY IT</button>
+      <button class="ck-help-btn ck-help-btn--hint" id="ck-tell" type="button">💡 TEACH ME</button>
+      <button class="ck-help-btn" id="ck-ring" type="button">🔢 minutes on</button>
+    </div>
+
+    <div class="ck-win" id="ck-win" hidden>
+      <div class="ck-win-card">
+        <div class="ck-win-stars" id="ck-win-stars">⭐⭐⭐</div>
+        <div class="ck-win-time" id="ck-win-time">three o'clock</div>
+        <div class="ck-win-digital" id="ck-win-digital">3:00</div>
+        <div class="ck-win-level" id="ck-win-level" hidden></div>
+        <button class="btn btn--go" id="ck-next" type="button">NEXT →</button>
       </div>
     </div>
   </section>
@@ -522,6 +532,7 @@
 <script src="game-count.js?v=dev"></script>
 <script src="game-calc.js?v=dev"></script>
 <script src="game-spell.js?v=dev"></script>
+<script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>
 <script src="app.js?v=dev"></script>
 </body>

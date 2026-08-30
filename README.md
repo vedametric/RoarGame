@@ -40,6 +40,59 @@ indicator goes away when the game isn't listening.
 
 ---
 
+## The first screen
+
+**Every game is on it**, as a grid of tiles — nothing is hidden a tap inside.
+The same tiles, in the same order, appear again under **see all games**: the
+list lives in one place in `app.js` and is rendered twice, so the two can never
+drift apart as games keep being added.
+
+They are ordered the way a child reaches for them: the noisy ones first
+(GRAB IT!, ROAR METER, THE HOT AIR BALLOON), then the learning ones (SPELLING
+BEE, WHAT'S THE TIME?, COUNTING, CALCULATOR), warm and cool borders to match.
+
+**set up 2 players** is not another door onto the same room: the GRAB IT and
+ROAR METER tiles drop you straight into that game, while this takes the two of
+you through faces and voices and leaves you on the mode screen — which is where
+the TAP/SHOUT switch and the *"your voices sound too alike"* warning live.
+
+---
+
+## 🕐 WHAT'S THE TIME? — *learning to read a clock*
+
+Both kinds of clock, taught together. Every question shows one and asks for the
+other, so the round one and the numbers one stop being separate things in her
+head:
+
+- **read the hands** — a big clock face, and four answers written both ways:
+  `7:40` above *20 minutes to eight*;
+- **pick the clock** — a digital time and the words, and four little clock
+  faces to choose between.
+
+**It teaches before it tests.** The hour hand is short and gold, the minute hand
+long and blue, labelled that way under the clock itself. **💡 TEACH ME** says
+out loud which hand to look at and what each one is pointing at — *"the short
+gold hand is the hour, it is pointing near 7; the long blue hand is the minutes,
+it is on 40, so it is 20 minutes to eight."* **🔊 SAY IT** reads the time, and
+**🔢 minutes** turns the 05, 10, 15… ring outside the face on and off — the
+scaffold that makes "25 past" readable, there for as long as she needs it.
+
+**Getting it wrong costs nothing.** A wrong answer wobbles and stays put; a
+second one *takes a wrong answer off the board* and explains the clock, so she
+is always closing in rather than stuck. A right one brings confetti, one to
+three stars, and the time said out loud.
+
+**Four stages, four right answers each:** o'clock → half past → quarter past and
+to → every five minutes.
+
+Two details that matter for learning. The hour hand **creeps between the
+numbers** as the hour goes on, exactly as a real one does, because reading that
+is half the skill. And a time is never asked when **the two hands would lie on
+top of each other** — 7:40 puts them ten degrees apart, which nobody can read,
+let alone somebody learning; every question keeps them at least 20° apart.
+
+---
+
 ## 🎈 THE HOT AIR BALLOON — *a game by Sienna 🦄*
 
 Reachable from **ALL GAMES** on the first screen. You are standing in the
@@ -176,9 +229,14 @@ Also in **ALL GAMES**. Hangman's shape without hangman's punishment.
 
 A word appears with **most of it already filled in** — always the first letter,
 and never fewer than **60% of the letters** — and the job is working out the few
-that are missing. KANGAROO comes up as `K _ N _ A R _ O`; CAT as `C A _`. Two
+that are missing. Kangaroo comes up as `K _ n _ a r _ o`; Cat as `C a _`. Two
 blanks never sit next to each other while there is any other choice, because a
-gap in the middle of a word is far easier to read than a hole.
+gap in the middle of a word is far easier to read than a hole. However long the
+word, it stays on **one line** — the tiles shrink to fit rather than wrapping,
+because a word split over two rows stops looking like a word.
+
+Words are written the way they are written down: **a capital to start and small
+letters after** — Cat, Butterfly, Christmas — never CAT.
 
 **Nothing is ever lost.** There is no man to hang, no lives to run out, no way
 to fail a word. A wrong letter wobbles the key and gives a soft low blip that
@@ -203,6 +261,21 @@ celebrated loudly:
 The word is spoken the moment it appears, there is a **picture above every
 word**, and after three wrong tries the clue turns up by itself — she is never
 left stuck long enough to stop enjoying it.
+
+**Two keyboards, and both cases.** Two small buttons above the letters:
+
+- **⌨️ qwerty / abc** — QWERTY laid out like a real keyboard (10 / 9 / 7), or
+  the alphabet straight through (7 / 7 / 7 / 5). A–Z is the one a five year old
+  can actually find a letter on; QWERTY is the one she will type on for the rest
+  of her life, and the habit is worth starting early. **QWERTY is the default**;
+  one tap swaps it.
+- **a → A** — whether the keys show capitals or small letters, so she learns
+  both letterforms. It only changes what is printed on the keys: the word above
+  is always written properly, and a lower-case key answers a capital in the word
+  perfectly happily. Case never matters to the answer.
+
+Both choices are **remembered between visits**, so whatever you set up for her
+is still there next time.
 
 **It grows with her.** Words are banded by length, from three letters up to
 **CHRISTMAS**, and every three words moves up a band. Nothing repeats until the
@@ -400,6 +473,7 @@ game-balloon.js THE HOT AIR BALLOON — by Sienna 🦄
 game-count.js   COUNTING — spoken numbers, forever
 game-calc.js    SIENNA'S CALCULATOR — arithmetic, read aloud
 game-spell.js   SPELLING BEE — the words, and the game around them
+game-clock.js   WHAT'S THE TIME? — clock drawing, and the questions
 app.js          screen flow, photos, results
 ```
 

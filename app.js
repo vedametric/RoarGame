@@ -44,11 +44,59 @@
   function $(id) { return document.getElementById(id); }
   function on(id, fn) { var e = $(id); if (e) e.addEventListener('click', fn); }
 
+  /* ── the games ────────────────────────────────────────────────
+     One list, rendered as tiles on the first screen and again on ALL GAMES, so
+     the two can never drift apart. Play first, then the learning ones — that is
+     the order a child reaches for them in. */
+
+  var GAMES = [
+    { id: 'grab',    emoji: '🖐️', name: 'GRAB IT!',      note: 'tap to grab the treats',     kind: 'play' },
+    { id: 'roar',    emoji: '📊', name: 'ROAR METER',    note: 'loudest beast wins',         kind: 'play' },
+    { id: 'balloon', emoji: '🎈', name: 'HOT AIR BALLOON', note: 'by Sienna 🦄',             kind: 'play' },
+    { id: 'spell',   emoji: '🐝', name: 'SPELLING BEE',  note: 'find the missing letters',   kind: 'learn' },
+    { id: 'clock',   emoji: '🕐', name: "WHAT'S THE TIME?", note: 'learn to read a clock',   kind: 'learn' },
+    { id: 'count',   emoji: '🔢', name: 'COUNTING',      note: 'zero to forever',            kind: 'learn' },
+    { id: 'calc',    emoji: '🧮', name: 'CALCULATOR',    note: "Sienna's, and it talks",     kind: 'learn' }
+  ];
+
+  function tileHTML(g) {
+    return '<button class="tile tile--' + g.kind + '" type="button" data-game="' + g.id + '">' +
+             '<span class="tile-emoji" aria-hidden="true">' + g.emoji + '</span>' +
+             '<b class="tile-name">' + g.name + '</b>' +
+             '<i class="tile-note">' + g.note + '</i>' +
+           '</button>';
+  }
+
+  function buildTiles() {
+    var html = GAMES.map(tileHTML).join('');
+    ['home-tiles', 'all-tiles'].forEach(function (id) {
+      var box = $(id);
+      if (box) box.innerHTML = html;
+    });
+  }
+
+  var LAUNCH = {
+    grab:    function () { stopEverything(); pendingGame = 'grab'; show('screen-count'); },
+    roar:    function () { stopEverything(); pendingGame = 'roar'; show('screen-count'); },
+    balloon: function () { RoarAudio.resume(); startBalloon(); },
+    count:   function () { RoarAudio.resume(); startCounting(); },
+    calc:    function () { RoarAudio.resume(); startCalc(); },
+    spell:   function () { RoarAudio.resume(); startSpell(); },
+    clock:   function () { RoarAudio.resume(); startClock(); }
+  };
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-game]') : null;
+    if (!t) return;
+    var go = LAUNCH[t.getAttribute('data-game')];
+    if (go) go();
+  });
+
   /* ── screens ──────────────────────────────────────────────── */
 
   var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
                   'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1,
-                  'screen-calc': 1, 'screen-spell': 1 };
+                  'screen-calc': 1, 'screen-spell': 1, 'screen-clock': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -59,6 +107,7 @@
     try { if (CountGame.running) CountGame.stop(); } catch (e) {}
     try { if (CalcGame.running) CalcGame.stop(); } catch (e) {}
     try { if (SpellGame.running) SpellGame.stop(); } catch (e) {}
+    try { if (ClockGame.running) ClockGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -142,8 +191,11 @@
   // and iOS reports the new size a beat after the event — so refit more than
   // once rather than trusting the first reading.
   function refit() {
-    [GrabGame, BalloonGame].forEach(function (g) {
-      if (g && g.running && g._fit) { try { g._fit(); } catch (e) {} }
+    [GrabGame, BalloonGame, ClockGame].forEach(function (g) {
+      if (!g || !g.running) return;
+      // Canvas games that need repainting say so with _refit; the rest just
+      // need their backing store resized.
+      try { if (g._refit) g._refit(); else if (g._fit) g._fit(); } catch (e) {}
     });
   }
 
@@ -716,7 +768,8 @@
         word: $('sp-word'), emoji: $('sp-emoji'), clue: $('sp-clue'),
         stars: $('sp-stars'), streak: $('sp-streak'), keys: $('sp-keys'),
         pad: $('sp-pad'), win: $('sp-win'), winWord: $('sp-win-word'),
-        winStars: $('sp-win-stars'), winPraise: $('sp-win-praise')
+        winStars: $('sp-win-stars'), winPraise: $('sp-win-praise'),
+        layout: $('sp-layout'), case: $('sp-case')
       }
     });
   }
@@ -731,12 +784,54 @@
   on('sp-spell', function () { SpellGame.spellOut(); });
   on('sp-hint', function () { SpellGame.hint(); });
   on('sp-next', function () { SpellGame.next(); });
+  on('sp-layout', function () { SpellGame.toggleLayout(); });
+  on('sp-case', function () { SpellGame.toggleCase(); });
   on('sp-exit', function () {
     askQuit({
       emoji: '🐝',
       title: 'Stop spelling?',
       msg: 'You will keep your stars for next time... but the words start again.',
       stay: 'KEEP SPELLING',
+      leave: 'STOP',
+      onLeave: function () { stopEverything(); show('screen-games'); }
+    });
+  });
+
+  /* ── what's the time? ─────────────────────────────────────── */
+
+  function startClock() {
+    stopEverything();
+    show('screen-clock');
+    RoarAudio.releaseMic();
+    keepAwake();
+    ClockGame.start({
+      els: {
+        canvas: $('ck-canvas'), clockWrap: $('ck-clockwrap'),
+        ask: $('ck-ask'), digital: $('ck-digital'), inWords: $('ck-inwords'),
+        digitalWrap: document.querySelector('.ck-digital-wrap'),
+        options: $('ck-options'), teach: $('ck-teach'), ring: $('ck-ring'),
+        stars: $('ck-stars'), streak: $('ck-streak'), level: $('ck-level'),
+        win: $('ck-win'), winStars: $('ck-win-stars'), winTime: $('ck-win-time'),
+        winDigital: $('ck-win-digital'), winLevel: $('ck-win-level')
+      }
+    });
+  }
+
+  $('ck-options').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-i]') : null;
+    if (b) ClockGame.choose(+b.getAttribute('data-i'));
+  });
+
+  on('ck-hear', function () { ClockGame.hear(); });
+  on('ck-tell', function () { ClockGame.tell(); });
+  on('ck-ring', function () { ClockGame.toggleMinutes(); });
+  on('ck-next', function () { ClockGame.next(); });
+  on('ck-exit', function () {
+    askQuit({
+      emoji: '🕐',
+      title: 'Stop learning the time?',
+      msg: 'You can come back and carry on whenever you like.',
+      stay: 'KEEP GOING',
       leave: 'STOP',
       onLeave: function () { stopEverything(); show('screen-games'); }
     });
@@ -839,12 +934,6 @@
   on('grab-exit', quitToModes);
   on('roar-exit', quitToModes);
 
-  on('game-grab', function () { stopEverything(); pendingGame = 'grab'; show('screen-count'); });
-  on('game-roar', function () { stopEverything(); pendingGame = 'roar'; show('screen-count'); });
-  on('game-balloon', function () { RoarAudio.resume(); startBalloon(); });
-  on('game-count', function () { RoarAudio.resume(); startCounting(); });
-  on('game-calc', function () { RoarAudio.resume(); startCalc(); });
-  on('game-spell', function () { RoarAudio.resume(); startSpell(); });
 
   on('count-1', function () { playerCount = 1; show('screen-how'); });
   on('count-2', function () { playerCount = 2; show('screen-how'); });
@@ -957,6 +1046,10 @@
       stopEverything();
     }
   });
+
+  // The tiles are the first thing on screen, so they are built before anything
+  // else can be tapped.
+  buildTiles();
 
   /* ── which build am I running? ────────────────────────────────
      The deploy stamps the commit into <meta name="build">, and every script
