@@ -180,7 +180,7 @@
       this.running = false;
       clearTimeout(this._spellT);
       clearTimeout(this._winT);
-      try { speechSynthesis.cancel(); } catch (e) {}
+      global.Say.stop();
       try { global.Confetti.stop(); } catch (e) {}
     },
 
@@ -212,7 +212,7 @@
       this.won = false;
 
       this._render();
-      this._say(this.word, 0.85);          // always hear it once to start
+      global.Say.line(this._key('w', this.word), this.word);   // hear it once to start
     },
 
     /* Which letters to hide. The first letter is always given, at least 60% of
@@ -294,9 +294,10 @@
       try { global.Confetti.start(['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff', '#9df08a', '#ffffff']); } catch (e) {}
       this._winT = setTimeout(function () { try { global.Confetti.stop(); } catch (e) {} }, 2600);
 
-      var praise = PRAISE[(Math.random() * PRAISE.length) | 0];
-      this.praise = praise;              // shown on the card as well as spoken,
-      this._say(praise + ' ' + this.word, 0.85);   // so she reads it too
+      var pi = (Math.random() * PRAISE.length) | 0;
+      this.praise = PRAISE[pi];          // shown on the card as well as spoken,
+      global.Say.line(['p-' + pi, this._key('w', this.word)],   // so she reads it too
+                      this.praise + ' ' + this.word);
       this._render();
     },
 
@@ -304,7 +305,7 @@
 
     /* ── help ─────────────────────────────────────────────────── */
 
-    hear: function () { this._say(this.word, 0.8); },
+    hear: function () { global.Say.line(this._key('w', this.word), this.word); },
 
     // Letter by letter, with a beat between: "C — A — T".
     spellOut: function () {
@@ -312,10 +313,12 @@
       clearTimeout(this._spellT);
       var step = function () {
         if (!self.running || i >= self.up.length) {
-          if (self.running) self._spellT = setTimeout(function () { self._say(self.word, 0.8); }, 500);
+          if (self.running) self._spellT = setTimeout(function () {
+            global.Say.line(self._key('w', self.word), self.word);
+          }, 500);
           return;
         }
-        self._say(self.up.charAt(i), 0.7, true);
+        global.Say.line('l-' + self.up.charAt(i).toLowerCase(), self.up.charAt(i));
         i++;
         self._spellT = setTimeout(step, 750);
       };
@@ -333,7 +336,7 @@
       this.hints++;
       if (!this.clueShown) {
         this.showClue();
-        this._say(this.clue, 0.9);
+        global.Say.line(this._key('c', this.word), this.clue);
         global.RoarAudio.sfx('spellhint');
         return;
       }
@@ -341,51 +344,21 @@
       this.filled[this.cursor] = this.disp.charAt(this.cursor);
       global.RoarAudio.sfx('spellhint');
       this._pop(this.cursor);
-      this._say(letter, 0.7, true);
+      global.Say.line('l-' + letter.toLowerCase(), letter);
       this._advance();
       this._render();
     },
 
     /* ── voice ────────────────────────────────────────────────── */
 
+    // Everything here has a recorded clip; Say falls back to the browser voice
+    // on its own if one is ever missing.
     _say: function (text, rate, spellingOut) {
-      if (global.RoarAudio.muted) return;
-      try {
-        if (!global.speechSynthesis || !global.SpeechSynthesisUtterance) return;
-        speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(String(text));
-        u.rate = rate || 0.85;
-        // A single letter read at normal pitch can sound like a different one;
-        // a touch higher and slower is much clearer to a child.
-        u.pitch = spellingOut ? 1.15 : 1.05;
-        u.volume = 1;
-        // Choosing a nicer voice is a bonus, never a requirement: if the
-        // assignment is rejected we still want the word said in the default
-        // voice rather than silence.
-        try { var v = this._voice(); if (v) u.voice = v; } catch (e2) {}
-        speechSynthesis.speak(u);
-      } catch (e) {}
+      global.Say.speak(text, { rate: rate || 0.9, pitch: spellingOut ? 1.15 : 1.1 });
     },
 
-    _voice: function () {
-      if (this._v !== undefined) return this._v;
-      this._v = null;
-      try {
-        var list = speechSynthesis.getVoices() || [];
-        var best = -1;
-        for (var i = 0; i < list.length; i++) {
-          var v = list[i];
-          if (!/^en/i.test(v.lang || '')) continue;
-          var s = 0;
-          if (/enhanced|premium/i.test(v.name)) s += 5;
-          if (/en-GB/i.test(v.lang)) s += 2;
-          if (/samantha|karen|serena|kate|martha|moira|fiona/i.test(v.name)) s += 2;
-          if (/zarvox|trinoids|albert|bells|bubbles|jester|organ|superstar|whisper|wobble|bahh|boing|good news|bad news/i.test(v.name)) s -= 20;
-          if (s > best) { best = s; this._v = v; }
-        }
-      } catch (e) {}
-      return this._v;
-    },
+    _key: function (kind, of) { return kind + '-' + String(of).toLowerCase(); },
+
 
     /* ── screen ───────────────────────────────────────────────── */
 

@@ -464,6 +464,9 @@ awake during play via the Screen Wake Lock API where available.
 ```
 index.html      all screens
 styles.css      everything visual
+speech.js       plays the recorded voice, falls back to the browser's
+voice/          497 recorded clips + manifest.json
+tools/          phrases.js and build-voice.py, which make voice/
 animals.js      the ten animal faces, drawn with canvas paths
 audio.js        microphone, voice fingerprinting, speaker attribution
 fx.js           particle bursts + confetti
@@ -476,6 +479,54 @@ game-spell.js   SPELLING BEE — the words, and the game around them
 game-clock.js   WHAT'S THE TIME? — clock drawing, and the questions
 app.js          screen flow, photos, results
 ```
+
+## The voice
+
+**Nothing the games say is synthesised on the phone any more.** The browser's
+own speech synthesiser sounds mechanical on any device that has only the
+*compact* voices installed — which is most of them — and a child who is
+frightened of the voice simply stops playing. So every fixed line is spoken
+once, ahead of time, by a neural voice, and shipped as a small audio file.
+
+**497 clips, 3.3 MB**, loaded one at a time as they are needed:
+
+| | |
+|---|---|
+| `w-cat`, `c-cat` | the 87 spelling words, and their clues |
+| `l-a` … `l-z` | the letters, said the way they sound — *ay, bee, see* — because a voice reads a bare "A" as an indefinite article |
+| `p-0` … `p-6` | *Well done!*, *Brilliant!*, *Superstar!* |
+| `n-0` … `n-100` | every number to a hundred |
+| `t-7-30` | all 144 times on the clock — *half past seven* |
+| `th-7`, `tm-40` | the halves of the clock explanation |
+| `m-*` | plus, take away, equals, point, hundred, thousand, and… |
+
+`tools/build-voice.py` generates the lot in about a minute with
+[Piper](https://github.com/rhasspy/piper), a neural TTS that runs locally.
+`tools/phrases.js` **loads the game files and asks them** what they say, rather
+than keeping a copy of the word lists — so the audio can never drift from the
+code. Reshooting in a different voice is one flag:
+
+```bash
+python3 tools/build-voice.py --voice en_GB-alba-medium
+```
+
+**Numbers past a hundred are read out of the parts**: 54,321 plays as
+*fifty-four — thousand — three — hundred — and — twenty-one*, which is how you
+would say a big number to a child anyway. The clock's explanation is stitched
+the same way, but only at sentence boundaries, so every join lands where a
+person would have drawn breath.
+
+**The browser voice is still there as a fallback** — for a number past a
+billion, a decimal answer, any line not yet recorded — and that fallback is
+fixed too. It used to be broken in a way that was invisible: Safari fills the
+voice list asynchronously, the first `getVoices()` returns nothing, and the old
+code cached that empty answer *forever*. It never used the good voices even when
+they were installed. It now waits for the list, and prefers a bright voice over
+a sepulchral one.
+
+> Worth doing anyway: **Settings → Accessibility → Spoken Content → Voices**
+> downloads the Enhanced voices, which are far better than the compact ones the
+> phone ships with. That only affects the fallback now, but it costs nothing.
 
 ## Cache busting
 

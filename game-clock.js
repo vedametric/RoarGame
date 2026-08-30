@@ -83,7 +83,7 @@
       this.running = false;
       clearTimeout(this._t);
       cancelAnimationFrame(this._raf);
-      try { speechSynthesis.cancel(); } catch (e) {}
+      global.Say.stop();
       try { global.Confetti.stop(); } catch (e) {}
     },
 
@@ -145,7 +145,7 @@
       }
 
       this._render();
-      this._say('What time is it?', 1);
+      global.Say.line('m-whattime', 'What time is it?');
     },
 
     /* ── answering ────────────────────────────────────────────── */
@@ -169,7 +169,8 @@
         var self = this;
         this._t = setTimeout(function () { try { global.Confetti.stop(); } catch (e) {} }, 2200);
 
-        this._say("Yes! It's " + spoken(this.t.h, this.t.m), 0.9);
+        global.Say.line(['m-yes', this._timeKey(this.t)],
+                        "Yes! It's " + spoken(this.t.h, this.t.m));
 
         if (this.right % UP_AFTER === 0 && this.level < LEVELS.length - 1) {
           this.level++;
@@ -215,11 +216,16 @@
                            : 'It is on ' + t.m + ', so it is ' + spoken(t.h, t.m) + '.');
       this.teach = msg;
       global.RoarAudio.sfx('spellhint');
-      this._say(msg, 0.85);
+      // Built from whole sentences, so every join lands where a person would
+      // have drawn breath anyway.
+      global.Say.line(['m-teachhour', 'th-' + hourAt, 'm-teachmin', 'tm-' + t.m,
+                       'm-soitis', this._timeKey(t)], msg);
       this._render();
     },
 
-    hear: function () { this._say("It's " + spoken(this.t.h, this.t.m), 0.85); },
+    hear: function () {
+      global.Say.line(['m-yes', this._timeKey(this.t)], "It's " + spoken(this.t.h, this.t.m));
+    },
 
     toggleMinutes: function () {
       this.showMinutes = !this.showMinutes;
@@ -227,36 +233,11 @@
       global.RoarAudio.sfx('spellhint');
     },
 
-    _say: function (text, rate) {
-      if (global.RoarAudio.muted) return;
-      try {
-        if (!global.speechSynthesis || !global.SpeechSynthesisUtterance) return;
-        speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(String(text));
-        u.rate = rate || 0.9;
-        u.pitch = 1.05;
-        try { var v = this._voice(); if (v) u.voice = v; } catch (e2) {}
-        speechSynthesis.speak(u);
-      } catch (e) {}
-    },
+    _say: function (text, rate) { global.Say.speak(text, { rate: rate || 0.95 }); },
 
-    _voice: function () {
-      if (this._v !== undefined) return this._v;
-      this._v = null;
-      try {
-        var list = speechSynthesis.getVoices() || [];
-        var best = -1;
-        for (var i = 0; i < list.length; i++) {
-          var v = list[i], s = 0;
-          if (!/^en/i.test(v.lang || '')) continue;
-          if (/enhanced|premium/i.test(v.name)) s += 5;
-          if (/en-GB/i.test(v.lang)) s += 2;
-          if (/zarvox|trinoids|albert|bells|bubbles|jester|organ|whisper|wobble|bahh|boing/i.test(v.name)) s -= 20;
-          if (s > best) { best = s; this._v = v; }
-        }
-      } catch (e) {}
-      return this._v;
-    },
+    // Every time on the clock has its own clip: t-7-30 is "half past seven".
+    _timeKey: function (t) { return 't-' + ((t.h % 12) || 12) + '-' + t.m; },
+
 
     /* ── drawing a clock ──────────────────────────────────────── */
 
