@@ -75,13 +75,19 @@
       this.mode = 'read';        // alternates with 'set'
       this.showMinutes = true;   // the 5,10,15… ring, on while she is learning
 
+      this.play = false;         // hands-on mode: move them yourself
+      this.free = { h: 3, m: 0 };
+      this._bindHands();
+
       this._next();
       return this;
     },
 
     stop: function () {
       this.running = false;
+      this._unbindHands();
       clearTimeout(this._t);
+      clearTimeout(this._sayT);
       cancelAnimationFrame(this._raf);
       global.Say.stop();
       try { global.Confetti.stop(); } catch (e) {}
@@ -239,6 +245,131 @@
     _timeKey: function (t) { return 't-' + ((t.h % 12) || 12) + '-' + t.m; },
 
 
+    /* ── moving the hands yourself ────────────────────────────────
+       No question and no score: a big clock with every number on it, and she
+       drags the hands round. Whenever she stops, it tells her what she has
+       made — which is how a clock is actually learnt. */
+
+    setPlay: function (on) {
+      this.play = !!on;
+      global.RoarAudio.sfx('spellhint');
+      if (this.play) {
+        clearTimeout(this._t);
+        try { global.Confetti.stop(); } catch (e) {}
+        this.answered = false;
+        this.showMinutes = true;      // the numbers help most while exploring
+        this._render();
+        this._sayFree(500);
+      } else {
+        this._next();
+      }
+    },
+
+    _bindHands: function () {
+      var self = this, cv = this.el && this.el.canvas;
+      if (!cv || this._down) return;
+
+      var angleAt = function (e) {
+        var r = cv.getBoundingClientRect();
+        return Math.atan2(e.clientY - (r.top + r.height / 2),
+                          e.clientX - (r.left + r.width / 2));
+      };
+
+      // Which hand: whichever is nearer the angle she touched.
+      var pick = function (ang) {
+        var hourA = (((self.free.h % 12) + self.free.m / 60) * Math.PI / 6) - Math.PI / 2;
+        var minA = (self.free.m * Math.PI / 30) - Math.PI / 2;
+        var gap = function (a, b) {
+          var d = Math.abs(a - b) % 6.2832;
+          return d > Math.PI ? 6.2832 - d : d;
+        };
+        return gap(ang, minA) <= gap(ang, hourA) ? 'min' : 'hour';
+      };
+
+      var move = function (e) {
+        if (!self.dragging) return;
+        var turns = ((((angleAt(e) + Math.PI / 2) / 6.2832) % 1) + 1) % 1;
+        if (self.dragging === 'min') {
+          var m = Math.round(turns * 60) % 60;
+          // Taking the minute hand past twelve moves the hour on, exactly as
+          // it does on a real clock — that is half of what there is to learn.
+          if (self.lastM !== null) {
+            if (self.lastM > 45 && m < 15) self.free.h = (self.free.h % 12) + 1;
+            else if (self.lastM < 15 && m > 45) self.free.h = ((self.free.h + 10) % 12) + 1;
+          }
+          self.lastM = m;
+          self.free.m = m;
+        } else {
+          self.free.h = (Math.floor(turns * 12) % 12) || 12;
+        }
+        self._render();
+        self._sayFree(700);
+        e.preventDefault();
+      };
+
+      this._down = function (e) {
+        if (!self.play) return;
+        self.dragging = pick(angleAt(e));
+        self.lastM = null;
+        clearTimeout(self._sayT);
+        global.Say.stop();
+        move(e);
+        try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      };
+      this._move = move;
+      this._up = function () { self.dragging = null; self.lastM = null; };
+
+      cv.addEventListener('pointerdown', this._down, { passive: false });
+      cv.addEventListener('pointermove', this._move, { passive: false });
+      cv.addEventListener('pointerup', this._up);
+      cv.addEventListener('pointercancel', this._up);
+    },
+
+    _unbindHands: function () {
+      var cv = this.el && this.el.canvas;
+      if (!cv || !this._down) return;
+      cv.removeEventListener('pointerdown', this._down);
+      cv.removeEventListener('pointermove', this._move);
+      cv.removeEventListener('pointerup', this._up);
+      cv.removeEventListener('pointercancel', this._up);
+      this._down = this._move = this._up = null;
+    },
+
+    // Only once she has stopped moving, or it would gabble at every wobble.
+    _sayFree: function (wait) {
+      var self = this;
+      clearTimeout(this._sayT);
+      this._sayT = setTimeout(function () {
+        if (!self.running || !self.play) return;
+        var t = self.free;
+        global.Say.line(['m-yes', self._timeKey(t)], "It's " + spoken(t.h, t.m));
+      }, wait || 700);
+    },
+
+    // Hands-on mode: the clock, what it says, and nothing else in the way.
+    _renderPlay: function () {
+      var e = this.el, t = this.free;
+      if (e.ask) e.ask.textContent = 'Move the hands!';
+      if (e.clockWrap) e.clockWrap.hidden = false;
+      if (e.digitalWrap) e.digitalWrap.classList.remove('is-on');
+      if (e.digital) { e.digital.hidden = false; e.digital.textContent = digital(t.h, t.m); }
+      if (e.inWords) { e.inWords.hidden = false; e.inWords.textContent = spoken(t.h, t.m); }
+      if (e.options) e.options.hidden = true;
+      if (e.teach) e.teach.hidden = true;
+      if (e.win) e.win.hidden = true;
+      if (e.level) e.level.hidden = true;      // the button above already says it
+      if (e.streak) e.streak.hidden = true;
+      if (e.tell) e.tell.hidden = true;
+      if (e.ring) e.ring.hidden = true;
+
+      this._fit();
+      var c = e.canvas.getContext('2d');
+      c.clearRect(0, 0, this.cw, this.ch);
+      var r = Math.min(this.cw, this.ch) / 2 - (this.showMinutes ? 30 : 8);
+      this.draw(c, this.cw / 2, this.ch / 2, r, t.h, t.m,
+                { minuteRing: this.showMinutes, grab: true });
+    },
+
     /* ── drawing a clock ──────────────────────────────────────── */
 
     // One routine for every clock on screen: the big one and the little ones on
@@ -290,7 +421,7 @@
         c.font = '800 ' + Math.round(r * 0.11) + 'px ' + (opts.font || 'system-ui');
         for (i = 0; i < 12; i++) {
           a = i * Math.PI / 6 - Math.PI / 2;
-          c.fillText(pad(i * 5), cx + Math.cos(a) * r * 1.12, cy + Math.sin(a) * r * 1.12);
+          c.fillText(pad(i * 5), cx + Math.cos(a) * r * 1.14, cy + Math.sin(a) * r * 1.14);
         }
       }
 
@@ -315,6 +446,20 @@
 
       hand(hourA, r * 0.48, Math.max(4, r * 0.10), HOUR_COL);
       hand(minA, r * 0.78, Math.max(3, r * 0.062), MIN_COL);
+
+      // In hands-on mode each hand gets a knob on the end, so it is obvious
+      // they are things you can take hold of.
+      if (opts.grab) {
+        var knob = function (ang, len, col) {
+          var kx = cx + Math.cos(ang) * len, ky = cy + Math.sin(ang) * len;
+          c.beginPath(); c.arc(kx, ky, r * 0.085, 0, 6.2832);
+          c.fillStyle = col; c.fill();
+          c.lineWidth = Math.max(1.5, r * 0.018);
+          c.strokeStyle = 'rgba(255,255,255,.85)'; c.stroke();
+        };
+        knob(hourA, r * 0.48, HOUR_COL);
+        knob(minA, r * 0.78, MIN_COL);
+      }
 
       c.fillStyle = '#4b2377';
       c.beginPath(); c.arc(cx, cy, Math.max(3, r * 0.055), 0, 6.2832); c.fill();
@@ -345,7 +490,9 @@
       if (!cv) return;
       var c = cv.getContext('2d');
       c.clearRect(0, 0, this.cw, this.ch);
-      var r = Math.min(this.cw, this.ch) / 2 - (this.showMinutes ? 20 : 8);
+      // The minute ring is drawn outside the face, so the face has to leave
+      // room for it or the numbers get shaved off against the canvas edge.
+      var r = Math.min(this.cw, this.ch) / 2 - (this.showMinutes ? 30 : 8);
       this.draw(c, this.cw / 2, this.ch / 2, r, this.t.h, this.t.m,
                 { minuteRing: this.showMinutes });
     },
@@ -364,6 +511,12 @@
     _render: function () {
       var e = this.el, i;
       if (!e) return;
+      if (this.play) return this._renderPlay();
+
+      // back from hands-on mode: everything it hid comes back
+      if (e.options) e.options.hidden = false;
+      if (e.ring) e.ring.hidden = false;
+      if (e.tell) e.tell.hidden = false;
 
       var reading = this.mode === 'read';
 
@@ -383,7 +536,7 @@
       if (e.clockWrap) e.clockWrap.hidden = !reading;
       if (reading) { this._fit(); this._drawBig(); }
 
-      if (e.level) e.level.textContent = LEVELS[this.level].name;
+      if (e.level) { e.level.hidden = false; e.level.textContent = LEVELS[this.level].name; }
       if (e.stars) e.stars.textContent = '⭐ ' + this.stars;
       if (e.streak) {
         e.streak.hidden = this.streak < 2;

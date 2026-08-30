@@ -831,6 +831,15 @@
                            voice('sine', f, f * 1.02, 0.30, 0.06, 0.42 + i * 0.06);
                          });
                          this._spellStep = 0;                            break;
+        // Finishing a build: the spelling fanfare, then higher, then higher
+        // again, so a checkpoint plainly outranks an ordinary word.
+        case 'checkpoint': [523, 659, 784, 1046, 1319, 1568].forEach(function (f, i) {
+                             voice('triangle', f, f, 0.30, 0.15, i * 0.075);
+                           });
+                           [2093, 2637, 3136].forEach(function (f, i) {
+                             voice('sine', f, f * 1.02, 0.36, 0.06, 0.50 + i * 0.07);
+                           });
+                           voice('square', 262, 523, 0.5, 0.07, 0);          break;
         case 'win':    [523, 659, 784, 1046].forEach(function (f, i) {
                          voice('triangle', f, f, 0.3, 0.16, i * 0.11);
                        });                                             break;

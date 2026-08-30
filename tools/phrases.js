@@ -16,14 +16,13 @@ require('../game-count.js');
 require('../game-spell.js');
 require('../game-clock.js');
 
-// A letter said on its own has to be spelled the way it sounds, or the voice
-// reads "A" as an indefinite article and "R" as a growl.
-var LETTER_SOUNDS = {
-  A: 'ay', B: 'bee', C: 'see', D: 'dee', E: 'ee', F: 'eff', G: 'jee',
-  H: 'aitch', I: 'eye', J: 'jay', K: 'kay', L: 'ell', M: 'em', N: 'en',
-  O: 'oh', P: 'pee', Q: 'cue', R: 'ar', S: 'ess', T: 'tee', U: 'you',
-  V: 'vee', W: 'double you', X: 'ex', Y: 'why', Z: 'zed'
-};
+/* Letters are recorded as the bare capital, which the phonemiser reads as the
+   letter's name. Spelling them out phonetically was worse, not better: "ay"
+   for A comes out as ˈaɪ — the very same phonemes as "eye" and as the letter
+   I — so the game said "I" every time it meant "A". "eff" for F came out as
+   "ee-eff-eff". All 26 bare letters phonemise correctly and distinctly;
+   tools/check-letters.py is the proof, and will say so again if a voice
+   changes. */
 
 var PRAISE = ['Well done!', 'Brilliant!', 'You got it!', 'Superstar!',
               'Amazing!', 'Perfect!', 'Clever girl!'];
@@ -39,8 +38,8 @@ SpellGame.WORDS.flat().forEach(function (w) {
   add('w-' + w[0].toLowerCase(), w[0]);
   add('c-' + w[0].toLowerCase(), w[2]);
 });
-Object.keys(LETTER_SOUNDS).forEach(function (L) {
-  add('l-' + L.toLowerCase(), LETTER_SOUNDS[L]);
+'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(function (L) {
+  add('l-' + L.toLowerCase(), L);
 });
 PRAISE.forEach(function (p, i) { add('p-' + i, p); });
 
