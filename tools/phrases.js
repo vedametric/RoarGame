@@ -11,6 +11,7 @@
 global.window = global;
 global.document = { getElementById: () => null, querySelector: () => null };
 global.RoarAudio = { muted: true, sfx() {}, };
+require('../spell-words.js');
 require('../game-count.js');
 require('../game-spell.js');
 require('../game-clock.js');

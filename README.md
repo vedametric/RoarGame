@@ -277,10 +277,21 @@ left stuck long enough to stop enjoying it.
 Both choices are **remembered between visits**, so whatever you set up for her
 is still there next time.
 
-**It grows with her.** Words are banded by length, from three letters up to
-**CHRISTMAS**, and every three words moves up a band. Nothing repeats until the
-whole band has been round. Single letters are read a little higher and slower,
-because a letter at normal pitch can sound like a different one.
+**360 words**, each with a picture and a clue, banded by length:
+
+| letters | words | |
+|---|---|---|
+| 3 | 100 | cat, fox, elf, yak |
+| 4 | 100 | swan, kite, plum, moth |
+| 5 | 50 | zebra, honey, storm, koala |
+| 6 | 66 | dragon, badger, rocket, violin |
+| 7 | 24 | penguin, unicorn, pumpkin, leopard |
+| 8–9 | 20 | elephant, butterfly, **Christmas** — the longest she spells |
+
+Every three words moves up a band, and nothing repeats until the whole band has
+been round — which, with a hundred three-letter words, takes a very long time.
+Single letters are read a little higher and slower, because a letter at normal
+pitch can sound like a different one.
 
 ## One player or two
 

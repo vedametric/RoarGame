@@ -163,10 +163,7 @@
 
     // "one, two, three" in the chosen voice, without disturbing the count.
     sample: function () {
-      if (global.Say.has('n-1')) {
-        global.Say.line(['n-1', 'n-2', 'n-3'], 'one, two, three');
-        return;
-      }
+      if (global.Say.has('n-1')) { global.Say.sample(); return; }
       try {
         if (!global.speechSynthesis || global.RoarAudio.muted) return;
         speechSynthesis.cancel();
@@ -177,10 +174,9 @@
       } catch (e) {}
     },
 
-    _showVoice: function () {
-      var v = this.voices[this.vi];
-      if (this.el.voice) this.el.voice.textContent = v ? v.name : 'device voice';
-    },
+    // The name on screen is the recorded voice she picked; app.js keeps it
+    // up to date, because every game shares the same one now.
+    _showVoice: function () {},
 
     /* ── counting ─────────────────────────────────────────────── */
 
