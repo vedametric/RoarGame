@@ -24,8 +24,23 @@
 <body>
 
 <div class="stars" aria-hidden="true"></div>
-<button class="sound-btn" id="btn-sound" type="button" aria-label="Sound on or off">🔊</button>
 <canvas id="confetti" aria-hidden="true"></canvas>
+
+<!-- ═════════════════════ THE NAVIGATION BAR ═════════════════════
+     One bar, on every screen, always in the same place: back where you came
+     from, straight to the games, and the settings. Before this every game had
+     its own ✕ in its own corner and nothing else, so getting from one game to
+     another meant guessing — or closing the app. -->
+<nav class="topbar" id="topbar" hidden>
+  <button class="tb-btn" id="tb-back" type="button" aria-label="Go back">
+    <span aria-hidden="true">‹</span> Back
+  </button>
+  <b class="tb-where" id="tb-where">Roar Battle</b>
+  <button class="tb-btn tb-btn--games" id="tb-games" type="button" aria-label="All games">
+    <span aria-hidden="true">🎮</span> Games
+  </button>
+  <button class="tb-btn tb-btn--icon" id="tb-set" type="button" aria-label="Settings">⚙️</button>
+</nav>
 
 <main id="app">
 
@@ -49,8 +64,6 @@
          of you up and then leaves you on the mode screen, which is where the
          TAP/SHOUT switch and the "your voices sound too alike" warning live. -->
     <button class="linkish" id="btn-begin" type="button">⚔️ set up 2 players</button>
-    <button class="linkish" id="btn-games" type="button">🎮 see all games</button>
-    <button class="linkish" id="btn-voice" type="button">🗣️ voice: <b id="home-voice">…</b></button>
 
     <p class="fineprint">
       Photos and voices never leave this phone.
@@ -243,7 +256,6 @@
       <div class="hud-combo" id="grab-combo-1" hidden></div>
     </div>
     <div class="flash-banner" id="grab-flash" hidden></div>
-    <button class="game-x" id="grab-exit" type="button" aria-label="Leave the game">✕</button>
   </section>
 
   <!-- ═════════════════════ GAME: ROAR METER ═════════════════════ -->
@@ -275,7 +287,6 @@
 
     <p class="hype" id="hype">ROAAAR!</p>
     <div class="tap-layer tap-layer--split-x" id="roar-tap" hidden></div>
-    <button class="game-x" id="roar-exit" type="button" aria-label="Leave the game">✕</button>
   </section>
 
   <!-- ═════════════════════ THE HOT AIR BALLOON ═════════════════════ -->
@@ -286,7 +297,14 @@
       <div class="bl-score" id="bl-score">0</div>
       <div class="bl-by">🎈 by Sienna 🦄</div>
     </div>
-    <button class="bl-exit" id="bl-exit" type="button" aria-label="Finish the flight">✕</button>
+
+    <!-- Two things you can do to the flight itself rather than to the balloon:
+         step outside it for a look, and go somewhere else entirely. -->
+    <div class="bl-tools">
+      <button class="bl-tool" id="bl-view" type="button" aria-label="Change the view">👁️ outside</button>
+      <button class="bl-tool bl-tool--trip" id="bl-trip" type="button" hidden>🌙 to the moon</button>
+    </div>
+    <div class="bl-place" id="bl-place" hidden></div>
 
     <div class="bl-pad" id="bl-controls">
       <div class="bl-dpad">
@@ -330,7 +348,6 @@
     <div class="ct-controls">
       <button class="ct-btn" id="ct-restart" type="button" aria-label="Start again">↺</button>
       <button class="ct-btn ct-btn--big" id="ct-toggle" type="button" aria-label="Pause or play">⏸</button>
-      <button class="ct-btn" id="ct-exit" type="button" aria-label="Back to games">✕</button>
     </div>
 
     <p class="ct-voice">
@@ -344,7 +361,6 @@
     <div class="cl-head">
       <h2 class="cl-title">Sienna's Calculator</h2>
       <button class="cl-speak" id="cl-speak" type="button" aria-label="Read numbers out loud">🔊</button>
-      <button class="cl-exit" id="cl-exit" type="button" aria-label="Back to games">✕</button>
     </div>
 
     <div class="cl-screen">
@@ -422,7 +438,6 @@
     <div class="sp-head">
       <div class="sp-stars" id="sp-stars">⭐ 0</div>
       <h2 class="sp-title">Spelling Bee 🐝</h2>
-      <button class="sp-exit" id="sp-exit" type="button" aria-label="Back to games">✕</button>
     </div>
 
     <div class="sp-streak" id="sp-streak" hidden></div>
@@ -467,7 +482,6 @@
     <div class="ck-head">
       <div class="ck-stars" id="ck-stars">⭐ 0</div>
       <h2 class="ck-title">What's the time? 🕐</h2>
-      <button class="ck-exit" id="ck-exit" type="button" aria-label="Back to games">✕</button>
     </div>
 
     <div class="ck-modes">
@@ -523,6 +537,31 @@
   </section>
 
   <!-- ═════════════════════ LEAVING A GAME ═════════════════════ -->
+  <!-- Everything that used to be scattered across the game screens, in one
+       place reachable from anywhere: the voice, the sound, and the choices
+       each game remembers. -->
+  <div class="sheet sheet--set" id="set-sheet" hidden>
+    <div class="sheet-card">
+      <h2 class="heading heading--sm">Settings</h2>
+      <button class="set-row" id="set-sound" type="button">
+        <span class="set-what">🔊 Sound</span><b class="set-val" id="set-sound-v">on</b>
+      </button>
+      <button class="set-row" id="set-voice" type="button">
+        <span class="set-what">🗣️ Voice</span><b class="set-val" id="set-voice-v">…</b>
+      </button>
+      <button class="set-row" id="set-keys" type="button">
+        <span class="set-what">⌨️ Spelling keyboard</span><b class="set-val" id="set-keys-v">abc</b>
+      </button>
+      <button class="set-row" id="set-case" type="button">
+        <span class="set-what">🔠 Spelling letters</span><b class="set-val" id="set-case-v">Abc</b>
+      </button>
+      <button class="set-row" id="set-time" type="button">
+        <span class="set-what">🕐 Times read as</span><b class="set-val" id="set-time-v">three thirty</b>
+      </button>
+      <button class="btn btn--go" id="set-done" type="button">DONE</button>
+    </div>
+  </div>
+
   <div class="sheet sheet--quit" id="quit-sheet" hidden>
     <div class="sheet-card quit-card">
       <div class="quit-emoji" id="quit-emoji" aria-hidden="true">👋</div>

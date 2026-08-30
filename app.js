@@ -119,7 +119,8 @@
      the answer is never rushed, and answering "keep playing" puts you back
      exactly where you were rather than costing you the round. */
 
-  var quitAsk = null;   // the pending "yes, leave" action
+  var quitAsk = null;     // the pending "yes, leave" action
+  var pendingJump = null; // where to land if GAMES raised the question
 
   function askQuit(opts) {
     quitAsk = opts.onLeave;
@@ -138,6 +139,7 @@
   function closeQuit() {
     $('quit-sheet').hidden = true;
     quitAsk = null;
+    pendingJump = null;
     holdPlay(false);
   }
 
@@ -162,9 +164,11 @@
 
   on('quit-stay', closeQuit);
   on('quit-go', function () {
-    var go = quitAsk;
+    var go = quitAsk, jump = pendingJump;
     $('quit-sheet').hidden = true;
     quitAsk = null;
+    pendingJump = null;
+    if (jump) { stopEverything(); show(jump); return; }
     if (go) go();
   });
 
@@ -174,18 +178,119 @@
     if (e.target === this) closeQuit();
   });
 
+  /* ── the navigation bar ───────────────────────────────────────
+     Where you are, where you came from, and the way out — the same three
+     things in the same place on every screen. Each game says how to leave it
+     (some of them have a question to ask first) by putting itself in LEAVE;
+     anywhere else, Back simply retraces your steps. */
+
+  var LEAVE = {};          // screen id → how to leave that screen
+  var trail = [];          // the screens behind you, oldest first
+  var HOME = 'screen-splash';
+
+  var WHERE = {
+    'screen-splash': 'Roar Battle', 'screen-games': 'All games',
+    'screen-count': 'Players', 'screen-how': 'How to play', 'screen-mic': 'Microphone',
+    'screen-setup': 'Your beasts', 'screen-modes': 'Pick a game',
+    'screen-sides': 'Get ready', 'screen-countdown': 'Get ready',
+    'screen-grab': 'Grab it!', 'screen-roar': 'Roar meter',
+    'screen-balloon': 'Hot air balloon', 'screen-counting': 'Counting',
+    'screen-calc': 'Calculator', 'screen-spell': 'Spelling bee',
+    'screen-clock': "What's the time?", 'screen-result': 'Results'
+  };
+
+  function showBar(id) {
+    $('topbar').hidden = false;
+    document.body.classList.add('has-topbar');
+    $('tb-where').textContent = WHERE[id] || 'Roar Battle';
+    // On the very first screen there is nowhere behind you, so Back stands down
+    // rather than lying about it.
+    $('tb-back').classList.toggle('is-idle', id === HOME && !trail.length);
+    $('tb-games').classList.toggle('is-idle', id === 'screen-games');
+  }
+
   function show(id) {
     var all = document.querySelectorAll('.screen');
-    for (var i = 0; i < all.length; i++) all[i].classList.remove('is-active');
+    var cur = null;
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].classList.contains('is-active')) cur = all[i].id;
+      all[i].classList.remove('is-active');
+    }
+    // Retracing your steps shortens the trail rather than lengthening it, so
+    // going in and out of a game a few times cannot build a maze behind you.
+    // A game is never *behind* you either: you have just left it, and Back
+    // walking you straight back in is the opposite of what it means.
+    if (cur && cur !== id) {
+      var seen = trail.indexOf(id);
+      if (seen >= 0) trail.length = seen;           // retracing: shorten it
+      else if (!PLAYING[cur]) trail.push(cur);      // a game is never behind you
+      if (trail.length > 12) trail.shift();
+    }
     $(id).classList.add('is-active');
     // A screen that changes underneath the question (a timer running out, say)
     // takes the question with it, and nothing is left frozen behind it.
     $('quit-sheet').hidden = true;
+    $('set-sheet').hidden = true;
     quitAsk = null;
     holdPlay(false);
-    // Keep it out of the play area, where it sits inside player 2's half.
-    $('btn-sound').hidden = !!PLAYING[id];
+    showBar(id);
   }
+
+  function currentScreen() {
+    var e = document.querySelector('.screen.is-active');
+    return e ? e.id : HOME;
+  }
+
+  // Back means one of two things and it is worth keeping them apart: inside a
+  // game it is that game's way out, question and all; everywhere else it is
+  // simply the screen before this one.
+  function goBack() {
+    var id = currentScreen();
+    if (LEAVE[id]) { LEAVE[id](); return; }
+    var to = trail.pop() || HOME;
+    var keep = trail.slice();          // show() would push this screen back on
+    show(to);
+    trail = keep;
+    showBar(to);
+  }
+
+  on('tb-back', goBack);
+  on('tb-games', function () {
+    var id = currentScreen();
+    if (id === 'screen-games') return;
+    // Leaving a game to go to the games list still asks first — it is the same
+    // door, so it gets the same question.
+    if (LEAVE[id]) { pendingJump = 'screen-games'; LEAVE[id](); return; }
+    stopEverything();
+    show('screen-games');
+  });
+
+  /* ── settings ─────────────────────────────────────────────────
+     One sheet, reachable from every screen, holding the things that used to be
+     buried inside whichever game happened to own them. */
+
+  function setLabels() {
+    $('set-sound-v').textContent = RoarAudio.muted ? 'off' : 'on';
+    $('set-voice-v').textContent = Say.packName();
+    $('set-keys-v').textContent = SpellGame.layout === 'abc' ? 'abc' : 'qwerty';
+    $('set-case-v').textContent = SpellGame.lower ? 'abc' : 'ABC';
+    $('set-time-v').textContent = ClockGame.digitalWords ? 'three thirty' : 'half past three';
+  }
+
+  function openSettings() { setLabels(); $('set-sheet').hidden = false; }
+
+  on('tb-set', openSettings);
+  on('set-done', function () { $('set-sheet').hidden = true; });
+  $('set-sheet').addEventListener('click', function (e) {
+    if (e.target === this) this.hidden = true;
+  });
+  on('set-sound', function () { setSound(RoarAudio.muted); setLabels(); });
+  on('set-voice', function () { $('set-sheet').hidden = true; openVoices(); });
+  // The choice is the spelling game's to keep, so it is set there whether or
+  // not the game happens to be on screen at the time.
+  on('set-keys', function () { SpellGame.toggleLayout(); setLabels(); });
+  on('set-case', function () { SpellGame.toggleCase(); setLabels(); });
+  on('set-time', function () { ClockGame.toggleWords(); setLabels(); });
 
   // Rotating the phone changes every dimension the canvases were sized from,
   // and iOS reports the new size a beat after the event — so refit more than
@@ -212,10 +317,10 @@
   }
   function global_visualViewport() { return window.visualViewport || null; }
 
+  // The sound lives in settings now: one place for it rather than a button
+  // floating over whichever game happened to be underneath it.
   function setSound(on) {
     RoarAudio.setMuted(!on);
-    $('btn-sound').textContent = on ? '🔊' : '🔇';
-    $('btn-sound').classList.toggle('is-off', !on);
     if (!on) Say.stop();
   }
 
@@ -619,10 +724,30 @@
     RoarAudio.resume();
     RoarAudio.releaseMic();       // the balloon never listens
 
+    $('bl-place').hidden = true;
+    $('bl-trip').hidden = true;
+    $('bl-view').textContent = '👁️ outside';
+
     BalloonGame.start({
       canvas: $('balloon-canvas'),
       controls: $('bl-controls'),
-      onScore: function (score) { $('bl-score').textContent = Math.round(score); }
+      onScore: function (score) { $('bl-score').textContent = Math.round(score); },
+      // The trip button only appears when there is somewhere to go: high above
+      // the earth, or standing on the moon wanting to come home.
+      onTrip: function (can, world) {
+        var b = $('bl-trip');
+        b.hidden = !can;
+        b.textContent = world === 'moon' ? '🌍 take me back to earth' : '🌙 to the moon';
+        b.classList.toggle('is-home', world === 'moon');
+      },
+      onView: function (v) {
+        $('bl-view').textContent = v === 'out' ? '👁️ inside' : '👁️ outside';
+      },
+      onPlace: function (text) {
+        var e = $('bl-place');
+        e.hidden = !text;
+        if (text) e.textContent = text;
+      }
     });
     say('The hot air balloon. A game by Sienna!');
   }
@@ -642,7 +767,7 @@
     RoarAudio.sfx('win');
   }
 
-  on('bl-exit', function () {
+  LEAVE['screen-balloon'] = function () {
     askQuit({
       emoji: '🎈',
       title: 'Finish the flight?',
@@ -652,7 +777,9 @@
       loses: false,
       onLeave: endBalloon
     });
-  });
+  };
+  on('bl-view', function () { BalloonGame.toggleView(); });
+  on('bl-trip', function () { BalloonGame.goTrip(); });
   on('bl-again', function () { Confetti.stop(); startBalloon(); });
   on('bl-menu', function () {
     Confetti.stop();
@@ -681,7 +808,6 @@
   on('ct-toggle', function () { CountGame.toggle(); });
   on('ct-restart', function () { CountGame.restart(); });
   on('ct-voice-next', openVoices);
-  on('btn-voice', openVoices);
   on('voice-done', function () { $('voice-sheet').hidden = true; });
   $('voice-sheet').addEventListener('click', function (e) {
     if (e.target === this) this.hidden = true;
@@ -720,13 +846,13 @@
   // Wherever the current voice is named on screen, keep it true.
   function showVoiceName() {
     var name = Say.packName();
-    ['home-voice', 'ct-voice-name'].forEach(function (id) {
+    ['ct-voice-name', 'set-voice-v'].forEach(function (id) {
       var e = $(id);
       if (e) e.textContent = name;
     });
   }
   Say.onready = showVoiceName;
-  on('ct-exit', function () {
+  LEAVE['screen-counting'] = function () {
     askQuit({
       emoji: '🔢',
       title: 'Stop counting?',
@@ -739,7 +865,7 @@
         show('screen-games');
       }
     });
-  });
+  };
 
   /* ── Sienna's calculator ──────────────────────────────────── */
 
@@ -760,7 +886,7 @@
   });
 
   on('cl-speak', function () { CalcGame.setSpeak(!CalcGame.speak); });
-  on('cl-exit', function () {
+  LEAVE['screen-calc'] = function () {
     askQuit({
       emoji: '🧮',
       title: 'Close the calculator?',
@@ -769,7 +895,7 @@
       leave: 'CLOSE',
       onLeave: function () { stopEverything(); show('screen-games'); }
     });
-  });
+  };
 
   /* ── spelling bee ─────────────────────────────────────────── */
 
@@ -802,7 +928,7 @@
   on('sp-next', function () { SpellGame.next(); });
   on('sp-layout', function () { SpellGame.toggleLayout(); });
   on('sp-case', function () { SpellGame.toggleCase(); });
-  on('sp-exit', function () {
+  LEAVE['screen-spell'] = function () {
     askQuit({
       emoji: '🐝',
       title: 'Stop spelling?',
@@ -811,7 +937,7 @@
       leave: 'STOP',
       onLeave: function () { stopEverything(); show('screen-games'); }
     });
-  });
+  };
 
   /* ── what's the time? ─────────────────────────────────────── */
 
@@ -855,7 +981,7 @@
   }
   on('ck-mode-quiz', function () { clockMode(false); });
   on('ck-mode-play', function () { clockMode(true); });
-  on('ck-exit', function () {
+  LEAVE['screen-clock'] = function () {
     askQuit({
       emoji: '🕐',
       title: 'Stop learning the time?',
@@ -864,7 +990,7 @@
       leave: 'STOP',
       onLeave: function () { stopEverything(); show('screen-games'); }
     });
-  });
+  };
 
   /* ── results ──────────────────────────────────────────────── */
 
@@ -944,7 +1070,6 @@
     show('screen-count');
   });
 
-  on('btn-games', function () { RoarAudio.resume(); show('screen-games'); });
   on('btn-games-back', function () { stopEverything(); show('screen-splash'); });
 
   // Picking from the list remembers the choice and skips the mode screen.
@@ -960,8 +1085,10 @@
     });
   }
 
-  on('grab-exit', quitToModes);
-  on('roar-exit', quitToModes);
+  LEAVE['screen-grab'] = quitToModes;
+  LEAVE['screen-roar'] = quitToModes;
+  LEAVE['screen-sides'] = quitToModes;
+  LEAVE['screen-countdown'] = quitToModes;
 
 
   on('count-1', function () { playerCount = 1; show('screen-how'); });
@@ -970,7 +1097,6 @@
   on('how-tap', function () { setInputMode('tap'); askMic(); });
   on('how-voice', function () { setInputMode('voice'); askMic(); });
 
-  on('btn-sound', function () { setSound(RoarAudio.muted); });
 
   function askMic() {
     show('screen-mic');
@@ -1079,6 +1205,9 @@
   // The tiles are the first thing on screen, so they are built before anything
   // else can be tapped.
   buildTiles();
+  // The splash is already on screen from the markup, so the bar has to be told
+  // where it is rather than waiting for the first show().
+  showBar(currentScreen());
   Say.init();
 
   /* ── which build am I running? ────────────────────────────────

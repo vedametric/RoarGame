@@ -40,19 +40,45 @@
   // Cat, not CAT: a capital to start and the rest in lower case, which is how
   // the word is actually written down.
   function proper(w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }
-  /* Something to build. Five right words finishes one, which is near enough to
-     see coming but far enough to be worth wanting; each finished one is kept
-     as a sticker she can look at. */
-  var BUILDS = [
-    { name: 'a rocket',   top: '🚀', colour: '#ff8a2b' },
-    { name: 'a castle',   top: '🏰', colour: '#7ec8ff' },
-    { name: 'a unicorn',  top: '🦄', colour: '#e6b3ff' },
-    { name: 'a rainbow',  top: '🌈', colour: '#9df08a' },
-    { name: 'a dinosaur', top: '🦕', colour: '#ffd24c' },
-    { name: 'a pirate ship', top: '🏴‍☠️', colour: '#ff8a8a' },
-    { name: 'a birthday cake', top: '🎂', colour: '#ffb3f0' },
-    { name: 'a spaceship', top: '🛸', colour: '#a78bfa' }
+  /* ── the rocket ───────────────────────────────────────────────
+     Five right words builds one, a piece at a time, and the fifth piece is the
+     engine — so the moment it is finished it can take off. The pieces are
+     named and spoken about, because "you built the nose cone" is a much better
+     reward than a bar filling up.
+
+     Bottom of the list is drawn first; each piece only appears once it has
+     been earned. */
+  var ROCKET = [
+    { key: 'body',  name: 'the body' },
+    { key: 'fins',  name: 'the fins' },
+    { key: 'glass', name: 'the window' },
+    { key: 'nose',  name: 'the nose cone' },
+    { key: 'engine', name: 'the engine' }
   ];
+
+  // One rocket, drawn in parts. `n` pieces are shown; the rest are waiting
+  // outlines, so she can see what is still to come.
+  function rocketSVG(n, flame) {
+    function part(i, body) {
+      var on = i < n;
+      return '<g class="rk-part' + (on ? ' is-on' : '') +
+             '" data-part="' + ROCKET[i].key + '">' + body + '</g>';
+    }
+    return '<svg class="rk" viewBox="0 0 64 116" aria-hidden="true">' +
+      // body
+      part(0, '<path d="M32 18 C44 34 46 56 46 78 L18 78 C18 56 20 34 32 18 Z"/>') +
+      // fins
+      part(1, '<path d="M18 60 L6 84 L18 78 Z"/><path d="M46 60 L58 84 L46 78 Z"/>') +
+      // window
+      part(2, '<circle cx="32" cy="44" r="8"/><circle cx="32" cy="44" r="4.6" class="rk-glint"/>') +
+      // nose cone
+      part(3, '<path d="M32 4 C38 10 42 16 44 22 L20 22 C22 16 26 10 32 4 Z"/>') +
+      // engine, and the flame it makes once it is lit
+      part(4, '<path d="M22 78 L42 78 L38 90 L26 90 Z"/>' +
+              (flame ? '<path class="rk-flame" d="M26 90 L38 90 L32 114 Z"/>' : '')) +
+      '</svg>';
+  }
+
   var PER_BUILD = 5;          // right words to finish one
 
   var VISIBLE = 0.6;          // at least this much of every word is given
@@ -83,12 +109,13 @@
       this.buildAt = 0;                   // which one she is on
       this.stickers = this._loadStickers();
       this.finished = null;               // the build just completed, for the card
+      this.launch = false;                // ...and whether it took off
+      this.part = null;                   // the piece the last right word added
       this.band = 0;             // which length we are on
       this.queues = BANDS.map(shuffled);
       this.at = BANDS.map(function () { return 0; });
 
-      this.layout = saved('layout', 'qwerty') === 'abc' ? 'abc' : 'qwerty';
-      this.lower = saved('case', 'lower') !== 'upper';
+      this.readPrefs();
 
       this._buildKeys();
       this._next();
@@ -226,14 +253,18 @@
       // Longer words once a few have gone in cleanly.
       if (this.done % 3 === 0 && this.band < BANDS.length - 1) this.band++;
 
-      // Another piece of whatever is being built, and every fifth one finishes
-      // it: a bigger noise, longer confetti, and a sticker to keep.
+      // Another piece of the rocket, and the fifth one is the engine — so it
+      // launches: a bigger noise, longer confetti, balloons, and a rocket
+      // sticker to keep.
+      this.part = ROCKET[this.built % ROCKET.length];
       this.built++;
       this.finished = null;
+      this.launch = false;
       if (this.built >= PER_BUILD) {
         this.built = 0;
-        this.finished = BUILDS[this.buildAt % BUILDS.length];
-        this.stickers.push(this.finished.top);
+        this.finished = ROCKET[ROCKET.length - 1];
+        this.launch = true;
+        this.stickers.push('🚀');
         this._saveStickers();
         this.buildAt++;
         this.stars += 5;                  // the checkpoint is worth something
@@ -316,8 +347,17 @@
 
     /* ── screen ───────────────────────────────────────────────── */
 
+    // The keyboard and the case are settings, not game state: they are read
+    // back whether or not anyone has opened the spelling bee this session, so
+    // the settings sheet can show and change them from anywhere.
+    readPrefs: function () {
+      this.layout = saved('layout', 'qwerty') === 'abc' ? 'abc' : 'qwerty';
+      this.lower = saved('case', 'lower') !== 'upper';
+      return this;
+    },
+
     _buildKeys: function () {
-      var pad = this.el.keys;
+      var pad = this.el && this.el.keys;
       if (!pad) return;
       var rows = LAYOUTS[this.layout] || LAYOUTS.abc;
       var html = '';
@@ -341,7 +381,7 @@
       save('layout', this.layout);
       this._buildKeys();
       this._render();
-      global.RoarAudio.sfx('spellhint');
+      if (this.running) global.RoarAudio.sfx('spellhint');
     },
 
     toggleLayout: function () { this.setLayout(this.layout === 'abc' ? 'qwerty' : 'abc'); },
@@ -351,7 +391,7 @@
       save('case', this.lower ? 'lower' : 'upper');
       this._buildKeys();
       this._render();
-      global.RoarAudio.sfx('spellhint');
+      if (this.running) global.RoarAudio.sfx('spellhint');
     },
 
     _labelToggles: function () {
@@ -417,20 +457,18 @@
 
       if (e.stars) e.stars.textContent = '⭐ ' + this.stars;
 
-      // the build strip: five blocks that grow, then the thing itself
+      // the strip: the rocket so far, and what the next word adds to it
       if (e.build) {
-        var b = BUILDS[this.buildAt % BUILDS.length];
-        var bits = '';
-        for (i = 0; i < PER_BUILD; i++) {
-          bits += '<i class="sp-brick' + (i < this.built ? ' is-on' : '') + '"' +
-                  ' style="--h:' + (34 + i * 9) + '%;--c:' + b.colour + '"></i>';
-        }
+        var next = ROCKET[this.built % ROCKET.length];
         e.build.innerHTML =
-          '<span class="sp-build-what">building ' + b.name + '</span>' +
-          '<span class="sp-bricks">' + bits + '</span>' +
-          '<span class="sp-crown' + (this.built ? ' is-near' : '') + '">' + b.top + '</span>';
+          rocketSVG(this.built, false) +
+          '<span class="sp-build-what">' +
+            '<b>building a rocket</b>' +
+            '<i>' + (this.built ? 'next: ' + next.name : 'start with ' + next.name) + '</i>' +
+          '</span>' +
+          '<span class="sp-build-count">' + this.built + '/' + PER_BUILD + '</span>';
         e.build.setAttribute('aria-label',
-          'Building ' + b.name + ', ' + this.built + ' of ' + PER_BUILD);
+          'Building a rocket, ' + this.built + ' of ' + PER_BUILD + ' pieces');
       }
       if (e.stickers) {
         e.stickers.innerHTML = this.stickers.map(function (s) {
@@ -460,24 +498,41 @@
           e.winWord.textContent = this.disp;
           e.winStars.textContent = '⭐'.repeat(this.lastStars);
           if (e.winPraise) e.winPraise.textContent = this.praise;
-          // A finished build takes over the card — this is the moment worth
-          // making a fuss of.
+          // A finished rocket takes over the card and launches off the top of
+          // it — this is the moment worth making a fuss of. Every other right
+          // word still shows the piece it just added, so the progress is
+          // always something she can see.
           if (e.winBuild) {
-            e.winBuild.hidden = !this.finished;
-            if (this.finished) {
+            e.winBuild.hidden = false;
+            e.winBuild.classList.toggle('is-launch', !!this.launch);
+            if (this.launch) {
               e.winBuild.innerHTML =
-                '<span class="sp-win-thing">' + this.finished.top + '</span>' +
-                '<b>You built ' + this.finished.name + '!</b>' +
-                '<i>+5 stars, and a sticker to keep</i>';
+                '<span class="sp-win-rocket">' + rocketSVG(PER_BUILD, true) + '</span>' +
+                // Built by count, not by splitting a string: an emoji is two
+                // code units, so split('') would hand each balloon out in
+                // halves and render five pairs of broken glyphs.
+                '<span class="sp-balloons" aria-hidden="true">' +
+                  [0, 1, 2, 3, 4].map(function (i) {
+                    return '<i style="--i:' + i + '">🎈</i>';
+                  }).join('') +
+                '</span>' +
+                '<b>Lift off! You built the whole rocket!</b>' +
+                '<i>+5 stars, and a rocket sticker to keep</i>';
+            } else {
+              e.winBuild.innerHTML =
+                '<span class="sp-win-rocket">' + rocketSVG(this.built, false) + '</span>' +
+                '<b>You added ' + (this.part ? this.part.name : 'a piece') + '!</b>' +
+                '<i>' + (PER_BUILD - this.built) + ' more to launch 🚀</i>';
             }
           }
-          if (e.win) e.win.classList.toggle('is-checkpoint', !!this.finished);
+          if (e.win) e.win.classList.toggle('is-checkpoint', !!this.launch);
         }
       }
       if (e.pad) e.pad.hidden = !!this.won;
     }
   };
 
+  SpellGame.readPrefs();        // so settings can show them before you play
   SpellGame.WORDS = BANDS;      // exposed for testing
   global.SpellGame = SpellGame;
 })(window);

@@ -796,6 +796,10 @@
         case 'nom':    voice('triangle', 420, 240, 0.09, 0.16, 0);
                        voice('triangle', 300, 170, 0.10, 0.14, 0.09);  break;
         case 'puff':   voice('sine',     700, 1500, 0.24, 0.05, 0);    break;
+        // Sliding into a cloud, and setting off for the moon: a long soft
+        // rush rather than a bang.
+        case 'whoosh': voice('sine',     240,  900, 0.55, 0.07, 0);
+                       voice('triangle', 900,  200, 0.70, 0.05, 0.06); break;
         case 'birdaww': voice('sine',    900,  420, 0.30, 0.11, 0);
                         voice('sine',    700,  330, 0.34, 0.09, 0.11); break;
         case 'thud':   voice('sine',     140,   60, 0.24, 0.20, 0);

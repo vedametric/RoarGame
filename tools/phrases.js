@@ -64,6 +64,7 @@ for (var mm = 0; mm < 60; mm += 5) {
 var MISC = {
   'm-whattime':  'What time is it?',
   'm-yes':       "Yes! It's",
+  'm-itis':      "It's",
   'm-teachhour': 'The short gold hand is the hour.',
   'm-teachmin':  'The long blue hand is the minutes.',
   'm-soitis':    'So the time is',
