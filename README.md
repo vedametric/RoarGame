@@ -177,18 +177,9 @@ The numeral fills the screen, the word sits under it, and up to twenty there
 are dots to count along with. A ring around the number fills up during the
 pause so you can see the next one coming.
 
-The voice comes from whatever the phone has. Depth comes from **choosing a
-naturally deep reader** (Alex, Daniel, Aaron, Arthur, …), not from pitch-shifting
-— dropping a synthesiser's pitch a long way wrecks its formants and turns it
-into a growling robot. Rate `0.85` and pitch `0.92` are gentle nudges that stay
-human. Downloaded **Enhanced** and **Premium** voices are preferred strongly,
-because they sound far more like a real person than the compact defaults, and
-the novelty voices (Zarvox, Trinoids, Albert…) are filtered out entirely.
-
-**change voice** opens a picker of the male voices on that phone; tap one to
-hear it count to three. It also points at
-*Settings → Accessibility → Spoken Content → Voices*, where the much better
-Enhanced voices can be downloaded.
+Every number to a hundred is a recording, and bigger ones are read out of the
+recorded parts — see **The voice** below. **change voice** opens the same picker
+as the home screen: whichever of the three she picks is used by every game.
 
 Timing follows the utterance's own `onend` rather than a fixed timer, so the
 pause is always a real pause *after* the word however long it takes to say
@@ -491,7 +482,7 @@ awake during play via the Screen Wake Lock API where available.
 index.html      all screens
 styles.css      everything visual
 speech.js       plays the recorded voice, falls back to the browser's
-voice/          497 recorded clips + manifest.json
+voice/          3,129 recorded clips — 1,043 in each of three voices
 tools/          phrases.js and build-voice.py, which make voice/
 animals.js      the ten animal faces, drawn with canvas paths
 audio.js        microphone, voice fingerprinting, speaker attribution
@@ -514,26 +505,49 @@ own speech synthesiser sounds mechanical on any device that has only the
 frightened of the voice simply stops playing. So every fixed line is spoken
 once, ahead of time, by a neural voice, and shipped as a small audio file.
 
-**497 clips, 3.3 MB**, loaded one at a time as they are needed:
+**Three voices to choose from**, picked in the app and remembered between
+visits. The pitches were measured off the generated audio rather than guessed
+from the names:
+
+| | | |
+|---|---|---|
+| **Jenny** | 208 Hz | English, friendly — the one it starts on |
+| **Ned** | 121 Hz | English man |
+| **Alan** | 100 Hz | a deep voice |
+
+The list is built into `speech.js` rather than fetched. It is fixed at build
+time, and making the picker wait on a network request meant one unlucky request
+left it saying *"still loading"* for ever — with a `catch` that swallowed the
+error and no retry, so exactly one request was ever made. `build-voice.py`
+writes the same list into the manifest and the tests check the two agree.
+
+The manifest says only *which lines were recorded*. It is retried with a
+widening gap, and again whenever the picker opens — and nothing waits on it:
+until it arrives a clip is simply attempted, and one that turns out to be
+missing falls back to the phone's own voice by itself. A slow manifest costs a
+little accuracy, never all the sound.
+
+**1,043 clips per voice, about 7 MB each**, loaded one at a time as they are
+needed, so having three costs nothing on the phone:
 
 | | |
 |---|---|
-| `w-cat`, `c-cat` | the 87 spelling words, and their clues |
-| `l-a` … `l-z` | the letters, said the way they sound — *ay, bee, see* — because a voice reads a bare "A" as an indefinite article |
+| `w-cat`, `c-cat` | the 360 spelling words, and their clues |
+| `l-a` … `l-z` | the letters, recorded as the bare capital — see below |
 | `p-0` … `p-6` | *Well done!*, *Brilliant!*, *Superstar!* |
 | `n-0` … `n-100` | every number to a hundred |
 | `t-7-30` | all 144 times on the clock — *half past seven* |
 | `th-7`, `tm-40` | the halves of the clock explanation |
 | `m-*` | plus, take away, equals, point, hundred, thousand, and… |
 
-`tools/build-voice.py` generates the lot in about a minute with
+`tools/build-voice.py` generates all three voices in about twenty minutes with
 [Piper](https://github.com/rhasspy/piper), a neural TTS that runs locally.
 `tools/phrases.js` **loads the game files and asks them** what they say, rather
 than keeping a copy of the word lists — so the audio can never drift from the
-code. Reshooting in a different voice is one flag:
+code. Rebuilding one voice, or adding another, is one flag:
 
 ```bash
-python3 tools/build-voice.py --voice en_GB-alba-medium
+python3 tools/build-voice.py --pack alan
 ```
 
 **Numbers past a hundred are read out of the parts**: 54,321 plays as
