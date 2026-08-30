@@ -23,6 +23,17 @@
   var GAP = 90;          // ms between clips in a run; enough to hear the join
   var SAVED = 'spell.voicepack';
 
+  /* The voices that ship. This is deliberately not fetched: it is fixed at
+     build time, and making the picker wait on the network meant a single
+     failed request left it saying "still loading" for ever. tools/build-voice.py
+     writes the same list into the manifest, and the tests check the two agree. */
+  var PACKS = [
+    { id: 'jenny', name: 'Jenny', note: 'English, friendly', hz: 208 },
+    { id: 'ned',   name: 'Ned',   note: 'English man',       hz: 121 },
+    { id: 'alan',  name: 'Alan',  note: 'a deep voice',      hz: 100 }
+  ];
+  var TRIES = 4;         // manifest attempts before we stop trying by ourselves
+
   var Say = {
     ready: false,
     have: null,          // set of keys we have audio for
@@ -40,28 +51,63 @@
       if (self._started) return;
       self._started = true;
       self.base = base || '';
-      try {
-        fetch(self.base + DIR + 'manifest.json', { cache: 'force-cache' })
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (j) {
-            if (!j || !j.keys) return;
-            self.have = Object.create(null);
-            for (var i = 0; i < j.keys.length; i++) self.have[j.keys[i]] = 1;
-            self.packs = j.packs || [];
-            // Every pack says the same lines, so choosing one is only a
-            // question of which folder the clips come out of.
-            var want = null;
-            try { want = localStorage.getItem(SAVED); } catch (e) {}
-            self.pack = self._packById(want) || self.packs[0] || null;
-            self.ready = true;
-            if (self.onready) self.onready();
-          })
-          .catch(function () {});
-      } catch (e) {}
-      this._primeFallback();
+
+      // The picker works from this instant, with no network involved.
+      self.packs = PACKS;
+      var want = null;
+      try { want = localStorage.getItem(SAVED); } catch (e) {}
+      self.pack = self._packById(want) || PACKS[0];
+      self.ready = true;
+      if (self.onready) self.onready();
+
+      self._loadManifest();
+      self._primeFallback();
     },
 
-    has: function (key) { return !!(this.have && this.have[key]); },
+    /* The manifest only says which lines were recorded. Until it arrives we
+       assume they all were and let a clip that 404s fall back on its own, so a
+       slow or failed request costs nothing but a little accuracy. It is retried
+       with a widening gap, and again whenever the picker is opened. */
+    _loadManifest: function () {
+      var self = this;
+      if (self.have || self._loading) return;
+      self._loading = true;
+      self._tries = (self._tries || 0) + 1;
+
+      var give = function () {
+        self._loading = false;
+        if (self._tries < TRIES) {
+          setTimeout(function () { self._loadManifest(); }, self._tries * 1500);
+        }
+      };
+
+      try {
+        fetch(self.base + DIR + 'manifest.json')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            self._loading = false;
+            if (!j || !j.keys) return give();
+            self.have = Object.create(null);
+            for (var i = 0; i < j.keys.length; i++) self.have[j.keys[i]] = 1;
+            if (j.packs && j.packs.length) self.packs = j.packs;
+            self.pack = self._packById(self.pack && self.pack.id) || self.packs[0];
+            if (self.onready) self.onready();
+          })
+          .catch(give);
+      } catch (e) { give(); }
+    },
+
+    // Called when the picker opens: one more go, however many have failed.
+    retry: function () {
+      if (this.have) return;
+      this._tries = 0;
+      this._loadManifest();
+    },
+
+    // Optimistic before the manifest lands: try the clip, and let it fall back
+    // if it is not there. Silence while a request is in flight is worse than a
+    // rare fallback.
+    has: function (key) { return this.have ? !!this.have[key] : /^[a-z]+-/.test(key); },
 
     _packById: function (id) {
       for (var i = 0; i < this.packs.length; i++) {
@@ -109,6 +155,7 @@
         return;
       }
       this.queue = list;
+      opts.fallbackText = opts.fallbackText || fallbackText;
       this._step(opts);
     },
 
@@ -130,12 +177,21 @@
         if (self.queue.length) setTimeout(function () { self._step(opts); }, GAP);
         else { self.playing = null; if (opts.onEnd) opts.onEnd(); }
       };
-      var p = a.play();
-      // Autoplay can still be refused before the first tap; fall back rather
-      // than leave the game silent.
-      if (p && p.catch) p.catch(function () {
+      // A clip that is missing or unplayable hands over to the browser voice
+      // instead of leaving the game silent — which is what happens if the
+      // manifest never arrived and we guessed wrong about a key.
+      var bail = function () {
+        if (self.playing !== a) return;
+        self.queue.length = 0;
+        self.playing = null;
         if (opts.fallbackText) self.speak(opts.fallbackText, opts);
-      });
+        else if (opts.onEnd) opts.onEnd();
+      };
+      a.onerror = bail;
+
+      var p = a.play();
+      // Autoplay can still be refused before the first tap.
+      if (p && p.catch) p.catch(bail);
     },
 
     stop: function () {

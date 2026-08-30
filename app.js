@@ -692,10 +692,11 @@
   function openVoices() {
     var box = $('voice-list');
     box.innerHTML = '';
+    Say.retry();                 // in case an earlier attempt was unlucky
 
     if (!Say.packs.length) {
-      box.innerHTML = '<p class="subheading">The voices are still loading — ' +
-                      'try again in a moment.</p>';
+      box.innerHTML = '<p class="subheading">No voices — the phone will read ' +
+                      'to you instead.</p>';
     }
     Say.packs.forEach(function (v) {
       var b = document.createElement('button');
