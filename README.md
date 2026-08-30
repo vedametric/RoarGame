@@ -40,6 +40,59 @@ indicator goes away when the game isn't listening.
 
 ---
 
+## The first screen
+
+**Every game is on it**, as a grid of tiles — nothing is hidden a tap inside.
+The same tiles, in the same order, appear again under **see all games**: the
+list lives in one place in `app.js` and is rendered twice, so the two can never
+drift apart as games keep being added.
+
+They are ordered the way a child reaches for them: the noisy ones first
+(GRAB IT!, ROAR METER, THE HOT AIR BALLOON), then the learning ones (SPELLING
+BEE, WHAT'S THE TIME?, COUNTING, CALCULATOR), warm and cool borders to match.
+
+**set up 2 players** is not another door onto the same room: the GRAB IT and
+ROAR METER tiles drop you straight into that game, while this takes the two of
+you through faces and voices and leaves you on the mode screen — which is where
+the TAP/SHOUT switch and the *"your voices sound too alike"* warning live.
+
+---
+
+## 🕐 WHAT'S THE TIME? — *learning to read a clock*
+
+Both kinds of clock, taught together. Every question shows one and asks for the
+other, so the round one and the numbers one stop being separate things in her
+head:
+
+- **read the hands** — a big clock face, and four answers written both ways:
+  `7:40` above *20 minutes to eight*;
+- **pick the clock** — a digital time and the words, and four little clock
+  faces to choose between.
+
+**It teaches before it tests.** The hour hand is short and gold, the minute hand
+long and blue, labelled that way under the clock itself. **💡 TEACH ME** says
+out loud which hand to look at and what each one is pointing at — *"the short
+gold hand is the hour, it is pointing near 7; the long blue hand is the minutes,
+it is on 40, so it is 20 minutes to eight."* **🔊 SAY IT** reads the time, and
+**🔢 minutes** turns the 05, 10, 15… ring outside the face on and off — the
+scaffold that makes "25 past" readable, there for as long as she needs it.
+
+**Getting it wrong costs nothing.** A wrong answer wobbles and stays put; a
+second one *takes a wrong answer off the board* and explains the clock, so she
+is always closing in rather than stuck. A right one brings confetti, one to
+three stars, and the time said out loud.
+
+**Four stages, four right answers each:** o'clock → half past → quarter past and
+to → every five minutes.
+
+Two details that matter for learning. The hour hand **creeps between the
+numbers** as the hour goes on, exactly as a real one does, because reading that
+is half the skill. And a time is never asked when **the two hands would lie on
+top of each other** — 7:40 puts them ten degrees apart, which nobody can read,
+let alone somebody learning; every question keeps them at least 20° apart.
+
+---
+
 ## 🎈 THE HOT AIR BALLOON — *a game by Sienna 🦄*
 
 Reachable from **ALL GAMES** on the first screen. You are standing in the
@@ -420,6 +473,7 @@ game-balloon.js THE HOT AIR BALLOON — by Sienna 🦄
 game-count.js   COUNTING — spoken numbers, forever
 game-calc.js    SIENNA'S CALCULATOR — arithmetic, read aloud
 game-spell.js   SPELLING BEE — the words, and the game around them
+game-clock.js   WHAT'S THE TIME? — clock drawing, and the questions
 app.js          screen flow, photos, results
 ```
 

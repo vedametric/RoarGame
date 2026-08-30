@@ -1340,3 +1340,207 @@ body {
   .sp-key { min-height: 40px; }
   .sp-help-btn { padding: 9px 6px; }
 }
+
+/* ══════════════════════ HOME ══════════════════════ */
+
+/* The home screen carries seven tiles now, so it starts at the top and the
+   title is smaller — centring a column taller than the screen pushes the top
+   of it off, which is what buried the lion behind the R. */
+.screen--home {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.screen--home .splash-beasts { height: 62px; }
+.screen--home .beast { font-size: 46px; }
+.screen--home .title { font-size: clamp(40px, 13vw, 66px); }
+.screen--home .tagline { font-size: 15px; margin-bottom: 2px; }
+.screen--home .fineprint { margin-top: 2px; }
+.screen--home .linkish { padding: 6px 12px; font-size: 14px; }
+
+/* ══════════════════════ GAME TILES ══════════════════════ */
+
+/* The games, as a grid, on the first screen and on ALL GAMES. Two columns so
+   the names stay readable — three would shrink them past a five year old. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 9px;
+  width: 100%; max-width: 460px;
+}
+.tile {
+  appearance: none; cursor: pointer; font-family: inherit; text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  padding: 13px 8px 11px;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,.14);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  box-shadow: 0 5px 0 rgba(0,0,0,.32);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+.tile:active { transform: translateY(5px); box-shadow: 0 0 0 rgba(0,0,0,.32); }
+.tile-emoji { font-size: clamp(28px, 8.5vw, 38px); line-height: 1; }
+.tile-name {
+  font-size: clamp(11.5px, 3.4vw, 13.5px); font-weight: 900; letter-spacing: .02em;
+  line-height: 1.15;
+}
+.tile-note {
+  font-size: clamp(9.5px, 2.8vw, 11px); font-weight: 700; font-style: normal;
+  line-height: 1.2; color: rgba(201,189,240,.75);
+}
+/* the noisy ones warm, the learning ones cool, so they group at a glance */
+.tile--play  { border-color: rgba(255,180,60,.38); }
+.tile--learn { border-color: rgba(126,200,255,.35); }
+
+
+/* ══════════════════════ WHAT'S THE TIME? ══════════════════════ */
+
+.screen--clock {
+  justify-content: flex-start; gap: 8px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+}
+
+.ck-head { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; }
+.ck-title {
+  flex: 1; margin: 0; text-align: center;
+  font-size: clamp(16px, 4.8vw, 20px); font-weight: 900;
+  color: #7ec8ff; text-shadow: 0 2px 0 rgba(0,0,0,.35);
+}
+.ck-stars {
+  min-width: 60px; padding: 5px 10px;
+  font-size: 14px; font-weight: 900; color: #fff;
+  background: rgba(255,210,76,.18);
+  border: 1px solid rgba(255,210,76,.4); border-radius: 999px;
+}
+.ck-exit {
+  appearance: none; cursor: pointer;
+  width: 38px; height: 38px; flex: 0 0 38px; padding: 0;
+  display: grid; place-items: center;
+  font-size: 16px; font-weight: 800; color: #fff;
+  border: 2px solid rgba(255,255,255,.2); border-radius: 50%;
+  background: rgba(20,10,44,.55);
+}
+.ck-exit:active { transform: scale(.9); }
+
+.ck-bar { display: flex; gap: 10px; align-items: center; }
+.ck-level {
+  font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  color: #9df08a;
+  background: rgba(157,240,138,.14); border: 1px solid rgba(157,240,138,.3);
+  border-radius: 999px; padding: 4px 11px;
+}
+.ck-streak { font-size: 12px; font-weight: 900; color: #ffb35c; }
+
+.ck-ask { margin: 0; font-size: clamp(16px, 4.6vw, 19px); font-weight: 900; }
+
+.ck-clockwrap {
+  flex: 1 1 auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px;
+  width: 100%;
+}
+#ck-canvas {
+  width: min(46vh, 74vw, 300px);
+  height: min(46vh, 74vw, 300px);
+  display: block;
+}
+.ck-legend {
+  display: flex; gap: 14px;
+  font-size: 11px; font-weight: 800; color: rgba(201,189,240,.8);
+}
+.ck-dot { display: inline-block; width: 16px; height: 4px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.ck-dot--h { background: #ffd24c; width: 11px; height: 6px; }
+.ck-dot--m { background: #7ec8ff; }
+
+.ck-digital-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.ck-digital-wrap.is-on { flex: 1 1 auto; justify-content: center; }
+.ck-digital {
+  font: 900 clamp(40px, 13vw, 58px)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #ffd24c; letter-spacing: .04em;
+  text-shadow: 0 3px 0 rgba(0,0,0,.35);
+}
+.ck-inwords { font-size: clamp(15px, 4.4vw, 18px); font-weight: 900; color: #fff; }
+
+.ck-teach {
+  margin: 0; max-width: 24em; padding: 9px 13px;
+  font-size: 12.5px; font-weight: 700; line-height: 1.4;
+  color: #fff3c4;
+  background: rgba(255,180,40,.13);
+  border: 1px solid rgba(255,200,70,.35); border-radius: 14px;
+}
+
+/* the four answers */
+.ck-options {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  width: 100%; max-width: 420px;
+  margin-top: auto;
+}
+.ck-opt {
+  appearance: none; cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; min-height: 58px; padding: 9px 6px;
+  color: #2b1a10; border: 0; border-radius: 17px;
+  background: linear-gradient(180deg, #fff, #ded4ee);
+  box-shadow: 0 5px 0 rgba(0,0,0,.38);
+}
+.ck-opt:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.38); }
+.ck-label { font-size: clamp(20px, 6vw, 26px); font-weight: 900; line-height: 1; }
+.ck-sub { font-size: clamp(10px, 3vw, 12px); font-weight: 800; opacity: .72; line-height: 1.15; }
+.ck-opt canvas { width: clamp(58px, 19vw, 86px); height: clamp(58px, 19vw, 86px); display: block; }
+.ck-options.is-faces .ck-opt { min-height: 0; padding: 7px; }
+
+.ck-opt.is-gone { opacity: .22; box-shadow: none; transform: scale(.94); }
+.ck-opt.is-right {
+  background: linear-gradient(180deg, #c9ffb8, #7ee06a);
+  animation: ckRight .45s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes ckRight { 0% { transform: scale(1); } 55% { transform: scale(1.09); } 100% { transform: scale(1); } }
+.ck-opt.is-wrong {
+  background: linear-gradient(180deg, #ffd3d3, #ff9d9d);
+  animation: keyShake .4s ease;
+}
+
+.ck-help {
+  display: flex; gap: 7px; flex-wrap: wrap; justify-content: center;
+  width: 100%; max-width: 420px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+}
+.ck-help-btn {
+  appearance: none; cursor: pointer; font-family: inherit;
+  flex: 1 1 0; min-width: 92px; padding: 10px 6px;
+  font-size: 12px; font-weight: 900; color: #fff;
+  border: 2px solid rgba(126,200,255,.45); border-radius: 14px;
+  background: rgba(126,200,255,.14);
+}
+.ck-help-btn:active { transform: translateY(2px); }
+.ck-help-btn--hint { border-color: rgba(255,210,76,.5); background: rgba(255,210,76,.16); color: #ffe89a; }
+.ck-help-btn.is-off { opacity: .5; }
+
+.ck-win {
+  position: absolute; inset: 0; z-index: 20;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(9,4,22,.55);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.ck-win-card {
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  padding: 24px 26px 20px; border-radius: 26px;
+  background: linear-gradient(180deg, #38215f, #241246);
+  border: 3px solid rgba(126,200,255,.7);
+  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  animation: winPop .45s cubic-bezier(.2,1.5,.4,1);
+}
+.ck-win-stars { font-size: 32px; line-height: 1; letter-spacing: 2px; animation: starSpin .6s cubic-bezier(.2,1.6,.4,1); }
+.ck-win-time { font-size: clamp(21px, 6.4vw, 27px); font-weight: 900; color: #fff; }
+.ck-win-digital {
+  font: 900 clamp(28px, 9vw, 38px)/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #ffd24c; letter-spacing: .04em;
+}
+.ck-win-level { font-size: 13px; font-weight: 900; color: #9df08a; }
+
+@media (max-height: 700px) {
+  #ck-canvas { width: min(38vh, 52vw, 200px); height: min(38vh, 52vw, 200px); }
+  .ck-teach { font-size: 11.5px; padding: 7px 11px; }
+  .ck-help-btn { padding: 8px 6px; }
+}
