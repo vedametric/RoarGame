@@ -521,13 +521,25 @@ left it saying *"still loading"* for ever — with a `catch` that swallowed the
 error and no retry, so exactly one request was ever made. `build-voice.py`
 writes the same list into the manifest and the tests check the two agree.
 
+**Clips play through the game's own AudioContext**, not an `<audio>` element.
+iOS only lets a media element play inside the user gesture that created it, and
+these are created a long way from any tap — so on a phone the element route is
+refused and the game either falls silent or drops back to the very robot voice
+the recordings exist to replace. The context is unlocked once, by a tap, and
+then plays anything. Decoded clips are kept, so a word said twice costs nothing,
+and a whole line is fetched at once so a sentence does not stall between its
+pieces.
+
+They are **MP3**, not AAC: every browser can decode MP3 through the Web Audio
+API, while open-source Chromium cannot decode AAC at all. Same size either way.
+
 The manifest says only *which lines were recorded*. It is retried with a
 widening gap, and again whenever the picker opens — and nothing waits on it:
 until it arrives a clip is simply attempted, and one that turns out to be
 missing falls back to the phone's own voice by itself. A slow manifest costs a
 little accuracy, never all the sound.
 
-**1,043 clips per voice, about 7 MB each**, loaded one at a time as they are
+**1,043 clips per voice, about 7.5 MB each**, loaded one at a time as they are
 needed, so having three costs nothing on the phone:
 
 | | |
