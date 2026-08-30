@@ -716,7 +716,8 @@
         word: $('sp-word'), emoji: $('sp-emoji'), clue: $('sp-clue'),
         stars: $('sp-stars'), streak: $('sp-streak'), keys: $('sp-keys'),
         pad: $('sp-pad'), win: $('sp-win'), winWord: $('sp-win-word'),
-        winStars: $('sp-win-stars'), winPraise: $('sp-win-praise')
+        winStars: $('sp-win-stars'), winPraise: $('sp-win-praise'),
+        layout: $('sp-layout'), case: $('sp-case')
       }
     });
   }
@@ -731,6 +732,8 @@
   on('sp-spell', function () { SpellGame.spellOut(); });
   on('sp-hint', function () { SpellGame.hint(); });
   on('sp-next', function () { SpellGame.next(); });
+  on('sp-layout', function () { SpellGame.toggleLayout(); });
+  on('sp-case', function () { SpellGame.toggleCase(); });
   on('sp-exit', function () {
     askQuit({
       emoji: '🐝',

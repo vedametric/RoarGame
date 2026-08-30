@@ -120,7 +120,26 @@
     ]
   ];
 
+  /* Two keyboards. ABC is the one a five year old can actually find a letter
+     on; QWERTY is the one she will type on for the rest of her life, and the
+     habit is worth forming early. The choice is remembered between visits. */
+  var LAYOUTS = {
+    qwerty: ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'],
+    abc:    ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'VWXYZ']
+  };
   var LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+  function saved(key, fallback) {
+    try { var v = localStorage.getItem('spell.' + key); return v === null ? fallback : v; }
+    catch (e) { return fallback; }
+  }
+  function save(key, value) {
+    try { localStorage.setItem('spell.' + key, value); } catch (e) {}
+  }
+
+  // Cat, not CAT: a capital to start and the rest in lower case, which is how
+  // the word is actually written down.
+  function proper(w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }
   var VISIBLE = 0.6;          // at least this much of every word is given
   var PRAISE = ['Well done!', 'Brilliant!', 'You got it!', 'Superstar!',
                 'Amazing!', 'Perfect!', 'Clever girl!'];
@@ -148,6 +167,9 @@
       this.band = 0;             // which length we are on
       this.queues = BANDS.map(shuffled);
       this.at = BANDS.map(function () { return 0; });
+
+      this.layout = saved('layout', 'qwerty') === 'abc' ? 'abc' : 'qwerty';
+      this.lower = saved('case', 'lower') !== 'upper';
 
       this._buildKeys();
       this._next();
@@ -178,7 +200,8 @@
       this.word = pick[0];
       this.emoji = pick[1];
       this.clue = pick[2];
-      this.up = this.word.toUpperCase();
+      this.up = this.word.toUpperCase();     // for matching, always upper
+      this.disp = proper(this.word);         // for reading, always Cat
 
       this.blanks = this._chooseBlanks(this.word.length);
       this.filled = [];
@@ -219,10 +242,13 @@
 
     guess: function (letter) {
       if (!this.running || this.won) return;
+      // Case never matters to the answer: 'a' and 'A' are the same letter to
+      // a child, and the keyboard can be showing either.
+      letter = String(letter).toUpperCase();
       var want = this.up.charAt(this.cursor);
 
       if (letter === want) {
-        this.filled[this.cursor] = letter;
+        this.filled[this.cursor] = this.disp.charAt(this.cursor);
         this.lastGood = this.cursor;
         global.RoarAudio.sfx('spellgood');
         this._pop(this.cursor);
@@ -312,7 +338,7 @@
         return;
       }
       var letter = this.up.charAt(this.cursor);
-      this.filled[this.cursor] = letter;
+      this.filled[this.cursor] = this.disp.charAt(this.cursor);
       global.RoarAudio.sfx('spellhint');
       this._pop(this.cursor);
       this._say(letter, 0.7, true);
@@ -365,12 +391,55 @@
 
     _buildKeys: function () {
       var pad = this.el.keys;
-      if (!pad || pad.childElementCount) return;
+      if (!pad) return;
+      var rows = LAYOUTS[this.layout] || LAYOUTS.abc;
       var html = '';
-      for (var i = 0; i < LETTERS.length; i++) {
-        html += '<button class="sp-key" type="button" data-l="' + LETTERS[i] + '">' + LETTERS[i] + '</button>';
+      for (var r = 0; r < rows.length; r++) {
+        html += '<div class="sp-row">';
+        for (var i = 0; i < rows[r].length; i++) {
+          var L = rows[r].charAt(i);
+          // data-l stays upper case whatever is printed on the key, so the
+          // matching never has to care which case is showing.
+          html += '<button class="sp-key" type="button" data-l="' + L + '">' +
+                  (this.lower ? L.toLowerCase() : L) + '</button>';
+        }
+        html += '</div>';
       }
       pad.innerHTML = html;
+      this._labelToggles();
+    },
+
+    setLayout: function (which) {
+      this.layout = which === 'abc' ? 'abc' : 'qwerty';
+      save('layout', this.layout);
+      this._buildKeys();
+      this._render();
+      global.RoarAudio.sfx('spellhint');
+    },
+
+    toggleLayout: function () { this.setLayout(this.layout === 'abc' ? 'qwerty' : 'abc'); },
+
+    toggleCase: function () {
+      this.lower = !this.lower;
+      save('case', this.lower ? 'lower' : 'upper');
+      this._buildKeys();
+      this._render();
+      global.RoarAudio.sfx('spellhint');
+    },
+
+    _labelToggles: function () {
+      var e = this.el;
+      if (!e) return;
+      if (e.layout) {
+        e.layout.textContent = this.layout === 'abc' ? '⌨️ abc' : '⌨️ qwerty';
+        e.layout.setAttribute('aria-label',
+          this.layout === 'abc' ? 'A to Z keyboard, tap for QWERTY' : 'QWERTY keyboard, tap for A to Z');
+      }
+      if (e.case) {
+        e.case.textContent = this.lower ? 'a → A' : 'A → a';
+        e.case.setAttribute('aria-label',
+          this.lower ? 'Small letters, tap for capitals' : 'Capital letters, tap for small');
+      }
     },
 
     _pop: function (i) { this.popAt = i; this.popT = Date.now(); },
@@ -381,7 +450,7 @@
       if (!e) return;
       var i, html = '';
 
-      for (i = 0; i < this.up.length; i++) {
+      for (i = 0; i < this.disp.length; i++) {
         var isBlank = this.blanks.indexOf(i) >= 0;
         var got = this.filled[i];
         var cls = 'sp-tile';
@@ -390,9 +459,19 @@
         else if (i === this.cursor && !this.won) cls += ' is-next';
         else cls += ' is-blank';
         if (this.popAt === i && Date.now() - this.popT < 500) cls += ' is-pop';
-        html += '<span class="' + cls + '">' + ((!isBlank || got) ? this.up.charAt(i) : '') + '</span>';
+        // Always the written form — capital to start, small letters after —
+        // whichever case the keyboard happens to be showing.
+        html += '<span class="' + cls + '">' + ((!isBlank || got) ? this.disp.charAt(i) : '') + '</span>';
       }
-      if (e.word) e.word.innerHTML = html;
+      if (e.word) {
+        // Fit the whole word across one line, however long it is: CHRISTMAS
+        // gets smaller tiles than CAT rather than wrapping onto a second row.
+        var n = this.disp.length;
+        var room = e.word.clientWidth || 340;
+        var size = Math.max(20, Math.min(46, Math.floor((room - (n - 1) * 5) / n)));
+        e.word.style.setProperty('--tile', size + 'px');
+        e.word.innerHTML = html;
+      }
       if (e.emoji) e.emoji.textContent = this.emoji;
 
       if (e.clue) {
@@ -406,20 +485,21 @@
         e.streak.hidden = this.streak < 2;
       }
 
-      // the letter keys
+      // the letter keys, now spread over rows
       if (e.keys) {
-        var kids = e.keys.children;
+        var kids = e.keys.querySelectorAll('.sp-key');
         var bad = (this.badAt && Date.now() - this.badT < 450) ? this.badAt : null;
         for (i = 0; i < kids.length; i++) {
           kids[i].classList.toggle('is-wrong', kids[i].getAttribute('data-l') === bad);
           kids[i].disabled = !!this.won;
         }
       }
+      this._labelToggles();
 
       if (e.win) {
         e.win.hidden = !this.won;
         if (this.won && e.winWord) {
-          e.winWord.textContent = this.up;
+          e.winWord.textContent = this.disp;
           e.winStars.textContent = '⭐'.repeat(this.lastStars);
           if (e.winPraise) e.winPraise.textContent = this.praise;
         }
