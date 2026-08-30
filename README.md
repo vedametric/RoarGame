@@ -238,6 +238,12 @@ because a word split over two rows stops looking like a word.
 Words are written the way they are written down: **a capital to start and small
 letters after** — Cat, Butterfly, Christmas — never CAT.
 
+**Any gap the letter fits.** A child reads the whole word and taps the letter
+she has spotted, which may well belong to the *second* gap — so a letter goes
+into any empty gap it fits, not only the one the cursor is on. It used to mark
+that wrong, which was simply unfair. A letter that fits no gap is still wrong,
+and every gap still has to be filled before the word is done.
+
 **Nothing is ever lost.** There is no man to hang, no lives to run out, no way
 to fail a word. A wrong letter wobbles the key and gives a soft low blip that
 says *not that one* — and that is all. Everything that goes *right*, though, is
@@ -248,7 +254,16 @@ celebrated loudly:
   ping over and over;
 - finishing sets off **confetti**, a five-note fanfare with a sparkle over the
   top, **one to three stars**, and a spoken *"Brilliant! — butterfly"*;
-- stars pile up in the corner and a **🔥 streak** counts every word in a row.
+- stars pile up in the corner and a **🔥 streak** counts every word in a row;
+- and every word adds a piece to **something she is building**.
+
+**Five right words builds something.** A strip of five blocks grows across the
+top — a rocket, a castle, a unicorn, a pirate ship — and the fifth right word
+finishes it: a longer fanfare, longer confetti, five bonus stars, and the
+finished thing filling the card. Each one earns a **sticker** that is kept
+between visits, so there is a row of things she has built to look at. Then it
+starts on the next one. Five is near enough to see coming and far enough to be
+worth wanting.
 
 **Three ways to get help**, and using them is never punished beyond a star:
 

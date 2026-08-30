@@ -1544,3 +1544,96 @@ body {
   .ck-teach { font-size: 11.5px; padding: 7px 11px; }
   .ck-help-btn { padding: 8px 6px; }
 }
+
+/* ── what she is building ───────────────────────────────────────
+   Five right words finishes one. The blocks grow left to right so the strip
+   reads as progress even before the thing on the end appears. */
+.sp-build {
+  display: flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 4px;
+}
+.sp-build-what {
+  font-size: 11px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase;
+  color: rgba(201,189,240,.7);
+}
+.sp-bricks { display: flex; align-items: flex-end; gap: 4px; height: 38px; }
+.sp-brick {
+  width: 15px; height: var(--h, 50%);
+  border-radius: 4px 4px 2px 2px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.14);
+  transition: background .25s ease, box-shadow .25s ease;
+}
+.sp-brick.is-on {
+  background: var(--c, #ffd24c);
+  border-color: transparent;
+  box-shadow: 0 0 12px -2px var(--c, #ffd24c);
+  animation: brickIn .4s cubic-bezier(.2,1.7,.4,1);
+}
+@keyframes brickIn {
+  0%   { transform: translateY(9px) scaleY(.4); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+.sp-crown {
+  font-size: 28px; line-height: 1;
+  opacity: .3; filter: grayscale(1);
+  transition: opacity .3s ease, filter .3s ease;
+}
+.sp-crown.is-near { opacity: .75; filter: grayscale(.35); }
+
+.sp-stickers {
+  display: flex; flex-wrap: wrap; gap: 3px; justify-content: center;
+  max-width: 300px;
+}
+.sp-sticker {
+  font-size: 17px; line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.4));
+}
+
+/* the fifth word: the card becomes the celebration */
+.sp-win.is-checkpoint .sp-win-card { border-color: #ffd24c; }
+.sp-win-build {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  margin-top: 2px; padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.15);
+}
+.sp-win-build b { font-size: 17px; font-weight: 900; color: #ffd24c; }
+.sp-win-build i { font-size: 12.5px; font-style: normal; color: rgba(201,189,240,.85); }
+.sp-win-thing {
+  font-size: 54px; line-height: 1;
+  animation: thingPop .6s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes thingPop {
+  0%   { transform: scale(0) rotate(-25deg); }
+  70%  { transform: scale(1.2) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* ── quiz, or move the hands yourself ──────────────────────────── */
+.ck-modes {
+  display: flex; gap: 6px; width: 100%; max-width: 420px;
+}
+.ck-mode {
+  appearance: none; cursor: pointer; font-family: inherit;
+  flex: 1 1 0; padding: 9px 6px;
+  font-size: 11.5px; font-weight: 900; letter-spacing: .03em;
+  color: rgba(201,189,240,.85);
+  border: 2px solid rgba(255,255,255,.14); border-radius: 999px;
+  background: rgba(255,255,255,.05);
+}
+.ck-mode.is-on {
+  color: #17092f;
+  border-color: transparent;
+  background: linear-gradient(180deg, #a9dcff, #7ec8ff);
+}
+.ck-mode:active { transform: translateY(2px); }
+
+/* the clock fills the screen when she is the one moving it */
+.screen--clock .ck-clockwrap { touch-action: none; }
+
+/* Hands-on mode has no answers to show, so the clock gets the room. */
+.screen--clock.is-play #ck-canvas {
+  width: min(56vh, 92vw, 400px);
+  height: min(56vh, 92vw, 400px);
+}
+.screen--clock.is-play .ck-ask { font-size: clamp(15px, 4.2vw, 17px); opacity: .8; }

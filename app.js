@@ -783,6 +783,7 @@
         stars: $('sp-stars'), streak: $('sp-streak'), keys: $('sp-keys'),
         pad: $('sp-pad'), win: $('sp-win'), winWord: $('sp-win-word'),
         winStars: $('sp-win-stars'), winPraise: $('sp-win-praise'),
+        build: $('sp-build'), stickers: $('sp-stickers'), winBuild: $('sp-win-build'),
         layout: $('sp-layout'), case: $('sp-case')
       }
     });
@@ -825,6 +826,7 @@
         digitalWrap: document.querySelector('.ck-digital-wrap'),
         options: $('ck-options'), teach: $('ck-teach'), ring: $('ck-ring'),
         stars: $('ck-stars'), streak: $('ck-streak'), level: $('ck-level'),
+        tell: $('ck-tell'),
         win: $('ck-win'), winStars: $('ck-win-stars'), winTime: $('ck-win-time'),
         winDigital: $('ck-win-digital'), winLevel: $('ck-win-level')
       }
@@ -840,6 +842,16 @@
   on('ck-tell', function () { ClockGame.tell(); });
   on('ck-ring', function () { ClockGame.toggleMinutes(); });
   on('ck-next', function () { ClockGame.next(); });
+
+  function clockMode(play) {
+    $('ck-mode-quiz').classList.toggle('is-on', !play);
+    $('ck-mode-play').classList.toggle('is-on', play);
+    // Nothing to answer in hands-on mode, so the clock takes the whole screen.
+    $('screen-clock').classList.toggle('is-play', play);
+    ClockGame.setPlay(play);
+  }
+  on('ck-mode-quiz', function () { clockMode(false); });
+  on('ck-mode-play', function () { clockMode(true); });
   on('ck-exit', function () {
     askQuit({
       emoji: '🕐',

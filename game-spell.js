@@ -40,6 +40,21 @@
   // Cat, not CAT: a capital to start and the rest in lower case, which is how
   // the word is actually written down.
   function proper(w) { return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); }
+  /* Something to build. Five right words finishes one, which is near enough to
+     see coming but far enough to be worth wanting; each finished one is kept
+     as a sticker she can look at. */
+  var BUILDS = [
+    { name: 'a rocket',   top: '🚀', colour: '#ff8a2b' },
+    { name: 'a castle',   top: '🏰', colour: '#7ec8ff' },
+    { name: 'a unicorn',  top: '🦄', colour: '#e6b3ff' },
+    { name: 'a rainbow',  top: '🌈', colour: '#9df08a' },
+    { name: 'a dinosaur', top: '🦕', colour: '#ffd24c' },
+    { name: 'a pirate ship', top: '🏴‍☠️', colour: '#ff8a8a' },
+    { name: 'a birthday cake', top: '🎂', colour: '#ffb3f0' },
+    { name: 'a spaceship', top: '🛸', colour: '#a78bfa' }
+  ];
+  var PER_BUILD = 5;          // right words to finish one
+
   var VISIBLE = 0.6;          // at least this much of every word is given
   var PRAISE = ['Well done!', 'Brilliant!', 'You got it!', 'Superstar!',
                 'Amazing!', 'Perfect!', 'Clever girl!'];
@@ -64,6 +79,10 @@
       this.streak = 0;
       this.best = 0;
       this.done = 0;
+      this.built = 0;                     // parts of the current build
+      this.buildAt = 0;                   // which one she is on
+      this.stickers = this._loadStickers();
+      this.finished = null;               // the build just completed, for the card
       this.band = 0;             // which length we are on
       this.queues = BANDS.map(shuffled);
       this.at = BANDS.map(function () { return 0; });
@@ -145,13 +164,17 @@
       // Case never matters to the answer: 'a' and 'A' are the same letter to
       // a child, and the keyboard can be showing either.
       letter = String(letter).toUpperCase();
-      var want = this.up.charAt(this.cursor);
 
-      if (letter === want) {
-        this.filled[this.cursor] = this.disp.charAt(this.cursor);
-        this.lastGood = this.cursor;
+      // Any gap it fits, not only the one we happen to be pointing at. A child
+      // reads the whole word and taps the letter she has spotted, which may
+      // belong to the second gap — marking that wrong is just unfair.
+      var at = this._gapFor(letter);
+
+      if (at >= 0) {
+        this.filled[at] = this.disp.charAt(at);
+        this.lastGood = at;
         global.RoarAudio.sfx('spellgood');
-        this._pop(this.cursor);
+        this._pop(at);
         this._advance();
       } else {
         this.wrong++;
@@ -163,6 +186,19 @@
         if (this.wrong % 3 === 0 && !this.clueShown) this.showClue();
       }
       this._render();
+    },
+
+    // The gap this letter would fill: the one she is on if it fits there,
+    // otherwise the leftmost empty one it fits, or -1 if it fits none.
+    _gapFor: function (letter) {
+      if (!this.filled[this.cursor] && this.up.charAt(this.cursor) === letter) {
+        return this.cursor;
+      }
+      for (var i = 0; i < this.blanks.length; i++) {
+        var b = this.blanks[i];
+        if (!this.filled[b] && this.up.charAt(b) === letter) return b;
+      }
+      return -1;
     },
 
     _advance: function () {
@@ -190,9 +226,27 @@
       // Longer words once a few have gone in cleanly.
       if (this.done % 3 === 0 && this.band < BANDS.length - 1) this.band++;
 
-      global.RoarAudio.sfx('spellwin');
-      try { global.Confetti.start(['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff', '#9df08a', '#ffffff']); } catch (e) {}
-      this._winT = setTimeout(function () { try { global.Confetti.stop(); } catch (e) {} }, 2600);
+      // Another piece of whatever is being built, and every fifth one finishes
+      // it: a bigger noise, longer confetti, and a sticker to keep.
+      this.built++;
+      this.finished = null;
+      if (this.built >= PER_BUILD) {
+        this.built = 0;
+        this.finished = BUILDS[this.buildAt % BUILDS.length];
+        this.stickers.push(this.finished.top);
+        this._saveStickers();
+        this.buildAt++;
+        this.stars += 5;                  // the checkpoint is worth something
+      }
+
+      global.RoarAudio.sfx(this.finished ? 'checkpoint' : 'spellwin');
+      try {
+        global.Confetti.start(this.finished
+          ? ['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff', '#9df08a', '#ffb3f0', '#ffffff']
+          : ['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff', '#9df08a', '#ffffff']);
+      } catch (e) {}
+      var stop = this.finished ? 4200 : 2600;
+      this._winT = setTimeout(function () { try { global.Confetti.stop(); } catch (e) {} }, stop);
 
       var pi = (Math.random() * PRAISE.length) | 0;
       this.praise = PRAISE[pi];          // shown on the card as well as spoken,
@@ -315,6 +369,15 @@
       }
     },
 
+    _loadStickers: function () {
+      try { return JSON.parse(saved('stickers', '[]')) || []; } catch (e) { return []; }
+    },
+    _saveStickers: function () {
+      // Keep the last two rows' worth; a hundred of them would only shrink.
+      if (this.stickers.length > 24) this.stickers = this.stickers.slice(-24);
+      try { save('stickers', JSON.stringify(this.stickers)); } catch (e) {}
+    },
+
     _pop: function (i) { this.popAt = i; this.popT = Date.now(); },
     _wobble: function (l) { this.badAt = l; this.badT = Date.now(); },
 
@@ -353,6 +416,28 @@
       }
 
       if (e.stars) e.stars.textContent = '⭐ ' + this.stars;
+
+      // the build strip: five blocks that grow, then the thing itself
+      if (e.build) {
+        var b = BUILDS[this.buildAt % BUILDS.length];
+        var bits = '';
+        for (i = 0; i < PER_BUILD; i++) {
+          bits += '<i class="sp-brick' + (i < this.built ? ' is-on' : '') + '"' +
+                  ' style="--h:' + (34 + i * 9) + '%;--c:' + b.colour + '"></i>';
+        }
+        e.build.innerHTML =
+          '<span class="sp-build-what">building ' + b.name + '</span>' +
+          '<span class="sp-bricks">' + bits + '</span>' +
+          '<span class="sp-crown' + (this.built ? ' is-near' : '') + '">' + b.top + '</span>';
+        e.build.setAttribute('aria-label',
+          'Building ' + b.name + ', ' + this.built + ' of ' + PER_BUILD);
+      }
+      if (e.stickers) {
+        e.stickers.innerHTML = this.stickers.map(function (s) {
+          return '<span class="sp-sticker">' + s + '</span>';
+        }).join('');
+        e.stickers.hidden = !this.stickers.length;
+      }
       if (e.streak) {
         e.streak.textContent = this.streak > 1 ? '🔥 ' + this.streak + ' in a row' : '';
         e.streak.hidden = this.streak < 2;
@@ -375,6 +460,18 @@
           e.winWord.textContent = this.disp;
           e.winStars.textContent = '⭐'.repeat(this.lastStars);
           if (e.winPraise) e.winPraise.textContent = this.praise;
+          // A finished build takes over the card — this is the moment worth
+          // making a fuss of.
+          if (e.winBuild) {
+            e.winBuild.hidden = !this.finished;
+            if (this.finished) {
+              e.winBuild.innerHTML =
+                '<span class="sp-win-thing">' + this.finished.top + '</span>' +
+                '<b>You built ' + this.finished.name + '!</b>' +
+                '<i>+5 stars, and a sticker to keep</i>';
+            }
+          }
+          if (e.win) e.win.classList.toggle('is-checkpoint', !!this.finished);
         }
       }
       if (e.pad) e.pad.hidden = !!this.won;
