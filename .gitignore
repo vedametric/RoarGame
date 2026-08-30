@@ -1,0 +1,6 @@
+# Piper voice models, downloaded on demand by tools/build-voice.py.
+# Hundreds of megabytes, and the generated audio in voice/ is what actually
+# ships — never commit these, and never commit a symlink to them: the Pages
+# artifact step tars with --dereference, so a link to a path that exists only
+# on one machine takes the whole deploy down.
+tools/.voices/
