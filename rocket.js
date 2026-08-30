@@ -22,7 +22,63 @@
   // so the whole sequence can be re-timed in one place.
   var IGNITE = 3.4;          // engine lights
   var CLEAR = 4.0;           // and it leaves the pad
-  var END = 11.5;            // curtain
+  var CRUISE = 8.6;          // out of the sky; somewhere ahead to aim for
+  var LAND = 12.4;           // close enough that it is a place, not a dot
+  var TOUCH = 15.0;          // down
+  var END = 19.0;            // curtain
+
+  /* ── where it goes ────────────────────────────────────────────
+     A different planet every launch, so the tenth one is still worth
+     watching. Each is a real place with the colours it really has, and a
+     line about it she can hold on to. */
+  var PLANETS = [
+    { name: 'THE MOON', short: 'the moon', sky: '#04040c',
+      body: '#ddd9cd', spot: '#a9a598', ground: '#8d8a83', deep: '#3a3835',
+      fact: 'no wind, no rain, no sound' },
+    { name: 'MARS', short: 'Mars', sky: '#2a1008',
+      body: '#d1603a', spot: '#9c4526', ground: '#c1502b', deep: '#4a1c0e',
+      fact: 'the rusty red one' },
+    { name: 'VENUS', short: 'Venus', sky: '#3a2408',
+      body: '#e8c07a', spot: '#c69a52', ground: '#e0b46a', deep: '#6a4a1c',
+      fact: 'hotter than an oven' },
+    { name: 'JUPITER', short: 'Jupiter', sky: '#241608',
+      body: '#e0b48a', spot: '#a86b4a', ground: '#d8a878', deep: '#5a3320',
+      fact: 'the biggest one of all', bands: true, eye: true },
+    { name: 'SATURN', short: 'Saturn', sky: '#1c1a0c',
+      body: '#f0dfa8', spot: '#c9b276', ground: '#e8d69c', deep: '#5c5030',
+      fact: 'the one with the rings', rings: true, bands: true },
+    { name: 'NEPTUNE', short: 'Neptune', sky: '#070f26',
+      body: '#4a7fd8', spot: '#2d549c', ground: '#4477cc', deep: '#16264e',
+      fact: 'windier than anywhere', bands: true },
+    { name: 'MERCURY', short: 'Mercury', sky: '#0c0a08',
+      body: '#b3ada4', spot: '#7d786f', ground: '#a8a29a', deep: '#3c3833',
+      fact: 'closest to the sun' },
+    { name: 'PLUTO', short: 'Pluto', sky: '#0a0812',
+      body: '#d8c4ad', spot: '#a8917a', ground: '#cdb9a2', deep: '#443a30',
+      fact: 'small, far, and very cold', heart: true }
+  ];
+
+  /* ...and something different waiting when she gets there. This is the part
+     that makes it worth launching again: the planet tells her where she is,
+     the welcome tells her it was worth going. */
+  var WELCOMES = [
+    { emoji: ['👽', '🛸', '👽'], say: 'The aliens came to say hello!', sfx: 'alien' },
+    { emoji: ['🦄', '🌈'],       say: 'A space unicorn lives here!',   sfx: 'sparkle' },
+    { emoji: ['🎉', '🎂', '🎈'], say: 'It is somebody’s birthday!',    sfx: 'win' },
+    { emoji: ['🤖', '🔧'],       say: 'A little robot rolled over.',   sfx: 'spawn' },
+    { emoji: ['🐧', '❄️', '🐧'], say: 'Penguins! On another planet!',  sfx: 'puff' },
+    { emoji: ['🍦', '🍩', '🍪'], say: 'The whole ground is pudding.',  sfx: 'nom' },
+    { emoji: ['🦖'],             say: 'A space dinosaur says hi.',     sfx: 'thud' },
+    { emoji: ['💎', '💎', '💎'], say: 'Diamonds, everywhere you look!', sfx: 'gold' },
+    { emoji: ['🐙', '🫧'],       say: 'A friendly space octopus!',     sfx: 'puff' },
+    { emoji: ['🎸', '🥁', '👽'], say: 'The aliens are in a band.',     sfx: 'level' },
+    { emoji: ['🐈', '🧶'],       say: 'A cat got here before you.',    sfx: 'sparkle' },
+    { emoji: ['🌺', '🌷', '🌻'], say: 'Flowers grow here too.',        sfx: 'spellgood' },
+    { emoji: ['⚽', '🥅'],       say: 'Fancy a game of football?',     sfx: 'grab' },
+    { emoji: ['👑'],             say: 'They made you the queen!',      sfx: 'gold' }
+  ];
+
+  var EMOJI = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif';
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -61,13 +117,24 @@
       this.done = false;
       this.running = true;
 
+      // Somewhere new every time, and never the same place twice running.
+      var pool = PLANETS.filter(function (p) { return p.name !== Rocket.lastPlanet; });
+      this.planet = pool[(Math.random() * pool.length) | 0];
+      Rocket.lastPlanet = this.planet.name;
+      var wpool = WELCOMES.filter(function (w) { return w.say !== Rocket.lastWelcome; });
+      this.welcome = wpool[(Math.random() * wpool.length) | 0];
+      Rocket.lastWelcome = this.welcome.say;
+      this.guests = [];
+      this.dust = [];
+      this.landed = false;
+
       for (var i = 0; i < 150; i++) {
         this.stars.push({ x: Math.random(), y: Math.random(), r: rnd(0.4, 1.6),
                           tw: rnd(0, 6.28) });
       }
       // Cloud height in metres, so the rocket genuinely passes through them.
       for (i = 0; i < 14; i++) {
-        this.clouds.push({ x: rnd(-0.2, 1.2), h: rnd(260, 2400),
+        this.clouds.push({ x: rnd(-0.2, 1.2), h: rnd(220, 1100),
                            w: rnd(0.28, 0.75), o: rnd(0.5, 0.95) });
       }
 
@@ -89,6 +156,8 @@
     stop: function () {
       this.running = false;
       cancelAnimationFrame(this.raf);
+      clearTimeout(this._partyT);
+      try { global.Confetti.stop(); } catch (e) {}
       if (this._onResize) removeEventListener('resize', this._onResize);
       this._onResize = null;
       if (this.air) { try { this.air.stop(); } catch (e) {} this.air = null; }
@@ -172,35 +241,137 @@
       this._once('clear', CLEAR + 2.2, function () {
         if (self0.cfg.word) self0.cfg.word.className = 'launch-word is-gone';
       });
-      this._once('space', 9.4, function () {
+      this._once('space', CRUISE - 0.6, function () {
         if (self0.cfg.word) {
           self0.cfg.word.textContent = '🌍 SPACE!';
           self0.cfg.word.className = 'launch-word is-space is-on';
         }
         global.RoarAudio.sfx('win');
       });
+      // Where are we going? Announced once she is out of the sky and the
+      // planet has come into view ahead.
+      this._once('going', CRUISE + 1.0, function () {
+        if (self0.cfg.word) {
+          self0.cfg.word.innerHTML = '<small>next stop</small>' + self0.planet.name;
+          self0.cfg.word.className = 'launch-word is-where is-on';
+        }
+        global.RoarAudio.sfx('spawn');
+      });
+      this._once('quiet', LAND - 0.4, function () {
+        if (self0.cfg.word) self0.cfg.word.className = 'launch-word is-gone';
+      });
+      this._once('touch', TOUCH, function () { self0._touchdown(); });
 
       /* thrust — the engine builds before it can lift its own weight, which
          is why a real rocket sits still for a moment in all that fire */
       var burn = clamp((t - IGNITE) / 0.6, 0, 1);
-      if (t >= CLEAR) {
+      if (t >= CLEAR && t < CRUISE) {
         // It gets lighter as it burns, so it keeps accelerating all the way up.
         var thrust = 26 + Math.min(150, (t - CLEAR) * 34);
         this.vel += thrust * dt;
         this.alt += this.vel * dt;
+      } else if (t >= CRUISE) {
+        // Out of the sky the engine cuts and it coasts, the way they do — and
+        // then lights again to set itself down.
+        this.alt += this.vel * dt;
+        burn = t >= LAND && t < TOUCH ? clamp((t - LAND) / 0.5, 0, 1) * 0.85 : 0;
+        if (this.landed) burn = 0;
       }
 
+      // How close the planet is, 0 the moment it is spotted and 1 standing on
+      // it — one number, so the disc ahead and the ground underfoot are the
+      // same thing seen at two distances rather than two different drawings.
+      this.near = clamp((t - CRUISE) / (TOUCH - CRUISE), 0, 1);
+      this.down = clamp((t - LAND) / (TOUCH - LAND), 0, 1);
+
       // The shake is worst at ignition, when it is straining against the pad.
-      this.shake = burn * (t < CLEAR ? 1 : Math.max(0, 1 - (t - CLEAR) / 3.5)) * 9;
+      this.shake = t < CRUISE
+        ? burn * (t < CLEAR ? 1 : Math.max(0, 1 - (t - CLEAR) / 3.5)) * 9
+        : (this.landed ? Math.max(0, 1 - (t - this.landAt) / 0.5) * 5 : 0);
 
       if (this.air) {
         this.air.setBurner(burn);
-        this.air.setWind(burn * clamp(this.vel / 90, 0, 1) * 0.9);
+        this.air.setWind(t < CRUISE ? burn * clamp(this.vel / 90, 0, 1) * 0.9 : 0);
       }
 
+      this.burn = burn;              // the flame is drawn from this, not re-guessed
       this._smoke(dt, burn);
+      this._guests(dt);
 
       if (t >= END) this._finish();
+    },
+
+    /* ── arriving ─────────────────────────────────────────────────
+       The legs touch, the dust goes up, and whoever lives here comes out to
+       see who it is. */
+
+    _touchdown: function () {
+      this.landed = true;
+      this.landAt = this.t;
+      this.vel = 0;
+      global.RoarAudio.sfx('thud');
+      // dust kicked out sideways, since there is nothing to hold it up
+      var y = this._horizonY(), s = this._scale();
+      for (var i = 0; i < 90; i++) {
+        var a = rnd(0, 6.2832);
+        this.smoke.push({
+          x: this.W / 2 + Math.cos(a) * rnd(0, 12), y: y - rnd(0, 6),
+          vx: Math.cos(a) * rnd(80, 300), vy: rnd(-40, 30),
+          r: rnd(6, 18), grow: rnd(20, 50),
+          life: rnd(0.8, 1.8), age: 0, hot: 0, pad: false, moon: true
+        });
+      }
+      if (this.cfg.word) {
+        this.cfg.word.innerHTML = '<small>you landed on</small>' + this.planet.name +
+                                  '<small>' + this.planet.fact + '</small>';
+        this.cfg.word.className = 'launch-word is-arrived is-on';
+      }
+
+      // and the welcome party, a moment later, so it reads as two events
+      var self = this;
+      this._partyT = setTimeout(function () {
+        if (!self.running) return;
+        // Alternating sides, working outwards, so the rocket in the middle is
+        // never covered up and the group looks arranged rather than dropped.
+        var SIDE = [-1, 1, -1, 1];
+        var OUT = [2.3, 2.3, 4.1, 4.1];
+        self.welcome.emoji.forEach(function (e, i) {
+          self.guests.push({
+            emoji: e, at: i, age: -i * 0.18,
+            x: self.W / 2 + SIDE[i % 4] * OUT[i % 4] * s + rnd(-4, 4),
+            hop: rnd(0, 6.28)
+          });
+        });
+        global.RoarAudio.sfx(self.welcome.sfx);
+        if (self.cfg.word) {
+          self.cfg.word.innerHTML = self.welcome.emoji.join(' ') +
+                                    '<small>' + self.welcome.say + '</small>';
+          self.cfg.word.className = 'launch-word is-welcome is-on';
+        }
+        try {
+          global.Confetti.start(['#ffd24c', '#7ec8ff', '#e6b3ff', '#9df08a', '#ffffff']);
+        } catch (e) {}
+      }, 1300);
+    },
+
+    _guests: function (dt) {
+      for (var i = 0; i < this.guests.length; i++) this.guests[i].age += dt;
+    },
+
+    // The top edge of the planet: a dot in the distance to begin with, the
+    // ground under the legs by the end. One curve the whole way.
+    _planetGeom: function () {
+      var W = this.W, H = this.H;
+      var k = this.near || 0;
+      var e = k * k;                          // it swells fast as you close in
+      var r0 = W * 0.035, r1 = W * 3.4;
+      var r = r0 + (r1 - r0) * e;
+      var cy = H * 0.40 + (H * 0.78 + r1 - H * 0.40) * e;
+      return { cx: W / 2, cy: cy, r: r, top: cy - r };
+    },
+
+    _horizonY: function () {
+      return this._planetGeom().top;
     },
 
     _once: function (key, at, fn) {
@@ -213,7 +384,14 @@
     _rocketY: function () {
       var padY = this.H * PAD_Y, holdY = this.H * HOLD_Y;
       var climb = this.alt * (this.H / 260);          // pixels per metre, at first
-      return Math.max(holdY, padY - climb);
+      var y = Math.max(holdY, padY - climb);
+      // Coming in to land it settles down onto the surface, legs first.
+      if (this.down > 0) {
+        var sit = this._horizonY() - this._scale() * 1.32;
+        var k = this.down * this.down * (3 - 2 * this.down);   // ease it in
+        y = y + (sit - y) * k;
+      }
+      return y;
     },
 
     // How far the world has scrolled underneath it, in metres.
@@ -287,7 +465,9 @@
         }
         // Once the rocket is climbing, the smoke it left behind falls away
         // with the rest of the world.
-        if (this.t > CLEAR) p.y += this.vel * (this.H / 260) * dt * 0.55;
+        if (this.t > CLEAR && this.t < CRUISE) p.y += this.vel * (this.H / 260) * dt * 0.55;
+        // Dust on an airless world does not billow, it flies flat and drops.
+        if (p.moon) { p.vy += 90 * dt; p.grow *= 0.985; }
       }
       for (i = this.sparks.length - 1; i >= 0; i--) {
         p = this.sparks[i];
@@ -316,7 +496,9 @@
       this._stars(c, W, H, camAlt);
       this._clouds(c, W, H, camAlt);
       this._ground(c, W, H, camAlt);
+      this._planet(c, W, H);
       this._smokeDraw(c);
+      this._guestsDraw(c);
       this._rocket(c, W, H);
       this._sparkDraw(c);
       c.restore();
@@ -340,6 +522,13 @@
       g.addColorStop(1, mix('#dff0ff', '#0a0a18', k));
       c.fillStyle = g;
       c.fillRect(0, 0, W, H);
+      // Close in, the planet's own sky takes over from plain black.
+      if (this.down > 0) {
+        c.globalAlpha = clamp(this.down * 0.8, 0, 0.8);
+        c.fillStyle = this.planet.sky;
+        c.fillRect(0, 0, W, H);
+        c.globalAlpha = 1;
+      }
     },
 
     _stars: function (c, W, H, alt) {
@@ -359,7 +548,12 @@
 
     // Real clouds at real heights, so going through one means something.
     _clouds: function (c, W, H, alt) {
+      // There is no weather above the air, and certainly none on the way to
+      // another planet — so they go, rather than hanging about in space.
+      var air = clamp(1 - (alt - 1000) / 500, 0, 1) * (1 - clamp(this.near || 0, 0, 1) * 4);
+      if (air <= 0) return;
       c.save();
+      c.globalAlpha = air;
       for (var i = 0; i < this.clouds.length; i++) {
         var cl = this.clouds[i];
         // Screen position from the height difference: above you until you
@@ -367,7 +561,7 @@
         var y = H * HOLD_Y + (alt - cl.h) * (H / 260) * 0.85;
         if (y < -H * 0.4 || y > H * 1.4) continue;
         var w = cl.w * W, near = clamp(1 - Math.abs(alt - cl.h) / 1400, 0.25, 1);
-        c.globalAlpha = cl.o * near;
+        c.globalAlpha = cl.o * near * air;
         c.fillStyle = '#ffffff';
         for (var p = 0; p < 5; p++) {
           var px = cl.x * W + (p - 2) * w * 0.22;
@@ -426,6 +620,146 @@
       c.restore();
     },
 
+    /* ── the planet ───────────────────────────────────────────────
+       Drawn once, as a sphere, at whatever size the approach has reached.
+       A long way off that is a coloured dot; at the end the same sphere is
+       so large that its edge is the horizon and its face is the ground. */
+
+    _planet: function (c, W, H) {
+      if (!this.near) return;
+      var p = this.planet, g = this._planetGeom();
+      var lit = -0.32, litY = -0.30;             // where the sun is
+
+      c.save();
+      c.beginPath();
+      c.arc(g.cx, g.cy, g.r, 0, 6.2832);
+      c.clip();
+
+      // the body, lit from one side
+      var ball = c.createRadialGradient(
+        g.cx + g.r * lit, g.cy + g.r * litY, g.r * 0.05,
+        g.cx, g.cy, g.r);
+      ball.addColorStop(0, p.ground);
+      ball.addColorStop(0.55, p.body);
+      ball.addColorStop(1, p.deep);
+      c.fillStyle = ball;
+      c.fillRect(g.cx - g.r, g.cy - g.r, g.r * 2, g.r * 2);
+
+      if (p.bands) {
+        // Jupiter, Saturn and Neptune are striped, and the stripes are what
+        // make them recognisable at a glance.
+        c.fillStyle = p.spot;
+        c.globalAlpha = 0.5;
+        for (var b = -5; b <= 5; b++) {
+          var by = g.cy + b * g.r * 0.17;
+          var bh = g.r * (0.045 + 0.03 * Math.abs(Math.sin(b * 1.7)));
+          c.fillRect(g.cx - g.r, by, g.r * 2, bh);
+        }
+        c.globalAlpha = 1;
+      } else {
+        // craters and patches, in fixed places so they do not crawl
+        c.fillStyle = p.spot;
+        c.globalAlpha = 0.55;
+        for (var i = 0; i < 12; i++) {
+          var a = i * 2.399;                    // spread evenly round the disc
+          var rr = Math.sqrt((i + 0.5) / 12) * g.r * 0.86;
+          c.beginPath();
+          c.arc(g.cx + Math.cos(a) * rr, g.cy + Math.sin(a) * rr,
+                g.r * (0.05 + (i % 4) * 0.028), 0, 6.2832);
+          c.fill();
+        }
+        c.globalAlpha = 1;
+      }
+      if (p.eye) {                              // Jupiter's great red spot
+        c.fillStyle = '#c4553a';
+        c.beginPath();
+        c.ellipse(g.cx + g.r * 0.26, g.cy + g.r * 0.16, g.r * 0.17, g.r * 0.10, 0, 0, 6.2832);
+        c.fill();
+      }
+      if (p.heart) {                            // Pluto's, which is really there
+        c.fillStyle = 'rgba(255,248,232,0.75)';
+        c.beginPath();
+        c.ellipse(g.cx - g.r * 0.12, g.cy + g.r * 0.16, g.r * 0.16, g.r * 0.19, -0.5, 0, 6.2832);
+        c.ellipse(g.cx + g.r * 0.14, g.cy + g.r * 0.16, g.r * 0.16, g.r * 0.19, 0.5, 0, 6.2832);
+        c.fill();
+      }
+
+      // the edge falls into shadow, which is what makes it a ball
+      var shade = c.createRadialGradient(
+        g.cx + g.r * lit, g.cy + g.r * litY, g.r * 0.2, g.cx, g.cy, g.r);
+      shade.addColorStop(0, 'rgba(0,0,0,0)');
+      shade.addColorStop(0.72, 'rgba(0,0,0,0.10)');
+      shade.addColorStop(1, 'rgba(0,0,0,0.62)');
+      c.fillStyle = shade;
+      c.fillRect(g.cx - g.r, g.cy - g.r, g.r * 2, g.r * 2);
+      c.restore();
+
+      // rings, drawn round the outside once we are far enough back to see them
+      if (p.rings && this.near < 0.72) {
+        c.save();
+        c.translate(g.cx, g.cy);
+        c.scale(1, 0.28);
+        c.strokeStyle = 'rgba(240,225,180,0.75)';
+        c.lineWidth = g.r * 0.10;
+        c.beginPath(); c.arc(0, 0, g.r * 1.55, 0, 6.2832); c.stroke();
+        c.strokeStyle = 'rgba(240,225,180,0.40)';
+        c.lineWidth = g.r * 0.05;
+        c.beginPath(); c.arc(0, 0, g.r * 1.80, 0, 6.2832); c.stroke();
+        c.restore();
+      }
+
+      // Close in, the sphere's own shading leaves the ground almost black —
+      // the lit side is miles off screen. So the surface underfoot gets its
+      // own light, anchored to the horizon rather than to the centre.
+      if (this.down > 0.02) {
+        var hy = g.top;
+        c.save();
+        c.globalAlpha = clamp(this.down, 0, 1);
+        var soil = c.createLinearGradient(0, hy, 0, H);
+        soil.addColorStop(0, p.ground);
+        soil.addColorStop(0.35, mix(p.ground, p.deep, 0.45));
+        soil.addColorStop(1, p.deep);
+        c.fillStyle = soil;
+        c.beginPath();
+        c.arc(g.cx, g.cy, g.r, Math.PI, 0);       // just the cap above centre
+        c.lineTo(W, H); c.lineTo(0, H);
+        c.closePath();
+        c.fill();
+        c.restore();
+      }
+
+      // a rim of light along the top edge, once it is the horizon
+      if (this.down > 0.05) {
+        c.save();
+        c.globalAlpha = clamp(this.down, 0, 1) * 0.5;
+        c.strokeStyle = p.body;
+        c.lineWidth = 3;
+        c.beginPath();
+        c.arc(g.cx, g.cy, g.r, Math.PI * 1.15, Math.PI * 1.85);
+        c.stroke();
+        c.restore();
+      }
+    },
+
+    // Whoever lives here, bouncing out to meet her.
+    _guestsDraw: function (c) {
+      if (!this.guests.length) return;
+      var s = this._scale(), y = this._horizonY();
+      c.save();
+      c.textAlign = 'center';
+      c.textBaseline = 'alphabetic';
+      for (var i = 0; i < this.guests.length; i++) {
+        var g = this.guests[i];
+        if (g.age <= 0) continue;
+        var pop = Math.min(1, g.age * 3.2);
+        var hop = Math.abs(Math.sin(g.age * 4 + g.hop)) * s * 0.5;
+        var size = s * 1.1 * (pop < 1 ? pop * (2 - pop) : 1);
+        c.font = size + 'px ' + EMOJI;
+        c.fillText(g.emoji, g.x, y + s * 0.15 - hop);
+      }
+      c.restore();
+    },
+
     _smokeDraw: function (c) {
       c.save();
       for (var i = 0; i < this.smoke.length; i++) {
@@ -458,7 +792,7 @@
     _rocket: function (c, W, H) {
       var s = this._scale();
       var x = W / 2, y = this._rocketY();
-      var burn = clamp((this.t - IGNITE) / 0.5, 0, 1);
+      var burn = this.burn == null ? clamp((this.t - IGNITE) / 0.5, 0, 1) : this.burn;
 
       c.save();
       c.translate(x, y);
@@ -552,13 +886,16 @@
     _hud: function (c, W, H) {
       if (this.t < CLEAR) return;
       var m = Math.round(this.alt);
+      var label = this.landed ? 'landed on ' + this.planet.short
+        : this.t >= CRUISE ? 'on the way to ' + this.planet.short
+        : (m > 999 ? (m / 1000).toFixed(1) + ' km' : m + ' m') + ' up';
       c.save();
       c.globalAlpha = clamp((this.t - CLEAR) / 0.5, 0, 1) *
                       clamp((END - this.t) / 0.6, 0, 1);
       c.textAlign = 'center';
       c.font = '900 15px system-ui, sans-serif';
       c.fillStyle = 'rgba(255,255,255,0.8)';
-      c.fillText((m > 999 ? (m / 1000).toFixed(1) + ' km' : m + ' m') + ' up', W / 2, H - 26);
+      c.fillText(label, W / 2, H - 26);
       c.restore();
     }
   };

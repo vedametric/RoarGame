@@ -258,6 +258,23 @@ body.has-topbar .screen--flat { padding-top: 0; }
   animation: lwShout .7s cubic-bezier(.2,1.6,.4,1) both;
 }
 .launch-word.is-space { font-size: clamp(30px, 9vw, 52px); animation: lwIn .6s ease both; }
+/* where it is going, and where it got to */
+.launch-word.is-where, .launch-word.is-arrived, .launch-word.is-welcome {
+  font-size: clamp(26px, 8vw, 44px); line-height: 1.15;
+  animation: lwIn .6s ease both;
+}
+.launch-word.is-welcome { font-size: clamp(38px, 13vw, 68px); }
+.launch-word small {
+  display: block;
+  font-size: 13px; font-weight: 800; letter-spacing: .12em;
+  text-transform: uppercase; color: rgba(255,255,255,.72);
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
+}
+.launch-word.is-welcome small {
+  margin-top: 6px; font-size: 15px; letter-spacing: .04em;
+  text-transform: none; color: #ffd24c;
+}
+.launch-word.is-arrived { color: #ffd24c; }
 .launch-word.is-gone { opacity: 0; transition: opacity .4s ease; }
 
 @keyframes lwCount {
