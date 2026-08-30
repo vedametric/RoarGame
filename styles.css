@@ -162,6 +162,77 @@ body.has-topbar .screen {
 }
 body.has-topbar .screen--flat { padding-top: 0; }
 
+/* ── snake ────────────────────────────────────────────────────
+   The board takes whatever is left between the score and the pad, and is
+   always drawn as square cells so the snake never comes out stretched. */
+
+#screen-snake {
+  padding: calc(env(safe-area-inset-top, 0px) + var(--tb) + 6px) 10px
+           calc(env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  justify-content: flex-start;
+}
+.sn-head {
+  display: flex; align-items: baseline; gap: 14px;
+  width: 100%; max-width: 460px; justify-content: center;
+}
+.sn-score { font-size: 34px; font-weight: 900; color: #9df08a; line-height: 1; }
+.sn-len { font-size: 14px; font-weight: 800; color: rgba(201,189,240,.85); }
+.sn-best { font-size: 14px; font-weight: 800; color: #ffd24c; }
+
+#snake-canvas {
+  flex: 1 1 auto; width: 100%; max-width: 460px; min-height: 0;
+  border-radius: 18px;
+  border: 3px solid rgba(157,240,138,.35);
+  box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 0 40px rgba(0,0,0,.35);
+  touch-action: none;              /* the board is steered, not scrolled */
+  background: #1d4526;
+}
+.sn-hint {
+  margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .05em;
+  color: rgba(201,189,240,.6); text-transform: uppercase;
+}
+
+/* A pad as well as the swipe: some fingers would rather press a button. */
+.sn-pad {
+  display: grid; gap: 5px;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-rows: repeat(2, 42px);
+  justify-content: center;
+}
+.sn-btn {
+  appearance: none; cursor: pointer; font-family: inherit;
+  font-size: 17px; color: #123b1c; font-weight: 900;
+  border: none; border-radius: 12px;
+  background: linear-gradient(#dff8d0, #a9e08c);
+  box-shadow: 0 3px 0 #6fae55;
+  touch-action: none;
+}
+.sn-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #6fae55; }
+.sn-btn--up    { grid-area: 1 / 2; }
+.sn-btn--left  { grid-area: 2 / 1; }
+.sn-btn--down  { grid-area: 2 / 2; }
+.sn-btn--right { grid-area: 2 / 3; }
+
+.sn-over {
+  position: absolute; inset: 0; z-index: 20;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(9,4,22,.6);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.sn-over-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 26px 30px 22px; border-radius: 26px;
+  background: linear-gradient(180deg, #2a4a34, #16301f);
+  border: 3px solid rgba(157,240,138,.6);
+  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  animation: winPop .45s cubic-bezier(.2,1.5,.4,1);
+}
+.sn-over-emoji { font-size: 46px; line-height: 1; }
+.sn-over-score { font-size: 52px; font-weight: 900; color: #9df08a; line-height: 1; }
+.sn-over-best { margin: 0; font-size: 14px; font-weight: 800; color: rgba(255,255,255,.7); }
+.sn-over-best.is-new { color: #ffd24c; font-size: 17px; }
+
 /* ── the launch ───────────────────────────────────────────────
    Over everything, including the bar: for these few seconds there is nothing
    else on the phone but the rocket. */
@@ -1527,6 +1598,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
 /* the noisy ones warm, the learning ones cool, so they group at a glance */
 .tile--play  { border-color: rgba(255,180,60,.38); }
 .tile--learn { border-color: rgba(126,200,255,.35); }
+.tile--mini  { border-color: rgba(157,240,138,.42); }
 
 
 /* ══════════════════════ WHAT'S THE TIME? ══════════════════════ */

@@ -233,10 +233,16 @@
     /* ── teaching ─────────────────────────────────────────────── */
 
     // Says which hand is which and what each one is pointing at.
+    // Whichever time is actually on the clock face right now. In the quiz that
+    // is the time being asked about; with the hands in her own fingers it is
+    // the one she has just made — and reading out the other one is how SAY IT
+    // came to announce a time that was nowhere on the screen.
+    _shown: function () { return this.play ? this.free : this.t; },
+
     tell: function () {
       this.tellShown = true;
       this.hintUsed = true;
-      var t = this.t;
+      var t = this._shown();
       var hourAt = ((t.h % 12) || 12);
       var msg = 'The short gold hand is the hour. It is pointing near ' + hourAt +
                 '. The long blue hand is the minutes. ' +
@@ -255,7 +261,8 @@
     // asking for help, not getting it right, and praise for it teaches her
     // that the praise means nothing.
     hear: function () {
-      global.Say.line(['m-itis', this._timeKey(this.t)], "It's " + this.words(this.t.h, this.t.m));
+      var t = this._shown();
+      global.Say.line(['m-itis', this._timeKey(t)], "It's " + this.words(t.h, t.m));
     },
 
     toggleMinutes: function () {
@@ -288,7 +295,7 @@
       this.digitalWords = !this.digitalWords;
       save('clockwords', this.digitalWords ? 'digital' : 'past');
       this._render();
-      var t = this.play ? this.free : this.t;
+      var t = this._shown();
       if (t) global.Say.line(this._timeKey(t), this.words(t.h, t.m));
       return this.digitalWords;
     },

@@ -56,7 +56,14 @@
     { id: 'spell',   emoji: '🐝', name: 'SPELLING BEE',  note: 'find the missing letters',   kind: 'learn' },
     { id: 'clock',   emoji: '🕐', name: "WHAT'S THE TIME?", note: 'learn to read a clock',   kind: 'learn' },
     { id: 'count',   emoji: '🔢', name: 'COUNTING',      note: 'zero to forever',            kind: 'learn' },
-    { id: 'calc',    emoji: '🧮', name: 'CALCULATOR',    note: "Sienna's, and it talks",     kind: 'learn' }
+    { id: 'calc',    emoji: '🧮', name: 'CALCULATOR',    note: "Sienna's, and it talks",     kind: 'learn' },
+    { id: 'minis',   emoji: '🎮', name: 'MINI GAMES',    note: 'quick ones to play',        kind: 'mini' }
+  ];
+
+  // The mini games: small, quick, nothing to learn. Their own shelf, so the
+  // main list stays the proper games and does not turn into a wall of tiles.
+  var MINIS = [
+    { id: 'snake', emoji: '🐍', name: 'SNAKE', note: 'eat the apples', kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -73,6 +80,8 @@
       var box = $(id);
       if (box) box.innerHTML = html;
     });
+    var minis = $('mini-tiles');
+    if (minis) minis.innerHTML = MINIS.map(tileHTML).join('');
   }
 
   var LAUNCH = {
@@ -82,7 +91,9 @@
     count:   function () { RoarAudio.resume(); startCounting(); },
     calc:    function () { RoarAudio.resume(); startCalc(); },
     spell:   function () { RoarAudio.resume(); startSpell(); },
-    clock:   function () { RoarAudio.resume(); startClock(); }
+    clock:   function () { RoarAudio.resume(); startClock(); },
+    minis:   function () { RoarAudio.resume(); stopEverything(); show('screen-minis'); },
+    snake:   function () { RoarAudio.resume(); startSnake(); }
   };
 
   document.addEventListener('click', function (e) {
@@ -96,7 +107,8 @@
 
   var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
                   'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1,
-                  'screen-calc': 1, 'screen-spell': 1, 'screen-clock': 1 };
+                  'screen-calc': 1, 'screen-spell': 1, 'screen-clock': 1,
+                  'screen-snake': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -108,6 +120,7 @@
     try { if (CalcGame.running) CalcGame.stop(); } catch (e) {}
     try { if (SpellGame.running) SpellGame.stop(); } catch (e) {}
     try { if (ClockGame.running) ClockGame.stop(); } catch (e) {}
+    try { if (SnakeGame.running) SnakeGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -150,7 +163,7 @@
   function holdPlay(on) {
     if (on) {
       held = [];
-      [GrabGame, RoarGame, BalloonGame, CountGame].forEach(function (g) {
+      [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -196,7 +209,8 @@
     'screen-grab': 'Grab it!', 'screen-roar': 'Roar meter',
     'screen-balloon': 'Hot air balloon', 'screen-counting': 'Counting',
     'screen-calc': 'Calculator', 'screen-spell': 'Spelling bee',
-    'screen-clock': "What's the time?", 'screen-result': 'Results'
+    'screen-clock': "What's the time?", 'screen-result': 'Results',
+    'screen-minis': 'Mini games', 'screen-snake': 'Snake'
   };
 
   function showBar(id) {
@@ -296,7 +310,7 @@
   // and iOS reports the new size a beat after the event — so refit more than
   // once rather than trusting the first reading.
   function refit() {
-    [GrabGame, BalloonGame, ClockGame].forEach(function (g) {
+    [GrabGame, BalloonGame, ClockGame, SnakeGame].forEach(function (g) {
       if (!g || !g.running) return;
       // Canvas games that need repainting say so with _refit; the rest just
       // need their backing store resized.
@@ -994,6 +1008,37 @@
       stay: 'KEEP GOING',
       leave: 'STOP',
       onLeave: function () { stopEverything(); show('screen-games'); }
+    });
+  };
+
+  /* ── snake ────────────────────────────────────────────────── */
+
+  function startSnake() {
+    stopEverything();
+    show('screen-snake');
+    keepAwake();
+    RoarAudio.releaseMic();      // snake neither listens nor talks
+    $('sn-over').hidden = true;
+    SnakeGame.start({
+      canvas: $('snake-canvas'),
+      pad: $('sn-pad'),
+      els: {
+        score: $('sn-score'), best: $('sn-best'), len: $('sn-len'),
+        over: $('sn-over'), overScore: $('sn-over-score'), overBest: $('sn-over-best')
+      }
+    });
+  }
+
+  on('sn-again', function () { Confetti.stop(); SnakeGame.again(); });
+
+  LEAVE['screen-snake'] = function () {
+    askQuit({
+      emoji: '🐍',
+      title: 'Stop playing snake?',
+      msg: 'Your best score is kept.',
+      stay: 'KEEP PLAYING',
+      leave: 'STOP',
+      onLeave: function () { stopEverything(); show('screen-minis'); }
     });
   };
 
