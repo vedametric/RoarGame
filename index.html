@@ -50,6 +50,7 @@
          TAP/SHOUT switch and the "your voices sound too alike" warning live. -->
     <button class="linkish" id="btn-begin" type="button">⚔️ set up 2 players</button>
     <button class="linkish" id="btn-games" type="button">🎮 see all games</button>
+    <button class="linkish" id="btn-voice" type="button">🗣️ voice: <b id="home-voice">…</b></button>
 
     <p class="fineprint">
       Photos and voices never leave this phone.
@@ -398,12 +399,11 @@
   <!-- ═════════════════════ VOICE PICKER ═════════════════════ -->
   <div class="sheet" id="voice-sheet" hidden>
     <div class="sheet-card">
-      <h2 class="heading heading--sm">Pick a voice</h2>
-      <p class="subheading">Tap one to hear it count to three.</p>
+      <h2 class="heading heading--sm">Who should read to you?</h2>
+      <p class="subheading">Tap one to hear it.</p>
       <div class="voice-list" id="voice-list"></div>
-      <p class="fineprint">On an iPhone, <b>Settings → Accessibility → Spoken Content →
-        Voices</b> has extra voices to download. The <b>Enhanced</b> ones sound much
-        more like a real person.</p>
+      <p class="fineprint">Every game uses the voice you pick, and it is
+        remembered next time.</p>
       <button class="btn btn--go" id="voice-done" type="button">DONE</button>
     </div>
   </div>
@@ -532,6 +532,7 @@
 <script src="game-balloon.js?v=dev"></script>
 <script src="game-count.js?v=dev"></script>
 <script src="game-calc.js?v=dev"></script>
+<script src="spell-words.js?v=dev"></script>
 <script src="game-spell.js?v=dev"></script>
 <script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>

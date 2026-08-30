@@ -673,7 +673,7 @@
       els: {
         number: $('ct-number'), word: $('ct-word'), dots: $('ct-dots'),
         ring: $('ct-ring'), toggle: $('ct-toggle'),
-        voice: $('ct-voice-name'), warn: $('ct-warn')
+        warn: $('ct-warn')
       }
     });
   }
@@ -681,33 +681,50 @@
   on('ct-toggle', function () { CountGame.toggle(); });
   on('ct-restart', function () { CountGame.restart(); });
   on('ct-voice-next', openVoices);
+  on('btn-voice', openVoices);
   on('voice-done', function () { $('voice-sheet').hidden = true; });
   $('voice-sheet').addEventListener('click', function (e) {
     if (e.target === this) this.hidden = true;
   });
 
+  /* The voices are the recorded ones now, not whatever the phone happens to
+     have — so the picker lists those, and the choice applies to every game. */
   function openVoices() {
-    var list = CountGame.list();
     var box = $('voice-list');
     box.innerHTML = '';
 
-    if (!list.length) {
-      box.innerHTML = '<p class="subheading">This phone has no voices to choose from.</p>';
+    if (!Say.packs.length) {
+      box.innerHTML = '<p class="subheading">The voices are still loading — ' +
+                      'try again in a moment.</p>';
     }
-    list.forEach(function (v) {
+    Say.packs.forEach(function (v) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'voice-row' + (v.i === CountGame.vi ? ' is-on' : '');
-      b.innerHTML = '<b>' + v.name + '</b><span>' + (v.lang || '') + '</span>';
+      b.className = 'voice-row' + (Say.pack && v.id === Say.pack.id ? ' is-on' : '');
+      b.innerHTML = '<b>' + v.name + '</b><span>' + v.note + '</span>';
       b.addEventListener('click', function () {
-        CountGame.pickVoice(v.i);
+        Say.setPack(v.id);
+        showVoiceName();
         var rows = box.querySelectorAll('.voice-row');
-        for (var k = 0; k < rows.length; k++) rows[k].classList.toggle('is-on', k === v.i);
+        for (var k = 0; k < rows.length; k++) {
+          rows[k].classList.toggle('is-on', rows[k] === b);
+        }
+        Say.sample();
       });
       box.appendChild(b);
     });
     $('voice-sheet').hidden = false;
   }
+
+  // Wherever the current voice is named on screen, keep it true.
+  function showVoiceName() {
+    var name = Say.packName();
+    ['home-voice', 'ct-voice-name'].forEach(function (id) {
+      var e = $(id);
+      if (e) e.textContent = name;
+    });
+  }
+  Say.onready = showVoiceName;
   on('ct-exit', function () {
     askQuit({
       emoji: '🔢',

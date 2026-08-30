@@ -21,10 +21,13 @@
 
   var DIR = 'voice/';
   var GAP = 90;          // ms between clips in a run; enough to hear the join
+  var SAVED = 'spell.voicepack';
 
   var Say = {
     ready: false,
     have: null,          // set of keys we have audio for
+    packs: [],           // the voices on offer
+    pack: null,          // the one she has chosen
     els: {},             // key -> Audio, kept once loaded
     queue: [],
     playing: null,
@@ -44,8 +47,14 @@
             if (!j || !j.keys) return;
             self.have = Object.create(null);
             for (var i = 0; i < j.keys.length; i++) self.have[j.keys[i]] = 1;
-            self.voiceName = j.voice;
+            self.packs = j.packs || [];
+            // Every pack says the same lines, so choosing one is only a
+            // question of which folder the clips come out of.
+            var want = null;
+            try { want = localStorage.getItem(SAVED); } catch (e) {}
+            self.pack = self._packById(want) || self.packs[0] || null;
             self.ready = true;
+            if (self.onready) self.onready();
           })
           .catch(function () {});
       } catch (e) {}
@@ -53,6 +62,32 @@
     },
 
     has: function (key) { return !!(this.have && this.have[key]); },
+
+    _packById: function (id) {
+      for (var i = 0; i < this.packs.length; i++) {
+        if (this.packs[i].id === id) return this.packs[i];
+      }
+      return null;
+    },
+
+    // Switching voice is just a different folder — and the clips already
+    // loaded belong to the old one, so the cache goes with it.
+    setPack: function (id) {
+      var p = this._packById(id);
+      if (!p || p === this.pack) return false;
+      this.stop();
+      this.pack = p;
+      this.els = {};
+      try { localStorage.setItem(SAVED, id); } catch (e) {}
+      return true;
+    },
+
+    packName: function () { return this.pack ? this.pack.name : 'the phone voice'; },
+
+    // Something to audition a voice on, out of clips every pack has.
+    sample: function () {
+      this.line(['p-1', 'n-1', 'n-2', 'n-3'], 'Brilliant! One, two, three.');
+    },
 
     /* ── saying something ───────────────────────────────────────
        Takes a key, or a list of keys, and plays them in order. Anything we do
@@ -83,7 +118,8 @@
       var key = self.queue.shift();
       var a = self.els[key];
       if (!a) {
-        a = self.els[key] = new Audio(self.base + DIR + key + '.m4a');
+        var dir = self.pack ? DIR + self.pack.id + '/' : DIR;
+        a = self.els[key] = new Audio(self.base + dir + key + '.m4a');
         a.preload = 'auto';
       }
       self.playing = a;
