@@ -233,6 +233,113 @@ body.has-topbar .screen--flat { padding-top: 0; }
 .sn-over-best { margin: 0; font-size: 14px; font-weight: 800; color: rgba(255,255,255,.7); }
 .sn-over-best.is-new { color: #ffd24c; font-size: 17px; }
 
+/* ── space duel ───────────────────────────────────────────────
+   Two bars, a board, and whoever lives here working away opposite you. */
+
+.screen--duel {
+  padding: calc(env(safe-area-inset-top, 0px) + var(--tb) + 6px) 10px
+           calc(env(safe-area-inset-bottom, 0px) + 10px);
+  justify-content: flex-start; gap: 8px;
+}
+.du-head { text-align: center; }
+.du-title {
+  margin: 0; font-size: clamp(22px, 7vw, 32px); font-weight: 900;
+  letter-spacing: .04em; color: #ffd24c;
+}
+.du-how { margin: 2px 0 0; font-size: 13px; color: rgba(201,189,240,.85); }
+
+.du-bars { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: 5px; }
+.du-row { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 900; }
+.du-row b { min-width: 42px; text-align: left; color: #fff; }
+/* Direct child only: the bar's fill is a span too, and this rule was
+   pinning it to 62px so both bars looked a quarter full at nil-nil. */
+.du-row > span { min-width: 62px; text-align: right; color: rgba(201,189,240,.9); }
+.du-track {
+  flex: 1 1 auto; height: 12px; border-radius: 6px;
+  background: rgba(255,255,255,.10); overflow: hidden; display: block;
+}
+.du-fill { display: block; height: 100%; border-radius: 6px; transition: width .12s linear; }
+.du-fill--me   { background: linear-gradient(90deg, #9df08a, #4fd07a); width: var(--me, 0%); }
+.du-fill--them { background: linear-gradient(90deg, #ff9a6a, #e8542f); width: var(--them, 0%); }
+
+#duel-canvas {
+  flex: 1 1 auto; width: 100%; max-width: 460px; min-height: 0;
+  border-radius: 18px; touch-action: none;
+  border: 3px solid rgba(255,255,255,.14);
+  background: radial-gradient(120% 80% at 50% 0%, #241046, #0d0620);
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+}
+
+.du-over, .rn-over {
+  position: absolute; inset: 0; z-index: 20;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(9,4,22,.6);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.du-over-card, .rn-over-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 26px 28px 20px; border-radius: 26px; max-width: 320px; text-align: center;
+  background: linear-gradient(180deg, #38215f, #241246);
+  border: 3px solid rgba(255,210,76,.7);
+  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  animation: winPop .45s cubic-bezier(.2,1.5,.4,1);
+}
+.du-wins { font-size: 26px; font-weight: 900; color: #ffd24c; }
+
+/* ── run! ─────────────────────────────────────────────────── */
+
+.rn-picks, .rn-levels {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  max-width: 400px;
+}
+.rn-pick, .rn-level-btn {
+  appearance: none; cursor: pointer; font-family: inherit; color: #fff;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 12px; min-width: 74px;
+  border: 3px solid rgba(255,255,255,.16); border-radius: 18px;
+  background: rgba(255,255,255,.06);
+}
+.rn-pick span, .rn-level-btn span { font-size: 30px; line-height: 1; }
+.rn-pick b, .rn-level-btn b { font-size: 11px; font-weight: 900; letter-spacing: .05em; }
+.rn-pick.is-on, .rn-level-btn.is-on {
+  border-color: #ffd24c; background: rgba(255,210,76,.16);
+  box-shadow: 0 0 18px -4px #ffd24c;
+}
+.rn-pick:active, .rn-level-btn:active { transform: scale(.95); }
+
+#screen-run {
+  padding: calc(env(safe-area-inset-top, 0px) + var(--tb) + 6px) 8px
+           calc(env(safe-area-inset-bottom, 0px) + 8px);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  justify-content: center;
+}
+.rn-head {
+  display: flex; align-items: baseline; gap: 14px;
+  width: 100%; max-width: 560px; justify-content: center;
+}
+.rn-score { font-size: 32px; font-weight: 900; color: #ffd24c; line-height: 1; }
+.rn-level { font-size: 13px; font-weight: 800; color: rgba(201,189,240,.85); }
+.rn-best  { font-size: 13px; font-weight: 800; color: #9df08a; }
+/* A runner wants a letterbox, not a portrait strip: on a phone held upright
+   a full-height board is nine tenths empty sky with the action in a band at
+   the bottom. */
+#run-canvas {
+  flex: 0 1 auto; width: 100%; max-width: 560px;
+  aspect-ratio: 3 / 2; max-height: 58vh;
+  border-radius: 18px; touch-action: none;
+  border: 3px solid rgba(255,255,255,.14);
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  background: #2b1a52;
+}
+.rn-hint {
+  margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: rgba(201,189,240,.55);
+}
+.rn-over-who { font-size: 46px; line-height: 1; }
+.rn-over-score { font-size: 50px; font-weight: 900; color: #ffd24c; line-height: 1; }
+.rn-over-best { margin: 0; font-size: 14px; font-weight: 800; color: rgba(255,255,255,.7); }
+.rn-over-best.is-new { color: #ffd24c; font-size: 17px; }
+
 /* ── the launch ───────────────────────────────────────────────
    Over everything, including the bar: for these few seconds there is nothing
    else on the phone but the rocket. */

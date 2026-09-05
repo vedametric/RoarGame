@@ -177,8 +177,11 @@
       if (this.done) return;
       this.done = true;
       var cb = this.cfg && this.cfg.onDone;
+      var where = this.planet ? this.planet.name : null;
       this.stop();
-      if (cb) cb();
+      // Hand on where it landed: whatever comes next wants to know whose
+      // planet she is standing on.
+      if (cb) cb(where);
     },
 
     _fit: function () {
