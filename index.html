@@ -127,6 +127,65 @@
     </div>
   </section>
 
+  <!-- ═════════════════════ SPACE DUEL ═════════════════════
+       The little game with whoever lives on the planet you landed on. Also
+       playable on its own from the mini games shelf. -->
+  <section class="screen screen--duel" id="screen-duel">
+    <div class="du-head">
+      <h2 class="du-title" id="du-title">RACE!</h2>
+      <p class="du-how" id="du-how">Tap as fast as you can!</p>
+    </div>
+
+    <div class="du-bars" id="du-bar">
+      <div class="du-row"><b>YOU</b><i class="du-track"><span class="du-fill du-fill--me"></span></i><span id="du-you">0 / 10</span></div>
+      <div class="du-row"><b id="du-them-name">👽</b><i class="du-track"><span class="du-fill du-fill--them"></span></i><span id="du-them">0 / 10</span></div>
+    </div>
+
+    <canvas id="duel-canvas"></canvas>
+
+    <div class="du-over" id="du-over" hidden>
+      <div class="du-over-card">
+        <h2 class="heading heading--sm" id="du-over-title">YOU WIN! 🏆</h2>
+        <p class="subheading" id="du-over-msg"></p>
+        <div class="du-wins" id="du-wins">🏆 0</div>
+        <button class="btn btn--go" id="du-again" type="button">PLAY AGAIN</button>
+        <button class="linkish" id="du-done" type="button">Done</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ RUN! ═════════════════════ -->
+  <section class="screen" id="screen-run-pick">
+    <h2 class="heading">Who are you?</h2>
+    <div class="rn-picks" id="rn-runners"></div>
+    <h2 class="heading heading--sm">How fast?</h2>
+    <div class="rn-levels" id="rn-levels"></div>
+    <button class="btn btn--go" id="rn-go" type="button">RUN! 🏃</button>
+  </section>
+
+  <section class="screen screen--flat" id="screen-run">
+    <div class="rn-head">
+      <div class="rn-score" id="rn-score">0</div>
+      <div class="rn-level" id="rn-level">🐢 EASY</div>
+      <div class="rn-best" id="rn-best">★ 0</div>
+    </div>
+
+    <canvas id="run-canvas"></canvas>
+
+    <p class="rn-hint">tap to jump · hold to duck</p>
+
+    <div class="rn-over" id="rn-over" hidden>
+      <div class="rn-over-card">
+        <div class="rn-over-who" id="rn-over-who">🦖</div>
+        <h2 class="heading heading--sm">Bump!</h2>
+        <div class="rn-over-score" id="rn-over-score">0</div>
+        <p class="rn-over-best" id="rn-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="rn-again" type="button">RUN AGAIN</button>
+        <button class="linkish" id="rn-change" type="button">Change who / how fast</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ HOW MANY PLAYERS ═════════════════════ -->
   <section class="screen" id="screen-count">
     <h2 class="heading">How many players?</h2>
@@ -634,6 +693,9 @@
 <script src="spell-words.js?v=dev"></script>
 <script src="rocket.js?v=dev"></script>
 <script src="game-spell.js?v=dev"></script>
+<script src="aliens.js?v=dev"></script>
+<script src="game-duel.js?v=dev"></script>
+<script src="game-run.js?v=dev"></script>
 <script src="game-snake.js?v=dev"></script>
 <script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>

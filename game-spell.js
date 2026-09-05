@@ -98,6 +98,7 @@
     running: false,
 
     start: function (cfg) {
+      this.cfg = cfg;
       this.el = cfg.els;
       this.running = true;
 
@@ -304,21 +305,32 @@
         wrap: this.el.launchWrap,
         canvas: this.el.launchCanvas,
         word: this.el.launchWord,
-        onDone: function () {
+        onDone: function (planet) {
           if (!self.running) return;
-          // Back to the card, with the confetti waiting for her.
-          try {
-            global.Confetti.start(['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff',
-                                   '#9df08a', '#ffb3f0', '#ffffff']);
-          } catch (e) {}
-          clearTimeout(self._winT);
-          self._winT = setTimeout(function () {
-            try { global.Confetti.stop(); } catch (e) {}
-          }, 3600);
-          global.RoarAudio.sfx('checkpoint');
-          global.Say.line('m-rocketbuilt', 'You built the whole rocket!');
+          // Having flown all that way, she gets to play with whoever lives
+          // there before coming back to the card.
+          if (self.cfg && self.cfg.onLanded && self.cfg.onLanded(planet)) return;
+          self._afterRocket();
         }
       });
+    },
+
+    // Back to the card, with the confetti waiting for her. Called when the
+    // flight ends, or when she is finished with the alien.
+    _afterRocket: function () {
+      if (!this.running) return;
+      var self = this;
+      try {
+        global.Confetti.start(['#ffd24c', '#ff8a2b', '#e6b3ff', '#7ec8ff',
+                               '#9df08a', '#ffb3f0', '#ffffff']);
+      } catch (e) {}
+      clearTimeout(this._winT);
+      this._winT = setTimeout(function () {
+        try { global.Confetti.stop(); } catch (e) {}
+      }, 3600);
+      global.RoarAudio.sfx('checkpoint');
+      global.Say.line('m-rocketbuilt', 'You built the whole rocket!');
+      this._render();
     },
 
     next: function () { if (this.running && this.won) { try { global.Confetti.stop(); } catch (e) {} this._next(); } },

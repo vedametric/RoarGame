@@ -63,7 +63,9 @@
   // The mini games: small, quick, nothing to learn. Their own shelf, so the
   // main list stays the proper games and does not turn into a wall of tiles.
   var MINIS = [
-    { id: 'snake', emoji: '🐍', name: 'SNAKE', note: 'eat the apples', kind: 'mini' }
+    { id: 'snake', emoji: '🐍', name: 'SNAKE',      note: 'eat the apples',      kind: 'mini' },
+    { id: 'run',   emoji: '🏃', name: 'RUN!',       note: 'jump the obstacles',  kind: 'mini' },
+    { id: 'duel',  emoji: '👽', name: 'SPACE DUEL', note: 'beat the alien',      kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -93,7 +95,9 @@
     spell:   function () { RoarAudio.resume(); startSpell(); },
     clock:   function () { RoarAudio.resume(); startClock(); },
     minis:   function () { RoarAudio.resume(); stopEverything(); show('screen-minis'); },
-    snake:   function () { RoarAudio.resume(); startSnake(); }
+    snake:   function () { RoarAudio.resume(); startSnake(); },
+    run:     function () { RoarAudio.resume(); stopEverything(); showRunPick(); },
+    duel:    function () { RoarAudio.resume(); startDuel(); }
   };
 
   document.addEventListener('click', function (e) {
@@ -108,7 +112,7 @@
   var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
                   'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1,
                   'screen-calc': 1, 'screen-spell': 1, 'screen-clock': 1,
-                  'screen-snake': 1 };
+                  'screen-snake': 1, 'screen-duel': 1, 'screen-run': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -121,6 +125,8 @@
     try { if (SpellGame.running) SpellGame.stop(); } catch (e) {}
     try { if (ClockGame.running) ClockGame.stop(); } catch (e) {}
     try { if (SnakeGame.running) SnakeGame.stop(); } catch (e) {}
+    try { if (DuelGame.running) DuelGame.stop(); } catch (e) {}
+    try { if (RunGame.running) RunGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -163,7 +169,8 @@
   function holdPlay(on) {
     if (on) {
       held = [];
-      [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame].forEach(function (g) {
+      [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame,
+       DuelGame, RunGame].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -210,7 +217,8 @@
     'screen-balloon': 'Hot air balloon', 'screen-counting': 'Counting',
     'screen-calc': 'Calculator', 'screen-spell': 'Spelling bee',
     'screen-clock': "What's the time?", 'screen-result': 'Results',
-    'screen-minis': 'Mini games', 'screen-snake': 'Snake'
+    'screen-minis': 'Mini games', 'screen-snake': 'Snake',
+    'screen-duel': 'Space duel', 'screen-run': 'Run!', 'screen-run-pick': 'Run!'
   };
 
   function showBar(id) {
@@ -310,7 +318,8 @@
   // and iOS reports the new size a beat after the event — so refit more than
   // once rather than trusting the first reading.
   function refit() {
-    [GrabGame, BalloonGame, ClockGame, SnakeGame].forEach(function (g) {
+    [GrabGame, BalloonGame, ClockGame, SnakeGame, DuelGame, RunGame]
+      .forEach(function (g) {
       if (!g || !g.running) return;
       // Canvas games that need repainting say so with _refit; the rest just
       // need their backing store resized.
@@ -928,6 +937,15 @@
         layout: $('sp-layout'), case: $('sp-case'),
         launchWrap: $('launch'), launchCanvas: $('launch-canvas'),
         launchWord: $('launch-word')
+      },
+      // Having flown all that way, she gets to meet whoever lives there.
+      // Coming out of the duel puts her back on the spelling card, which is
+      // where the flight would have left her.
+      onLanded: function (planet) {
+        if (!planet) return false;
+        startDuel(planet, 'screen-spell');
+        duelReturn = function () { SpellGame._afterRocket(); };
+        return true;
       }
     });
   }
@@ -1037,6 +1055,151 @@
       title: 'Stop playing snake?',
       msg: 'Your best score is kept.',
       stay: 'KEEP PLAYING',
+      leave: 'STOP',
+      onLeave: function () { stopEverything(); show('screen-minis'); }
+    });
+  };
+
+  /* ── space duel ───────────────────────────────────────────────
+     The little game with whoever lives on the planet. It is reached two ways:
+     off the end of a rocket landing, which is where it means the most, and
+     straight off the mini games shelf. */
+
+  var duelBack = 'screen-minis';   // where "done" goes, which differs by route
+  var duelReturn = null;           // ...and anything to do once she is back
+
+  function startDuel(planet, back) {
+    // Coming off a rocket landing the spelling game is still going underneath
+    // — she has a word waiting on the card — so it must not be torn down here.
+    if (back === 'screen-spell') {
+      try { if (RocketLaunch.running) RocketLaunch.stop(); } catch (e) {}
+    } else {
+      stopEverything();
+    }
+    duelBack = back || 'screen-minis';
+    duelReturn = null;
+    show('screen-duel');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('du-over').hidden = true;
+
+    var where = planet || Aliens.kinds[(Math.random() * Aliens.kinds.length) | 0];
+    $('du-them-name').textContent = Aliens.of(where).name;
+    DuelGame.start({
+      canvas: $('duel-canvas'),
+      planet: where,
+      els: {
+        title: $('du-title'), how: $('du-how'), bar: $('du-bar'),
+        you: $('du-you'), them: $('du-them'),
+        over: $('du-over'), overTitle: $('du-over-title'),
+        overMsg: $('du-over-msg'), overWins: $('du-wins')
+      }
+    });
+  }
+
+  on('du-again', function () { Confetti.stop(); DuelGame.again(); });
+  function leaveDuel() {
+    var after = duelReturn;
+    duelReturn = null;
+    Confetti.stop();
+    try { if (DuelGame.running) DuelGame.stop(); } catch (e) {}
+    show(duelBack);
+    if (after) after();
+  }
+
+  on('du-done', leaveDuel);
+
+  LEAVE['screen-duel'] = function () {
+    askQuit({
+      emoji: '👽',
+      title: 'Leave the alien?',
+      msg: 'They will not mind — you can come back.',
+      stay: 'KEEP PLAYING',
+      leave: 'LEAVE',
+      loses: false,
+      onLeave: leaveDuel
+    });
+  };
+
+  /* ── run! ─────────────────────────────────────────────────────
+     Pick who you are and how fast, then run. Both choices are remembered, so
+     the second go is one tap away. */
+
+  var runWho = null, runLevel = null;
+
+  function showRunPick() {
+    stopEverything();
+    try { runWho = runWho || localStorage.getItem('run.who'); } catch (e) {}
+    try { runLevel = runLevel || localStorage.getItem('run.level'); } catch (e) {}
+    runWho = runWho || RunGame.RUNNERS[0].id;
+    runLevel = runLevel || RunGame.LEVELS[0].id;
+
+    $('rn-runners').innerHTML = RunGame.RUNNERS.map(function (r) {
+      return '<button class="rn-pick' + (r.id === runWho ? ' is-on' : '') +
+             '" type="button" data-who="' + r.id + '">' +
+             '<span aria-hidden="true">' + r.emoji + '</span><b>' + r.name + '</b></button>';
+    }).join('');
+    $('rn-levels').innerHTML = RunGame.LEVELS.map(function (l) {
+      return '<button class="rn-level-btn' + (l.id === runLevel ? ' is-on' : '') +
+             '" type="button" data-level="' + l.id + '">' +
+             '<span aria-hidden="true">' + l.emoji + '</span><b>' + l.name + '</b></button>';
+    }).join('');
+    show('screen-run-pick');
+  }
+
+  function pickIn(box, attr, value) {
+    var all = box.querySelectorAll('[' + attr + ']');
+    for (var i = 0; i < all.length; i++) {
+      all[i].classList.toggle('is-on', all[i].getAttribute(attr) === value);
+    }
+  }
+
+  $('rn-runners').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-who]') : null;
+    if (!b) return;
+    runWho = b.getAttribute('data-who');
+    try { localStorage.setItem('run.who', runWho); } catch (err) {}
+    pickIn(this, 'data-who', runWho);
+    RoarAudio.sfx('tick');
+  });
+
+  $('rn-levels').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-level]') : null;
+    if (!b) return;
+    runLevel = b.getAttribute('data-level');
+    try { localStorage.setItem('run.level', runLevel); } catch (err) {}
+    pickIn(this, 'data-level', runLevel);
+    RoarAudio.sfx('tick');
+  });
+
+  on('rn-go', startRun);
+
+  function startRun() {
+    stopEverything();
+    show('screen-run');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('rn-over').hidden = true;
+    RunGame.start({
+      canvas: $('run-canvas'),
+      runner: runWho, level: runLevel,
+      els: {
+        score: $('rn-score'), best: $('rn-best'), level: $('rn-level'),
+        over: $('rn-over'), overScore: $('rn-over-score'),
+        overBest: $('rn-over-best'), overWho: $('rn-over-who')
+      }
+    });
+  }
+
+  on('rn-again', function () { Confetti.stop(); RunGame.again(); });
+  on('rn-change', function () { Confetti.stop(); showRunPick(); });
+
+  LEAVE['screen-run'] = function () {
+    askQuit({
+      emoji: '🏃',
+      title: 'Stop running?',
+      msg: 'Your best is kept.',
+      stay: 'KEEP RUNNING',
       leave: 'STOP',
       onLeave: function () { stopEverything(); show('screen-minis'); }
     });
