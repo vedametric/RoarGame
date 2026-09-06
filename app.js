@@ -88,6 +88,7 @@
     });
     var minis = $('mini-tiles');
     if (minis) minis.innerHTML = MINIS.map(tileHTML).join('');
+    MINIS.forEach(function (g) { MINI_IDS[g.id] = 1; });
   }
 
   var LAUNCH = {
@@ -108,11 +109,47 @@
     tree:    function () { RoarAudio.resume(); startTree(); }
   };
 
+  var MINI_IDS = {};   // filled from MINIS, so the list stays the one truth
+
   document.addEventListener('click', function (e) {
     var t = e.target.closest ? e.target.closest('[data-game]') : null;
     if (!t) return;
-    var go = LAUNCH[t.getAttribute('data-game')];
-    if (go) go();
+    var id = t.getAttribute('data-game');
+    var go = LAUNCH[id];
+    if (!go) return;
+    // Mini games are the ones that get locked: they are the ones she will
+    // happily play for an hour. The proper games and the shelf itself never
+    // ask for a key.
+    if (MINI_IDS[id] && Unlock.needed()) { askKey(id, go); return; }
+    if (MINI_IDS[id]) Unlock.played();
+    go();
+  });
+
+  /* ── the key ──────────────────────────────────────────────────
+     Every third mini game or so, one small question first. It is not
+     rationing; it is a few seconds of thinking dropped into a long stretch of
+     playing, and getting it wrong only asks something else. */
+
+  function askKey(id, go) {
+    var game = MINIS.filter(function (g) { return g.id === id; })[0];
+    Unlock.ask({
+      name: game ? game.name : null,
+      els: {
+        sheet: $('key-sheet'), title: $('key-title'), note: $('key-note'),
+        emoji: $('key-emoji'), show: $('key-show'), opts: $('key-opts'),
+        say: true
+      },
+      onPass: function () { Unlock.played(); go(); }
+    });
+  }
+
+  $('key-opts').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-a]') : null;
+    if (b) Unlock.answer(b.getAttribute('data-a'));
+  });
+  on('key-back', function () { Unlock.close(); });
+  $('key-sheet').addEventListener('click', function (e) {
+    if (e.target === this) Unlock.close();
   });
 
   /* ── screens ──────────────────────────────────────────────── */
@@ -269,6 +306,7 @@
     // takes the question with it, and nothing is left frozen behind it.
     $('quit-sheet').hidden = true;
     $('set-sheet').hidden = true;
+    $('key-sheet').hidden = true;
     quitAsk = null;
     holdPlay(false);
     showBar(id);

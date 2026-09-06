@@ -288,6 +288,27 @@ body.has-topbar .screen--flat { padding-top: 0; }
 .mg-over-best { margin: 4px 0 2px; font-size: 14px; font-weight: 800; color: rgba(255,255,255,.7); }
 .mg-over-best.is-new { color: #ffd24c; font-size: 17px; }
 
+/* ── the key ──────────────────────────────────────────────────
+   The little question that unlocks a mini game. Big buttons, one tap, and
+   nothing on it that looks like failure. */
+
+.sheet--key { z-index: 95; }
+.key-lock { font-size: 40px; line-height: 1; }
+.key-emoji { font-size: 40px; line-height: 1; margin-top: -2px; }
+.key-show {
+  font-size: clamp(30px, 10vw, 46px); font-weight: 900; letter-spacing: .10em;
+  color: #ffd24c; margin: 2px 0 6px;
+}
+.key-opts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.key-opt {
+  appearance: none; cursor: pointer; font-family: inherit; color: #fff;
+  min-width: 68px; padding: 14px 10px;
+  font-size: 26px; font-weight: 900;
+  border: 3px solid rgba(255,255,255,.22); border-radius: 18px;
+  background: rgba(255,255,255,.08);
+}
+.key-opt:active { transform: scale(.94); }
+
 /* ── grow a tree ──────────────────────────────────────────────
    What it wants, then the three things you can give it. Big targets: this is
    the whole of the game, and it is all done with one finger. */

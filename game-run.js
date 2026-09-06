@@ -448,8 +448,12 @@
 
       c.save();
       c.translate(x, y - bounce);
-      c.rotate(this.over ? 0.5 : tilt);
-      if (duck) c.scale(1.15, 0.62);
+      /* Mirrored, because she is running to the right and every full-body
+         animal emoji — the dinosaur, the bunny, the unicorn — is drawn facing
+         left. Unmirrored they all looked like they were running backwards.
+         The lean is negated to match, so it still tips the way it should. */
+      c.rotate(-(this.over ? 0.5 : tilt));
+      c.scale(duck ? -1.15 : -1, duck ? 0.62 : 1);
       c.font = (s * 1.15) + 'px ' + EMOJI;
       c.textAlign = 'center';
       c.textBaseline = 'alphabetic';
