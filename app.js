@@ -65,7 +65,10 @@
   var MINIS = [
     { id: 'snake', emoji: '🐍', name: 'SNAKE',      note: 'eat the apples',      kind: 'mini' },
     { id: 'run',   emoji: '🏃', name: 'RUN!',       note: 'jump the obstacles',  kind: 'mini' },
-    { id: 'duel',  emoji: '👽', name: 'SPACE DUEL', note: 'beat the alien',      kind: 'mini' }
+    { id: 'duel',  emoji: '👽', name: 'SPACE DUEL', note: 'beat the alien',      kind: 'mini' },
+    { id: 'pairs', emoji: '🃏', name: 'PAIRS',       note: 'find the matches',    kind: 'mini' },
+    { id: 'catch', emoji: '🧺', name: 'CATCH IT!',   note: 'dodge the bombs',     kind: 'mini' },
+    { id: 'bounce', emoji: '🧱', name: 'BOUNCE',     note: 'break all the blocks', kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -97,7 +100,10 @@
     minis:   function () { RoarAudio.resume(); stopEverything(); show('screen-minis'); },
     snake:   function () { RoarAudio.resume(); startSnake(); },
     run:     function () { RoarAudio.resume(); stopEverything(); showRunPick(); },
-    duel:    function () { RoarAudio.resume(); startDuel(); }
+    duel:    function () { RoarAudio.resume(); startDuel(); },
+    pairs:   function () { RoarAudio.resume(); startPairs(); },
+    catch:   function () { RoarAudio.resume(); startCatch(); },
+    bounce:  function () { RoarAudio.resume(); startBounce(); }
   };
 
   document.addEventListener('click', function (e) {
@@ -112,7 +118,8 @@
   var PLAYING = { 'screen-countdown': 1, 'screen-grab': 1, 'screen-roar': 1,
                   'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1,
                   'screen-calc': 1, 'screen-spell': 1, 'screen-clock': 1,
-                  'screen-snake': 1, 'screen-duel': 1, 'screen-run': 1 };
+                  'screen-snake': 1, 'screen-duel': 1, 'screen-run': 1,
+                  'screen-pairs': 1, 'screen-catch': 1, 'screen-bounce': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -127,6 +134,9 @@
     try { if (SnakeGame.running) SnakeGame.stop(); } catch (e) {}
     try { if (DuelGame.running) DuelGame.stop(); } catch (e) {}
     try { if (RunGame.running) RunGame.stop(); } catch (e) {}
+    try { if (PairsGame.running) PairsGame.stop(); } catch (e) {}
+    try { if (CatchGame.running) CatchGame.stop(); } catch (e) {}
+    try { if (BounceGame.running) BounceGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -169,8 +179,8 @@
   function holdPlay(on) {
     if (on) {
       held = [];
-      [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame,
-       DuelGame, RunGame].forEach(function (g) {
+      [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame, DuelGame, RunGame,
+       PairsGame, CatchGame, BounceGame].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -218,7 +228,8 @@
     'screen-calc': 'Calculator', 'screen-spell': 'Spelling bee',
     'screen-clock': "What's the time?", 'screen-result': 'Results',
     'screen-minis': 'Mini games', 'screen-snake': 'Snake',
-    'screen-duel': 'Space duel', 'screen-run': 'Run!', 'screen-run-pick': 'Run!'
+    'screen-duel': 'Space duel', 'screen-run': 'Run!', 'screen-run-pick': 'Run!',
+    'screen-pairs': 'Pairs', 'screen-catch': 'Catch it!', 'screen-bounce': 'Bounce'
   };
 
   function showBar(id) {
@@ -318,8 +329,8 @@
   // and iOS reports the new size a beat after the event — so refit more than
   // once rather than trusting the first reading.
   function refit() {
-    [GrabGame, BalloonGame, ClockGame, SnakeGame, DuelGame, RunGame]
-      .forEach(function (g) {
+    [GrabGame, BalloonGame, ClockGame, SnakeGame, DuelGame, RunGame,
+     PairsGame, CatchGame, BounceGame].forEach(function (g) {
       if (!g || !g.running) return;
       // Canvas games that need repainting say so with _refit; the rest just
       // need their backing store resized.
@@ -1204,6 +1215,66 @@
       onLeave: function () { stopEverything(); show('screen-minis'); }
     });
   };
+
+  /* ── pairs, catch it! and bounce ──────────────────────────────
+     Three of a shape: start it, wire the same handful of elements, and give
+     it the same way out. */
+
+  function miniLeave(id, opts) {
+    LEAVE[id] = function () {
+      askQuit({
+        emoji: opts.emoji, title: opts.title, msg: 'Your best is kept.',
+        stay: opts.stay, leave: 'STOP',
+        onLeave: function () { stopEverything(); show('screen-minis'); }
+      });
+    };
+  }
+
+  function startPairs() {
+    stopEverything();
+    show('screen-pairs');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('pr-over').hidden = true;
+    PairsGame.start({
+      canvas: $('pairs-canvas'),
+      els: { turns: $('pr-turns'), found: $('pr-found'), best: $('pr-best'),
+             over: $('pr-over'), overTurns: $('pr-over-turns'), overBest: $('pr-over-best') }
+    });
+  }
+  on('pr-again', function () { Confetti.stop(); PairsGame.again(); });
+  miniLeave('screen-pairs', { emoji: '🃏', title: 'Stop finding pairs?', stay: 'KEEP LOOKING' });
+
+  function startCatch() {
+    stopEverything();
+    show('screen-catch');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('ca-over').hidden = true;
+    CatchGame.start({
+      canvas: $('catch-canvas'),
+      els: { score: $('ca-score'), best: $('ca-best'), lives: $('ca-lives'),
+             over: $('ca-over'), overScore: $('ca-over-score'), overBest: $('ca-over-best') }
+    });
+  }
+  on('ca-again', function () { Confetti.stop(); CatchGame.again(); });
+  miniLeave('screen-catch', { emoji: '🧺', title: 'Stop catching?', stay: 'KEEP CATCHING' });
+
+  function startBounce() {
+    stopEverything();
+    show('screen-bounce');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('bo-over').hidden = true;
+    BounceGame.start({
+      canvas: $('bounce-canvas'),
+      els: { score: $('bo-score'), best: $('bo-best'), lives: $('bo-lives'),
+             level: $('bo-level'), over: $('bo-over'),
+             overScore: $('bo-over-score'), overBest: $('bo-over-best') }
+    });
+  }
+  on('bo-again', function () { Confetti.stop(); BounceGame.again(); });
+  miniLeave('screen-bounce', { emoji: '🧱', title: 'Stop bouncing?', stay: 'KEEP BOUNCING' });
 
   /* ── results ──────────────────────────────────────────────── */
 

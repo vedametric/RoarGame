@@ -186,6 +186,67 @@
     </div>
   </section>
 
+  <!-- ═════════════════════ PAIRS ═════════════════════ -->
+  <section class="screen" id="screen-pairs">
+    <div class="mg-head">
+      <div class="mg-score" id="pr-turns">0</div>
+      <div class="mg-note">turns · <b id="pr-found">0 / 6</b></div>
+      <div class="mg-best" id="pr-best">★ —</div>
+    </div>
+    <canvas id="pairs-canvas"></canvas>
+    <p class="mg-hint">turn two over · find the pairs</p>
+    <div class="mg-over" id="pr-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🃏</div>
+        <h2 class="heading heading--sm">All found!</h2>
+        <div class="mg-over-score" id="pr-over-turns">0</div>
+        <p class="mg-over-sub">turns</p>
+        <p class="mg-over-best" id="pr-over-best">best ★ —</p>
+        <button class="btn btn--go" id="pr-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ CATCH IT! ═════════════════════ -->
+  <section class="screen" id="screen-catch">
+    <div class="mg-head">
+      <div class="mg-score" id="ca-score">0</div>
+      <div class="mg-note" id="ca-lives">❤️❤️❤️</div>
+      <div class="mg-best" id="ca-best">★ 0</div>
+    </div>
+    <canvas id="catch-canvas"></canvas>
+    <p class="mg-hint">slide to catch · dodge the bombs 💣</p>
+    <div class="mg-over" id="ca-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🧺</div>
+        <h2 class="heading heading--sm">Oh no, a bomb!</h2>
+        <div class="mg-over-score" id="ca-over-score">0</div>
+        <p class="mg-over-best" id="ca-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="ca-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ BOUNCE ═════════════════════ -->
+  <section class="screen" id="screen-bounce">
+    <div class="mg-head">
+      <div class="mg-score" id="bo-score">0</div>
+      <div class="mg-note"><span id="bo-lives">❤️❤️❤️</span> · <b id="bo-level">wall 1</b></div>
+      <div class="mg-best" id="bo-best">★ 0</div>
+    </div>
+    <canvas id="bounce-canvas"></canvas>
+    <p class="mg-hint">slide the bat · keep the ball up</p>
+    <div class="mg-over" id="bo-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🧱</div>
+        <h2 class="heading heading--sm">Dropped it!</h2>
+        <div class="mg-over-score" id="bo-over-score">0</div>
+        <p class="mg-over-best" id="bo-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="bo-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ HOW MANY PLAYERS ═════════════════════ -->
   <section class="screen" id="screen-count">
     <h2 class="heading">How many players?</h2>
@@ -696,6 +757,9 @@
 <script src="aliens.js?v=dev"></script>
 <script src="game-duel.js?v=dev"></script>
 <script src="game-run.js?v=dev"></script>
+<script src="game-pairs.js?v=dev"></script>
+<script src="game-catch.js?v=dev"></script>
+<script src="game-bounce.js?v=dev"></script>
 <script src="game-snake.js?v=dev"></script>
 <script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>
