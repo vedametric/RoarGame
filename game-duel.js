@@ -458,6 +458,7 @@
           c.arc(o.x - o.r * 0.32, o.y - o.r * 0.34, o.r * 0.18, 0, 6.2832);
           c.fill();
         } else {
+          c.fillStyle = '#fff';                 // see game-pairs.js
           c.font = (o.r * 2.2 * grow) + 'px ' + EMOJI;
           c.textAlign = 'center';
           c.textBaseline = 'middle';

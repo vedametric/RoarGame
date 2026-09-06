@@ -757,6 +757,8 @@
         var pop = Math.min(1, g.age * 3.2);
         var hop = Math.abs(Math.sin(g.age * 4 + g.hop)) * s * 0.5;
         var size = s * 1.1 * (pop < 1 ? pop * (2 - pop) : 1);
+        // Opaque, and set here rather than inherited: see game-pairs.js.
+        c.fillStyle = '#fff';
         c.font = size + 'px ' + EMOJI;
         c.fillText(g.emoji, g.x, y + s * 0.15 - hop);
       }

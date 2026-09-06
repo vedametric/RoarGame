@@ -318,6 +318,14 @@
         c.strokeStyle = card.done ? '#9df08a' : '#ffd24c';
         c.lineWidth = 3;
         c.stroke();
+        /* An opaque fill before the picture, and this is not a nicety.
+           A colour emoji is painted THROUGH the current fill paint, so with
+           the card's own gradient still set the picture came out in the card's
+           own dark purple — drawn, but invisible against the card behind it.
+           Chrome happens to ignore the paint and show the glyph anyway, which
+           is why this looked fine everywhere except the phone it is for: on
+           iOS a card she turned over was an empty frame. */
+        c.fillStyle = '#fff';
         c.font = (h * 0.5) + 'px ' + EMOJI;
         c.textAlign = 'center';
         c.textBaseline = 'middle';
@@ -336,6 +344,10 @@
         c.beginPath();
         c.arc(0, 0, w * 0.22, 0, 6.2832);
         c.fill();
+        // Faded with globalAlpha rather than with a see-through fill, for the
+        // same reason: the fill would tint the glyph as well as dim it.
+        c.globalAlpha = 0.5;
+        c.fillStyle = '#fff';
         c.font = (h * 0.24) + 'px ' + EMOJI;
         c.textAlign = 'center';
         c.textBaseline = 'middle';

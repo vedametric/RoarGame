@@ -126,6 +126,7 @@
     // Mini games are the ones that get locked: they are the ones she will
     // happily play for an hour. The proper games and the shelf itself never
     // ask for a key.
+    try { Track.event('Pick', 'tap', id); } catch (e) {}
     if (MINI_IDS[id] && Unlock.needed()) { askKey(id, go); return; }
     if (MINI_IDS[id]) Unlock.played();
     go();
@@ -138,6 +139,8 @@
 
   function askKey(id, go) {
     var game = MINIS.filter(function (g) { return g.id === id; })[0];
+    var asked = Date.now();
+    try { Track.event('Key', 'asked', id); } catch (e) {}
     Unlock.ask({
       name: game ? game.name : null,
       els: {
@@ -145,7 +148,16 @@
         emoji: $('key-emoji'), show: $('key-show'), opts: $('key-opts'),
         say: true
       },
-      onPass: function () { Unlock.played(); go(); }
+      onPass: function () {
+        // How long the question took, and how many goes it took, is the only
+        // honest measure of whether it is pitched at the right level.
+        try {
+          Track.event('Key', 'passed', id, (Date.now() - asked) / 1000);
+          Track.event('Key', 'tries', id, (Unlock.tries || 0) + 1);
+        } catch (e) {}
+        Unlock.played();
+        go();
+      }
     });
   }
 
@@ -153,7 +165,10 @@
     var b = e.target.closest ? e.target.closest('[data-a]') : null;
     if (b) Unlock.answer(b.getAttribute('data-a'));
   });
-  on('key-back', function () { Unlock.close(); });
+  on('key-back', function () {
+    try { Track.event('Key', 'gave up', Unlock.q ? Unlock.q.kind : 'key'); } catch (e) {}
+    Unlock.close();
+  });
   $('key-sheet').addEventListener('click', function (e) {
     if (e.target === this) Unlock.close();
   });
@@ -326,6 +341,7 @@
     quitAsk = null;
     holdPlay(false);
     showBar(id);
+    try { Track.screen(id, WHERE[id]); } catch (e) {}
   }
 
   function currentScreen() {
@@ -367,6 +383,7 @@
     $('set-keys-v').textContent = SpellGame.layout === 'abc' ? 'abc' : 'qwerty';
     $('set-case-v').textContent = SpellGame.lower ? 'abc' : 'ABC';
     $('set-time-v').textContent = ClockGame.digitalWords ? 'three thirty' : 'half past three';
+    $('set-add-v').textContent = installed() ? 'done ✓' : 'show me';
   }
 
   function openSettings() { setLabels(); $('set-sheet').hidden = false; }
@@ -376,13 +393,135 @@
   $('set-sheet').addEventListener('click', function (e) {
     if (e.target === this) this.hidden = true;
   });
-  on('set-sound', function () { setSound(RoarAudio.muted); setLabels(); });
+  function setChanged(what, to) {
+    try { Track.event('Setting', what, String(to)); } catch (e) {}
+  }
+  on('set-sound', function () {
+    setSound(RoarAudio.muted); setLabels();
+    setChanged('sound', RoarAudio.muted ? 'off' : 'on');
+  });
   on('set-voice', function () { $('set-sheet').hidden = true; openVoices(); });
   // The choice is the spelling game's to keep, so it is set there whether or
   // not the game happens to be on screen at the time.
-  on('set-keys', function () { SpellGame.toggleLayout(); setLabels(); });
-  on('set-case', function () { SpellGame.toggleCase(); setLabels(); });
-  on('set-time', function () { ClockGame.toggleWords(); setLabels(); });
+  on('set-keys', function () {
+    SpellGame.toggleLayout(); setLabels(); setChanged('keyboard', SpellGame.layout);
+  });
+  on('set-case', function () {
+    SpellGame.toggleCase(); setLabels(); setChanged('letters', SpellGame.lower ? 'abc' : 'ABC');
+  });
+  on('set-time', function () {
+    ClockGame.toggleWords(); setLabels();
+    setChanged('clock words', ClockGame.digitalWords ? 'three thirty' : 'half past three');
+  });
+
+  /* ── putting it on the home screen ────────────────────────────
+     Added to the home screen it opens full screen with its own icon and no
+     address bar, which on a phone handed to a five-year-old is the difference
+     between a game and a web page she can tap her way out of.
+
+     Every phone hides this somewhere different, and none of them will let a
+     page do it unasked — so the honest thing is to say exactly where the
+     button is on the phone in her hand. Android and desktop Chrome do allow
+     it on request, and there we offer the button itself rather than
+     directions to one. */
+
+  var installPrompt = null;       // Chrome's offer, if it makes one
+
+  addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();           // ...so we can make the offer in our own words
+    installPrompt = e;
+  });
+  addEventListener('appinstalled', function () {
+    installPrompt = null;
+    try { Track.event('Install', 'added', 'home screen'); } catch (e) {}
+  });
+
+  function installed() {
+    return !!(navigator.standalone ||
+              (matchMedia && matchMedia('(display-mode: standalone)').matches));
+  }
+
+  // The share glyph, drawn rather than named: a box with an arrow out of it.
+  var SHARE = '<svg viewBox="0 0 14 17" aria-hidden="true">' +
+              '<path d="M7 1.6v8"/><path d="M4.2 4.2 7 1.4l2.8 2.8"/>' +
+              '<path d="M3.2 7.4H2v8h10v-8h-1.2"/></svg>';
+
+  function key(label, glyph) {
+    return '<span class="add-key">' + (glyph || '') + label + '</span>';
+  }
+
+  function howToAdd() {
+    var ua = navigator.userAgent;
+    var iOS = /iPad|iPhone|iPod/.test(ua) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var android = /Android/.test(ua);
+    // Every browser on iOS is Safari underneath, so the tell is the badge each
+    // one adds to the user agent rather than the engine.
+    var iosOther = iOS && /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+
+    if (iOS) {
+      return [
+        'Tap ' + key('Share', SHARE) + (iosOther
+          ? ' — the one in your browser\u2019s menu bar'
+          : ' at the bottom of the screen'),
+        'Scroll down the list',
+        'Tap ' + key('Add to Home Screen') + ' ➕',
+        'Tap ' + key('Add') + ' at the top right'
+      ];
+    }
+    if (android) {
+      return [
+        'Tap ' + key('⋮') + ' at the top right',
+        'Tap ' + key('Add to Home screen') + ' or ' + key('Install app'),
+        'Tap ' + key('Install')
+      ];
+    }
+    return [
+      'Look for ' + key('⊕') + ' at the right-hand end of the address bar',
+      'Click it, then click ' + key('Install')
+    ];
+  }
+
+  function openAdd() {
+    $('set-sheet').hidden = true;
+    var steps = $('add-steps'), go = $('add-go');
+
+    if (installed()) {
+      // Nothing to do, and saying so is kinder than a list she cannot follow.
+      $('add-title').textContent = 'Already on the Home Screen 🎉';
+      $('add-why').textContent = "You're playing it as an app right now.";
+      steps.innerHTML = '';
+      go.hidden = true;
+    } else {
+      $('add-title').textContent = 'Put it on the Home Screen';
+      $('add-why').textContent = 'Then it opens like a proper app — full ' +
+        'screen, its own icon, no address bar.';
+      steps.innerHTML = howToAdd().map(function (t) { return '<li>' + t + '</li>'; }).join('');
+      // Chrome will do it on request. Nothing else will, at any price.
+      go.hidden = !installPrompt;
+    }
+    $('add-sheet').hidden = false;
+    try { Track.event('Install', 'asked how', installed() ? 'already' : 'not yet'); } catch (e) {}
+  }
+
+  on('set-add', openAdd);
+  on('add-done', function () { $('add-sheet').hidden = true; });
+  $('add-sheet').addEventListener('click', function (e) {
+    if (e.target === this) this.hidden = true;
+  });
+  on('add-go', function () {
+    if (!installPrompt) return;
+    var p = installPrompt;
+    installPrompt = null;
+    $('add-go').hidden = true;
+    try {
+      p.prompt();
+      p.userChoice.then(function (r) {
+        try { Track.event('Install', 'prompt', r && r.outcome); } catch (e) {}
+        if (r && r.outcome === 'accepted') $('add-sheet').hidden = true;
+      });
+    } catch (e) {}
+  });
 
   // Rotating the phone changes every dimension the canvases were sized from,
   // and iOS reports the new size a beat after the event — so refit more than
