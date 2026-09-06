@@ -219,7 +219,11 @@
 
   function holdPlay(on) {
     if (on) {
-      held = [];
+      /* Do NOT clear the list first. Two sheets in a row — a question over a
+         question — used to wipe it, and the second pass then skipped every
+         game because it was already paused, so nothing was ever on the list
+         to start again. The game stayed frozen for the rest of the session,
+         which in Pairs meant a card you turned over kept showing its back. */
       [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame, DuelGame, RunGame,
        PairsGame, CatchGame, BounceGame, TreeGame].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;

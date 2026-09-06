@@ -83,8 +83,9 @@
     _newGame: function () {
       var pairs = (COLS * ROWS) / 2;
       var faces = shuffled(FACES).slice(0, pairs);
+      var now = (global.performance || Date).now();
       this.cards = shuffled(faces.concat(faces)).map(function (f, i) {
-        return { face: f, at: i, up: 0, done: false, flip: 0, wobble: 0 };
+        return { face: f, at: i, up: 0, done: false, turned: now - 9999, wobble: 0 };
       });
       this.t = 0;
       this.turns = 0;
@@ -171,11 +172,14 @@
       if (this.open.length >= 2) return false;
 
       card.up = 1;
-      card.flip = FLIP;
+      card.turned = (global.performance || Date).now();
       this.open.push(i);
       global.RoarAudio.sfx('tick');
 
       if (this.open.length === 2) this._judge();
+      // Paint it now rather than waiting for the next animation frame, so the
+      // card starts turning on the finger that turned it.
+      this._draw();
       return true;
     },
 
@@ -209,9 +213,10 @@
     // simply moved on.
     _closeWrong: function () {
       clearTimeout(this._lookT);
+      var now = (global.performance || Date).now();
       for (var i = 0; i < this.open.length; i++) {
         var c = this.cards[this.open[i]];
-        if (c && !c.done) { c.up = 0; c.flip = FLIP; }
+        if (c && !c.done) { c.up = 0; c.turned = now; }
       }
       this.open = [];
       this.busy = false;
@@ -257,9 +262,7 @@
       if (!this.paused) {
         this.t += dt;
         for (var i = 0; i < this.cards.length; i++) {
-          var c = this.cards[i];
-          c.flip = Math.max(0, c.flip - dt);
-          c.wobble = Math.max(0, c.wobble - dt * 2);
+          this.cards[i].wobble = Math.max(0, this.cards[i].wobble - dt * 2);
         }
       }
       this._draw();
@@ -276,12 +279,21 @@
       var card = this.cards[i], b = this._box(i);
       var cx = b.x + b.w / 2, cy = b.y + b.h / 2;
 
-      // The flip: the card squashes to nothing edge-on, and whichever side is
-      // showing swaps over exactly as it passes through zero width.
-      var k = card.flip / FLIP;                       // 1 at the start, 0 at rest
+      /* The flip: the card squashes to nothing edge-on, and whichever side is
+         showing swaps over exactly as it passes through zero width.
+
+         How far through it is comes from the clock rather than from a counter
+         the animation loop ticks down. That coupling was the bug: the loop
+         only ticked while the game was not paused, so a game that got stuck
+         paused left every card she turned over frozen at the start of its
+         flip — still showing its back. A card that has been turned over now
+         shows its face on the very next paint, whatever the loop is doing. */
+      var since = ((global.performance || Date).now() - card.turned) / 1000;
+      var k = clamp(1 - since / FLIP, 0, 1);          // 1 at the start, 0 at rest
+      var mid = since < FLIP;
       var half = k > 0.5 ? (k - 0.5) * 2 : (0.5 - k) * 2;
-      var squeeze = card.flip > 0 ? half : 1;
-      var showFace = card.flip > 0 ? (k <= 0.5 ? card.up : !card.up) : card.up;
+      var squeeze = mid ? half : 1;
+      var showFace = mid ? (k <= 0.5 ? card.up : !card.up) : card.up;
       var lift = card.wobble ? Math.sin(card.wobble * 9) * b.h * 0.05 : 0;
 
       c.save();
@@ -291,7 +303,7 @@
       var w = b.w, h = b.h, r = w * 0.14;
       // A matched pair fades back but stays on the table, so she can see what
       // she has already found.
-      c.globalAlpha = card.done && !card.flip ? 0.55 : 1;
+      c.globalAlpha = card.done && !mid ? 0.55 : 1;
 
       c.beginPath();
       if (c.roundRect) c.roundRect(-w / 2, -h / 2, w, h, r);
