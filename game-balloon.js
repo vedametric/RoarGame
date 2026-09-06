@@ -1594,6 +1594,7 @@
         var size = clamp(g.size * p.s * 0.9, 6, 90);
         if (size < 7) continue;
         c.globalAlpha = clamp((p.sy - this.hz) / 60, 0.15, 1);
+        c.fillStyle = '#fff';                 // see game-pairs.js
         c.font = size + 'px ' + EMOJI;
         c.fillText(g.emoji, p.sx, p.sy);
       }
@@ -1752,10 +1753,12 @@
           gl.addColorStop(1, 'rgba(240,190,255,0)');
           c.fillStyle = gl;
           c.beginPath(); c.arc(0, 0, size * 1.3, 0, 6.2832); c.fill();
+          c.fillStyle = '#fff';               // see game-pairs.js
           c.font = size + 'px ' + EMOJI;
           c.fillText(o.emoji, 0, 0);
           c.restore();
         } else {
+          c.fillStyle = '#fff';
           c.font = size + 'px ' + EMOJI;
           c.fillText(o.emoji, p.sx, p.sy + Math.sin(o.bobT * 2) * size * 0.1);
         }
@@ -2093,6 +2096,7 @@
                   : c.rect(x - w / 2, markY, w, hgt - (markY - top));
       c.fill();
 
+      c.fillStyle = '#fff';                   // see game-pairs.js
       c.font = '13px ' + EMOJI;
       c.textAlign = 'center';
       c.textBaseline = 'middle';
@@ -2133,6 +2137,7 @@
                   : c.rect(bx - 8, by - 12, tw + 42, 24);
       c.fill();
       c.textAlign = 'left';
+      c.fillStyle = '#fff';                   // see game-pairs.js
       c.font = '14px ' + EMOJI;
       c.fillText(above ? '🚀' : w.icon, bx, by);
       c.font = '800 11px system-ui';

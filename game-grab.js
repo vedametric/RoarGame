@@ -610,6 +610,7 @@
 
       if (frozen) {
         c.save();
+        c.fillStyle = '#fff';                   // see game-pairs.js
         c.font = '22px ' + EMOJI_FONT;
         c.textAlign = 'center'; c.textBaseline = 'middle';
         c.fillText('🧊', x, y - R - 12);

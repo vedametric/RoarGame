@@ -427,6 +427,10 @@
       // obstacles
       c.textAlign = 'center';
       c.textBaseline = 'middle';
+      // Opaque, and set here rather than inherited: see game-pairs.js. The
+      // stones above leave a 16%-white fill set, which is what the cactus
+      // would have been painted with.
+      c.fillStyle = '#fff';
       for (i = 0; i < this.obstacles.length; i++) {
         var o = this.obstacles[i];
         var bob = o.fly ? Math.sin(this.t * 9 + o.flap) * s * 0.10 : 0;
@@ -454,6 +458,7 @@
          The lean is negated to match, so it still tips the way it should. */
       c.rotate(-(this.over ? 0.5 : tilt));
       c.scale(duck ? -1.15 : -1, duck ? 0.62 : 1);
+      c.fillStyle = '#fff';                   // see game-pairs.js
       c.font = (s * 1.15) + 'px ' + EMOJI;
       c.textAlign = 'center';
       c.textBaseline = 'alphabetic';

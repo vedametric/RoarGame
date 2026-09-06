@@ -425,6 +425,9 @@
       c.fillStyle = glow;
       c.beginPath(); c.arc(cx, cy, s * 0.75, 0, 6.2832); c.fill();
 
+      // Opaque, and set here rather than inherited: see game-pairs.js. The
+      // glow's gradient would otherwise be what the apple is painted with.
+      c.fillStyle = '#fff';
       c.font = size + 'px ' + EMOJI;
       c.textAlign = 'center';
       c.textBaseline = 'middle';
