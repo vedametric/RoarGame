@@ -68,7 +68,8 @@
     { id: 'duel',  emoji: '👽', name: 'SPACE DUEL', note: 'beat the alien',      kind: 'mini' },
     { id: 'pairs', emoji: '🃏', name: 'PAIRS',       note: 'find the matches',    kind: 'mini' },
     { id: 'catch', emoji: '🧺', name: 'CATCH IT!',   note: 'dodge the bombs',     kind: 'mini' },
-    { id: 'bounce', emoji: '🧱', name: 'BOUNCE',     note: 'break all the blocks', kind: 'mini' }
+    { id: 'bounce', emoji: '🧱', name: 'BOUNCE',     note: 'break all the blocks', kind: 'mini' },
+    { id: 'tree',  emoji: '🌳', name: 'GROW A TREE', note: 'and pick the fruit',  kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -103,7 +104,8 @@
     duel:    function () { RoarAudio.resume(); startDuel(); },
     pairs:   function () { RoarAudio.resume(); startPairs(); },
     catch:   function () { RoarAudio.resume(); startCatch(); },
-    bounce:  function () { RoarAudio.resume(); startBounce(); }
+    bounce:  function () { RoarAudio.resume(); startBounce(); },
+    tree:    function () { RoarAudio.resume(); startTree(); }
   };
 
   document.addEventListener('click', function (e) {
@@ -119,7 +121,8 @@
                   'screen-sides': 1, 'screen-balloon': 1, 'screen-counting': 1,
                   'screen-calc': 1, 'screen-spell': 1, 'screen-clock': 1,
                   'screen-snake': 1, 'screen-duel': 1, 'screen-run': 1,
-                  'screen-pairs': 1, 'screen-catch': 1, 'screen-bounce': 1 };
+                  'screen-pairs': 1, 'screen-catch': 1, 'screen-bounce': 1,
+                  'screen-tree': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -137,6 +140,7 @@
     try { if (PairsGame.running) PairsGame.stop(); } catch (e) {}
     try { if (CatchGame.running) CatchGame.stop(); } catch (e) {}
     try { if (BounceGame.running) BounceGame.stop(); } catch (e) {}
+    try { if (TreeGame.running) TreeGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -180,7 +184,7 @@
     if (on) {
       held = [];
       [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame, DuelGame, RunGame,
-       PairsGame, CatchGame, BounceGame].forEach(function (g) {
+       PairsGame, CatchGame, BounceGame, TreeGame].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -229,7 +233,8 @@
     'screen-clock': "What's the time?", 'screen-result': 'Results',
     'screen-minis': 'Mini games', 'screen-snake': 'Snake',
     'screen-duel': 'Space duel', 'screen-run': 'Run!', 'screen-run-pick': 'Run!',
-    'screen-pairs': 'Pairs', 'screen-catch': 'Catch it!', 'screen-bounce': 'Bounce'
+    'screen-pairs': 'Pairs', 'screen-catch': 'Catch it!', 'screen-bounce': 'Bounce',
+    'screen-tree': 'Grow a tree'
   };
 
   function showBar(id) {
@@ -330,7 +335,7 @@
   // once rather than trusting the first reading.
   function refit() {
     [GrabGame, BalloonGame, ClockGame, SnakeGame, DuelGame, RunGame,
-     PairsGame, CatchGame, BounceGame].forEach(function (g) {
+     PairsGame, CatchGame, BounceGame, TreeGame].forEach(function (g) {
       if (!g || !g.running) return;
       // Canvas games that need repainting say so with _refit; the rest just
       // need their backing store resized.
@@ -1275,6 +1280,27 @@
   }
   on('bo-again', function () { Confetti.stop(); BounceGame.again(); });
   miniLeave('screen-bounce', { emoji: '🧱', title: 'Stop bouncing?', stay: 'KEEP BOUNCING' });
+
+  function startTree() {
+    stopEverything();
+    show('screen-tree');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('tr-over').hidden = true;
+    TreeGame.start({
+      canvas: $('tree-canvas'),
+      els: { score: $('tr-score'), best: $('tr-best'), wilts: $('tr-wilts'),
+             stage: $('tr-stage'), want: $('tr-want'), over: $('tr-over'),
+             overScore: $('tr-over-score'), overPicked: $('tr-over-picked'),
+             overBest: $('tr-over-best') }
+    });
+  }
+  $('tr-tools').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-give]') : null;
+    if (b) TreeGame.give(b.getAttribute('data-give'));
+  });
+  on('tr-again', function () { Confetti.stop(); TreeGame.again(); });
+  miniLeave('screen-tree', { emoji: '🌳', title: 'Leave the tree?', stay: 'KEEP GROWING' });
 
   /* ── results ──────────────────────────────────────────────── */
 
