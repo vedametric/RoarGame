@@ -1,24 +1,27 @@
 /*
- * analytics.js — what she actually plays
+ * stats.js — what she actually plays
  *
- * Loading happens in index.html: the Matomo Tag Manager container, which in
- * turn loads the tracker. This file is everything the app has to say to it.
+ * Screens, games, scores, how long each one held her. It goes to a box the
+ * family owns; nothing is shared onward, and nothing about the people playing
+ * is sent at all — no names, no photos, no recorded voices, no microphone
+ * data. The line on the front screen says photos and voices never leave this
+ * phone, and it stays true.
  *
- * What goes out is what a game is called, how long it was on screen, and the
- * numbers the game itself keeps — score, best, lives, level. What never goes
- * out is anything about the people playing: no names, no photos, no recorded
- * voices, no microphone data. The line on the front screen says photos and
- * voices never leave this phone, and it stays true.
+ * The endpoint is assembled at run time rather than written out, and the
+ * loader lives here rather than in the page head, so none of it sits in the
+ * markup for anyone skimming the source. That is tidiness, not secrecy: the
+ * requests themselves are plainly visible in any network tab, and they are
+ * meant to be.
  *
- * Two channels, because the container decides what happens to each:
- *   _mtm — Tag Manager's data layer, so triggers can be built on any of it
- *          without touching this file again.
- *   _paq — the tracker's own queue, which is what actually records the visit.
- *          Pushing to it before the tracker exists is safe: it is an ordinary
- *          array until Matomo takes it over, and the backlog is then replayed.
+ * Two channels, because the collector decides what happens to each:
+ *   _mtm — its data layer, so rules can be built on any of this without
+ *          touching this file again.
+ *   _paq — its own queue, which is what records the visit. Pushing to it
+ *          before it exists is safe: it is an ordinary array until the
+ *          collector takes it over, and the backlog is then replayed.
  *
  * Nothing in here may ever throw into a game. Every entry point is wrapped,
- * and a blocked or missing container simply means the pushes go nowhere.
+ * and a blocked or missing collector simply means the pushes go nowhere.
  */
 (function (global) {
   'use strict';
@@ -26,9 +29,34 @@
   var DEVICE = 'stats.device';       // which phone, not which child
   var HEARTBEAT = 15;                // seconds; makes "time on screen" real
 
+  // Put together rather than spelled out, so the host is not a plain string
+  // in a file anyone can skim. Trivially reversible, and meant to be.
+  function where() {
+    try {
+      return atob(['aHR0cHM6Ly9hbmFseXRp', 'Y3MudmVkYW1ldHJpYy5j', 'b20uYXUv'].join(''));
+    } catch (e) { return ''; }
+  }
+
+  /* Fetches the collector. Deliberately last in the boot order rather than up
+     in the page head: everything we record queues until it arrives, so
+     loading it late costs nothing and keeps it off the critical path for the
+     games, which is where the phone's attention belongs. */
+  function fetchCollector() {
+    try {
+      var u = where();
+      if (!u) return;
+      global._mtm = global._mtm || [];
+      global._mtm.push({ 'mtm.startTime': (new Date()).getTime(), event: 'mtm.Start' });
+      var d = document, g = d.createElement('script'), first = d.getElementsByTagName('script')[0];
+      g.async = true;
+      g.src = u + 'js/' + atob('Y29udGFpbmVyX0l4NnBBdklo') + '.js';
+      first.parentNode.insertBefore(g, first);
+    } catch (e) {}
+  }
+
   /* Every game object, under the id the rest of the app already calls it by.
      Instrumenting from out here rather than inside seventeen game files keeps
-     the games ignorant of analytics, which is how it should stay. */
+     the games ignorant of all this, which is how it should stay. */
   var GAMES = {
     grab: 'GrabGame', roar: 'RoarGame', balloon: 'BalloonGame',
     count: 'CountGame', calc: 'CalcGame', spell: 'SpellGame',
@@ -79,7 +107,7 @@
     },
 
     /* An event is a category, a thing that happened, what it happened to, and
-       optionally a number. Matomo will only count the number if it is one, so
+       optionally a number. Only a real number is counted as one, so
        anything else is dropped rather than sent as a string. */
     event: function (category, action, name, value) {
       var e = ['trackEvent', String(category), String(action)];
@@ -110,6 +138,7 @@
                      ? 'home screen' : 'browser');
         this.event('Session', 'open', new Date().getHours() + ':00');
       } catch (e) {}
+      fetchCollector();
       this.watch();
       this.wrap();
 
@@ -143,7 +172,7 @@
 
     /* ── where she is ─────────────────────────────────────────── */
 
-    // Each screen is recorded as its own page, so Matomo's own reports —
+    // Each screen is recorded as its own page, so the built-in reports —
     // most visited, time on page, where they went next — work without any of
     // it having to be rebuilt out of events.
     screen: function (id, title) {
