@@ -313,6 +313,51 @@ body.has-topbar .screen--flat { padding-top: 0; }
 .mg-over-best { margin: 4px 0 2px; font-size: 14px; font-weight: 800; color: rgba(255,255,255,.7); }
 .mg-over-best.is-new { color: #ffd24c; font-size: 17px; }
 
+/* ── add to home screen ───────────────────────────────────────
+   Numbered steps with the buttons drawn as they look on the phone, because
+   "tap Share" only helps someone who already knows which one Share is. */
+
+.sheet--add { z-index: 92; }
+.add-card { max-width: 380px; }
+.add-emoji { font-size: 42px; line-height: 1; }
+.add-steps {
+  list-style: none; counter-reset: step;
+  margin: 6px 0 2px; padding: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  text-align: left; width: 100%;
+}
+.add-steps li {
+  counter-increment: step;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 700; line-height: 1.35;
+  color: rgba(255,255,255,.92);
+}
+.add-steps li::before {
+  content: counter(step);
+  flex: 0 0 auto;
+  width: 24px; height: 24px; border-radius: 12px;
+  display: grid; place-items: center;
+  font-size: 13px; font-weight: 900;
+  background: rgba(255,210,76,.20); color: #ffd24c;
+  border: 2px solid rgba(255,210,76,.45);
+}
+/* A button quoted from the phone's own chrome, so it is recognisable on
+   sight rather than by name. */
+.add-key {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 7px; margin: 0 1px; border-radius: 7px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.22);
+  font-weight: 800; white-space: nowrap;
+}
+.add-key svg { width: 13px; height: 15px; fill: none;
+               stroke: currentColor; stroke-width: 1.9;
+               stroke-linecap: round; stroke-linejoin: round; }
+.add-note {
+  margin: 2px 0 0; font-size: 12px; font-weight: 700;
+  color: rgba(201,189,240,.75);
+}
+
 /* ── the key ──────────────────────────────────────────────────
    The little question that unlocks a mini game. Big buttons, one tap, and
    nothing on it that looks like failure. */

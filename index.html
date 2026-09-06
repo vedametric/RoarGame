@@ -30,6 +30,9 @@
 <title>Roar Battle</title>
 <link rel="manifest" href="manifest.webmanifest?v=dev" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%81%3C/text%3E%3C/svg%3E" />
+<!-- iOS takes the home-screen icon from here. Without it, adding the app to
+     the home screen gives you a blurry screenshot of whatever was on screen. -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=dev" />
 <link rel="stylesheet" href="styles.css?v=dev" />
 </head>
 <body>
@@ -834,6 +837,9 @@
       <button class="set-row" id="set-time" type="button">
         <span class="set-what">🕐 Times read as</span><b class="set-val" id="set-time-v">three thirty</b>
       </button>
+      <button class="set-row" id="set-add" type="button">
+        <span class="set-what">📲 Add to Home Screen</span><b class="set-val" id="set-add-v">show me</b>
+      </button>
       <button class="btn btn--go" id="set-done" type="button">DONE</button>
     </div>
   </div>
@@ -849,6 +855,21 @@
       <div class="key-show" id="key-show">3 + 4 = ?</div>
       <div class="key-opts" id="key-opts"></div>
       <button class="linkish" id="key-back" type="button">Not now</button>
+    </div>
+  </div>
+
+  <!-- How to put it on the home screen. The steps are written per phone,
+       because "use the share button" is no help to someone who cannot see
+       one, and on Android there is a real install prompt to offer instead. -->
+  <div class="sheet sheet--add" id="add-sheet" hidden>
+    <div class="sheet-card add-card">
+      <div class="add-emoji" aria-hidden="true">📲</div>
+      <h2 class="heading heading--sm" id="add-title">Put it on the Home Screen</h2>
+      <p class="subheading" id="add-why">Then it opens like a proper app — full
+        screen, its own icon, no address bar.</p>
+      <ol class="add-steps" id="add-steps"></ol>
+      <button class="btn btn--go" id="add-go" type="button" hidden>ADD IT</button>
+      <button class="btn btn--ghost" id="add-done" type="button">GOT IT</button>
     </div>
   </div>
 
