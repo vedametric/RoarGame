@@ -752,6 +752,27 @@
       for (var i = 0; i < this._loops.length; i++) this._loops[i].setMuted(this.muted);
     },
 
+    /* A single sung note, for the games that need a pitch rather than a
+       noise. Two oscillators a whisker apart so it has a bit of a wobble to
+       it and does not sound like a fire alarm. */
+    note: function (hz, dur, vol) {
+      if (!this.ctx || this.muted) return;
+      var ctx = this.ctx, t = ctx.currentTime;
+      dur = dur || 0.3;
+      vol = vol || 0.16;
+      [[1, 'triangle', vol], [2.002, 'sine', vol * 0.28]].forEach(function (v) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = v[1];
+        o.frequency.value = hz * v[0];
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(v[2], t + 0.02);
+        g.gain.setValueAtTime(v[2], t + dur * 0.7);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); o.stop(t + dur + 0.04);
+      });
+    },
+
     sfx: function (type) {
       if (!this.ctx || this.muted) return;
       var ctx = this.ctx, t = ctx.currentTime;
