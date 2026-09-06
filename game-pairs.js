@@ -18,7 +18,7 @@
 
   var COLS = 3, ROWS = 4;          // twelve cards, six pairs
   var FLIP = 0.34;                 // seconds a card takes to turn over
-  var LOOK = 0.85;                 // how long a wrong pair stays up
+  var LOOK = 1.4;                  // how long a wrong pair stays up if she waits
   var SAVED = 'pairs.best';
   var EMOJI = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif';
 
@@ -71,6 +71,7 @@
       this.running = false;
       cancelAnimationFrame(this.raf);
       clearTimeout(this._lookT);
+      clearTimeout(this._doneT);
       if (this._onResize) removeEventListener('resize', this._onResize);
       this._onResize = null;
       if (this._tap) this.canvas.removeEventListener('pointerdown', this._tap);
@@ -151,12 +152,22 @@
       return false;
     },
 
-    /* Turning one over. Tapping a card that is already up, or tapping at all
-       while a wrong pair is still on show, does nothing — a small child taps
-       a lot, and none of it should cost her a turn. */
+    /* Turning one over.
+
+       A tap while a wrong pair is still on show is NOT thrown away: it puts
+       that pair back down and turns the new card, straight away. Throwing it
+       away is what a memory game usually does, and it meant that a child
+       tapping at her natural three-a-second rate had half her taps do nothing
+       at all — so the only pictures she ever really saw were the matched ones
+       that stayed up, and the game looked broken.
+
+       Tapping a card that is already up still does nothing, and none of it
+       ever costs her a turn. */
     turn: function (i) {
       var card = this.cards[i];
-      if (!card || card.done || this.busy || this.open.indexOf(i) >= 0) return false;
+      if (!card || card.done) return false;
+      if (this.busy) this._closeWrong();
+      if (this.open.indexOf(i) >= 0) return false;
       if (this.open.length >= 2) return false;
 
       card.up = 1;
@@ -183,18 +194,27 @@
         global.RoarAudio.sfx('spellgood');
         if (this.found === this.cards.length / 2) this._finish();
       } else {
-        // Long enough to take them in, short enough not to be a punishment.
+        // Long enough to take them in if she waits, and she can cut it short
+        // simply by carrying on.
         this.busy = true;
         global.RoarAudio.sfx('miss');
         this._lookT = setTimeout(function () {
-          if (!self.running) return;
-          a.up = 0; a.flip = FLIP;
-          b.up = 0; b.flip = FLIP;
-          self.open = [];
-          self.busy = false;
+          if (self.running) self._closeWrong();
         }, LOOK * 1000);
       }
       this._render();
+    },
+
+    // Put the pair she got wrong back down, whether the clock ran out or she
+    // simply moved on.
+    _closeWrong: function () {
+      clearTimeout(this._lookT);
+      for (var i = 0; i < this.open.length; i++) {
+        var c = this.cards[this.open[i]];
+        if (c && !c.done) { c.up = 0; c.flip = FLIP; }
+      }
+      this.open = [];
+      this.busy = false;
     },
 
     _finish: function () {
@@ -206,7 +226,7 @@
       global.RoarAudio.sfx('win');
       try { global.Confetti.start(['#ffd24c', '#7ec8ff', '#e6b3ff', '#9df08a', '#ffffff']); } catch (e) {}
       var self = this;
-      this._lookT = setTimeout(function () { try { global.Confetti.stop(); } catch (e) {} }, 3000);
+      this._doneT = setTimeout(function () { try { global.Confetti.stop(); } catch (e) {} }, 3000);
       this._render();
       if (this.cfg.onOver) this.cfg.onOver(this.turns, this.best, this.newBest);
     },
