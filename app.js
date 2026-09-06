@@ -126,6 +126,7 @@
     // Mini games are the ones that get locked: they are the ones she will
     // happily play for an hour. The proper games and the shelf itself never
     // ask for a key.
+    try { Track.event('Pick', 'tap', id); } catch (e) {}
     if (MINI_IDS[id] && Unlock.needed()) { askKey(id, go); return; }
     if (MINI_IDS[id]) Unlock.played();
     go();
@@ -138,6 +139,8 @@
 
   function askKey(id, go) {
     var game = MINIS.filter(function (g) { return g.id === id; })[0];
+    var asked = Date.now();
+    try { Track.event('Key', 'asked', id); } catch (e) {}
     Unlock.ask({
       name: game ? game.name : null,
       els: {
@@ -145,7 +148,16 @@
         emoji: $('key-emoji'), show: $('key-show'), opts: $('key-opts'),
         say: true
       },
-      onPass: function () { Unlock.played(); go(); }
+      onPass: function () {
+        // How long the question took, and how many goes it took, is the only
+        // honest measure of whether it is pitched at the right level.
+        try {
+          Track.event('Key', 'passed', id, (Date.now() - asked) / 1000);
+          Track.event('Key', 'tries', id, (Unlock.tries || 0) + 1);
+        } catch (e) {}
+        Unlock.played();
+        go();
+      }
     });
   }
 
@@ -153,7 +165,10 @@
     var b = e.target.closest ? e.target.closest('[data-a]') : null;
     if (b) Unlock.answer(b.getAttribute('data-a'));
   });
-  on('key-back', function () { Unlock.close(); });
+  on('key-back', function () {
+    try { Track.event('Key', 'gave up', Unlock.q ? Unlock.q.kind : 'key'); } catch (e) {}
+    Unlock.close();
+  });
   $('key-sheet').addEventListener('click', function (e) {
     if (e.target === this) Unlock.close();
   });
@@ -326,6 +341,7 @@
     quitAsk = null;
     holdPlay(false);
     showBar(id);
+    try { Track.screen(id, WHERE[id]); } catch (e) {}
   }
 
   function currentScreen() {
@@ -376,13 +392,26 @@
   $('set-sheet').addEventListener('click', function (e) {
     if (e.target === this) this.hidden = true;
   });
-  on('set-sound', function () { setSound(RoarAudio.muted); setLabels(); });
+  function setChanged(what, to) {
+    try { Track.event('Setting', what, String(to)); } catch (e) {}
+  }
+  on('set-sound', function () {
+    setSound(RoarAudio.muted); setLabels();
+    setChanged('sound', RoarAudio.muted ? 'off' : 'on');
+  });
   on('set-voice', function () { $('set-sheet').hidden = true; openVoices(); });
   // The choice is the spelling game's to keep, so it is set there whether or
   // not the game happens to be on screen at the time.
-  on('set-keys', function () { SpellGame.toggleLayout(); setLabels(); });
-  on('set-case', function () { SpellGame.toggleCase(); setLabels(); });
-  on('set-time', function () { ClockGame.toggleWords(); setLabels(); });
+  on('set-keys', function () {
+    SpellGame.toggleLayout(); setLabels(); setChanged('keyboard', SpellGame.layout);
+  });
+  on('set-case', function () {
+    SpellGame.toggleCase(); setLabels(); setChanged('letters', SpellGame.lower ? 'abc' : 'ABC');
+  });
+  on('set-time', function () {
+    ClockGame.toggleWords(); setLabels();
+    setChanged('clock words', ClockGame.digitalWords ? 'three thirty' : 'half past three');
+  });
 
   // Rotating the phone changes every dimension the canvases were sized from,
   // and iOS reports the new size a beat after the event — so refit more than

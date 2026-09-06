@@ -38,6 +38,18 @@ html, body {
   touch-action: manipulation;
 }
 
+/* The white bar along the bottom on iOS.
+   Everything the app draws lives in a box fixed to the layout viewport. When
+   Safari collapses its toolbar the *visual* viewport grows taller than that
+   box, and the strip left over is painted by the page canvas rather than by
+   anything of ours. With no background on <html> that strip came out white —
+   which is also why Safari's own toolbar went white, since it takes its tint
+   from the colour at the edge of the page. Painting the root the same colour
+   the app's gradient ends on makes the strip invisible whether it appears or
+   not. It has to be on <html>: a background on <body> alone stops at the
+   bottom of the fixed box, which is exactly where the problem starts. */
+html { background: var(--bg-0); }
+
 body {
   position: fixed;
   inset: 0;
