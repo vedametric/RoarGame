@@ -280,6 +280,69 @@
     </div>
   </section>
 
+  <!-- ═════════════════════ COPY ME ═════════════════════ -->
+  <section class="screen" id="screen-copy">
+    <div class="mg-head">
+      <div class="mg-score" id="cp-score">0</div>
+      <div class="mg-note" id="cp-lives">💛💛💛</div>
+      <div class="mg-best" id="cp-best">★ 0</div>
+    </div>
+    <canvas id="copy-canvas"></canvas>
+    <button class="btn btn--ghost cp-replay" id="cp-replay" type="button">🔁 HEAR IT AGAIN</button>
+    <div class="mg-over" id="cp-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🎵</div>
+        <h2 class="heading heading--sm">Tune over!</h2>
+        <div class="mg-over-score" id="cp-over-score">0</div>
+        <p class="mg-over-sub">tunes copied</p>
+        <p class="mg-over-best" id="cp-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="cp-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ ODD ONE OUT ═════════════════════ -->
+  <section class="screen" id="screen-odd">
+    <div class="mg-head">
+      <div class="mg-score" id="od-score">0</div>
+      <div class="mg-note" id="od-note">2×2</div>
+      <div class="mg-best" id="od-best">★ 0</div>
+    </div>
+    <canvas id="odd-canvas"></canvas>
+    <p class="mg-hint">tap the one that is different</p>
+    <div class="mg-over" id="od-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🔍</div>
+        <h2 class="heading heading--sm">Out of time!</h2>
+        <div class="mg-over-score" id="od-over-score">0</div>
+        <p class="mg-over-sub">odd ones found</p>
+        <p class="mg-over-best" id="od-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="od-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ WHICH CUP? ═════════════════════ -->
+  <section class="screen" id="screen-cups">
+    <div class="mg-head">
+      <div class="mg-score" id="cu-score">0</div>
+      <div class="mg-note" id="cu-lives">🧀🧀🧀</div>
+      <div class="mg-best" id="cu-best">★ 0</div>
+    </div>
+    <canvas id="cups-canvas"></canvas>
+    <p class="mg-hint">watch the mouse · then tap his cup</p>
+    <div class="mg-over" id="cu-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🐭</div>
+        <h2 class="heading heading--sm">He got away!</h2>
+        <div class="mg-over-score" id="cu-over-score">0</div>
+        <p class="mg-over-sub">times you found him</p>
+        <p class="mg-over-best" id="cu-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="cu-again" type="button">PLAY AGAIN</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ HOW MANY PLAYERS ═════════════════════ -->
   <section class="screen" id="screen-count">
     <h2 class="heading">How many players?</h2>
@@ -809,6 +872,9 @@
 <script src="game-pairs.js?v=dev"></script>
 <script src="game-catch.js?v=dev"></script>
 <script src="game-bounce.js?v=dev"></script>
+<script src="game-copy.js?v=dev"></script>
+<script src="game-odd.js?v=dev"></script>
+<script src="game-cups.js?v=dev"></script>
 <script src="game-snake.js?v=dev"></script>
 <script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>

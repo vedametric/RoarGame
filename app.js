@@ -69,7 +69,10 @@
     { id: 'pairs', emoji: '🃏', name: 'PAIRS',       note: 'find the matches',    kind: 'mini' },
     { id: 'catch', emoji: '🧺', name: 'CATCH IT!',   note: 'dodge the bombs',     kind: 'mini' },
     { id: 'bounce', emoji: '🧱', name: 'BOUNCE',     note: 'break all the blocks', kind: 'mini' },
-    { id: 'tree',  emoji: '🌳', name: 'GROW A TREE', note: 'and pick the fruit',  kind: 'mini' }
+    { id: 'tree',  emoji: '🌳', name: 'GROW A TREE', note: 'and pick the fruit',  kind: 'mini' },
+    { id: 'copy',  emoji: '🎵', name: 'COPY ME',     note: 'play the tune back',  kind: 'mini' },
+    { id: 'odd',   emoji: '🔍', name: 'ODD ONE OUT', note: 'spot the odd one',    kind: 'mini' },
+    { id: 'cups',  emoji: '🥤', name: 'WHICH CUP?',  note: 'follow the mouse',    kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -106,7 +109,10 @@
     pairs:   function () { RoarAudio.resume(); startPairs(); },
     catch:   function () { RoarAudio.resume(); startCatch(); },
     bounce:  function () { RoarAudio.resume(); startBounce(); },
-    tree:    function () { RoarAudio.resume(); startTree(); }
+    tree:    function () { RoarAudio.resume(); startTree(); },
+    copy:    function () { RoarAudio.resume(); startCopy(); },
+    odd:     function () { RoarAudio.resume(); startOdd(); },
+    cups:    function () { RoarAudio.resume(); startCups(); }
   };
 
   var MINI_IDS = {};   // filled from MINIS, so the list stays the one truth
@@ -159,7 +165,8 @@
                   'screen-calc': 1, 'screen-spell': 1, 'screen-clock': 1,
                   'screen-snake': 1, 'screen-duel': 1, 'screen-run': 1,
                   'screen-pairs': 1, 'screen-catch': 1, 'screen-bounce': 1,
-                  'screen-tree': 1 };
+                  'screen-tree': 1, 'screen-copy': 1, 'screen-odd': 1,
+                  'screen-cups': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -178,6 +185,9 @@
     try { if (CatchGame.running) CatchGame.stop(); } catch (e) {}
     try { if (BounceGame.running) BounceGame.stop(); } catch (e) {}
     try { if (TreeGame.running) TreeGame.stop(); } catch (e) {}
+    try { if (CopyGame.running) CopyGame.stop(); } catch (e) {}
+    try { if (OddGame.running) OddGame.stop(); } catch (e) {}
+    try { if (CupsGame.running) CupsGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -225,7 +235,8 @@
          to start again. The game stayed frozen for the rest of the session,
          which in Pairs meant a card you turned over kept showing its back. */
       [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame, DuelGame, RunGame,
-       PairsGame, CatchGame, BounceGame, TreeGame].forEach(function (g) {
+       PairsGame, CatchGame, BounceGame, TreeGame, CopyGame, OddGame,
+       CupsGame].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -275,7 +286,8 @@
     'screen-minis': 'Mini games', 'screen-snake': 'Snake',
     'screen-duel': 'Space duel', 'screen-run': 'Run!', 'screen-run-pick': 'Run!',
     'screen-pairs': 'Pairs', 'screen-catch': 'Catch it!', 'screen-bounce': 'Bounce',
-    'screen-tree': 'Grow a tree'
+    'screen-tree': 'Grow a tree', 'screen-copy': 'Copy me',
+    'screen-odd': 'Odd one out', 'screen-cups': 'Which cup?'
   };
 
   function showBar(id) {
@@ -377,7 +389,8 @@
   // once rather than trusting the first reading.
   function refit() {
     [GrabGame, BalloonGame, ClockGame, SnakeGame, DuelGame, RunGame,
-     PairsGame, CatchGame, BounceGame, TreeGame].forEach(function (g) {
+     PairsGame, CatchGame, BounceGame, TreeGame, CopyGame, OddGame,
+     CupsGame].forEach(function (g) {
       if (!g || !g.running) return;
       // Canvas games that need repainting say so with _refit; the rest just
       // need their backing store resized.
@@ -1343,6 +1356,55 @@
   });
   on('tr-again', function () { Confetti.stop(); TreeGame.again(); });
   miniLeave('screen-tree', { emoji: '🌳', title: 'Leave the tree?', stay: 'KEEP GROWING' });
+
+  function startCopy() {
+    stopEverything();
+    show('screen-copy');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('cp-over').hidden = true;
+    CopyGame.start({
+      canvas: $('copy-canvas'),
+      els: { score: $('cp-score'), best: $('cp-best'), lives: $('cp-lives'),
+             replay: $('cp-replay'), over: $('cp-over'),
+             overScore: $('cp-over-score'), overBest: $('cp-over-best') }
+    });
+  }
+  on('cp-replay', function () { CopyGame.replay(); });
+  on('cp-again', function () { Confetti.stop(); CopyGame.again(); });
+  miniLeave('screen-copy', { emoji: '🎵', title: 'Stop copying?', stay: 'KEEP PLAYING' });
+
+  function startOdd() {
+    stopEverything();
+    show('screen-odd');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('od-over').hidden = true;
+    OddGame.start({
+      canvas: $('odd-canvas'),
+      els: { score: $('od-score'), best: $('od-best'), note: $('od-note'),
+             over: $('od-over'), overScore: $('od-over-score'),
+             overBest: $('od-over-best') }
+    });
+  }
+  on('od-again', function () { Confetti.stop(); OddGame.again(); });
+  miniLeave('screen-odd', { emoji: '🔍', title: 'Stop looking?', stay: 'KEEP LOOKING' });
+
+  function startCups() {
+    stopEverything();
+    show('screen-cups');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('cu-over').hidden = true;
+    CupsGame.start({
+      canvas: $('cups-canvas'),
+      els: { score: $('cu-score'), best: $('cu-best'), lives: $('cu-lives'),
+             over: $('cu-over'), overScore: $('cu-over-score'),
+             overBest: $('cu-over-best') }
+    });
+  }
+  on('cu-again', function () { Confetti.stop(); CupsGame.again(); });
+  miniLeave('screen-cups', { emoji: '🥤', title: 'Stop chasing him?', stay: 'KEEP WATCHING' });
 
   /* ── results ──────────────────────────────────────────────── */
 

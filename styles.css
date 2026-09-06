@@ -255,7 +255,8 @@ body.has-topbar .screen--flat { padding-top: 0; }
   margin: 0; font-size: 11px; font-weight: 800; letter-spacing: .06em;
   text-transform: uppercase; color: rgba(201,189,240,.55);
 }
-#pairs-canvas, #catch-canvas, #bounce-canvas {
+#pairs-canvas, #catch-canvas, #bounce-canvas,
+#copy-canvas, #odd-canvas, #cups-canvas {
   flex: 1 1 auto; width: 100%; max-width: 460px; min-height: 0;
   border-radius: 18px; touch-action: none;
   border: 3px solid rgba(255,255,255,.14);
@@ -264,6 +265,18 @@ body.has-topbar .screen--flat { padding-top: 0; }
 #pairs-canvas  { background: #1a0f38; }
 #catch-canvas  { background: #1b3a6b; }
 #bounce-canvas { background: #150b30; }
+#copy-canvas   { background: #120a2c; }
+#odd-canvas    { background: #101b3a; }
+#cups-canvas   { background: #160c26; }
+
+/* COPY ME's one button. Kept quiet, because it is a help rather than a move,
+   and it goes flat instead of vanishing while the tune is playing — a button
+   that disappears is a button she has to find again. */
+.cp-replay {
+  padding: 9px 20px; font-size: 13px; letter-spacing: .05em;
+  border-radius: 999px; flex: 0 0 auto;
+}
+.cp-replay[disabled] { opacity: .32; }
 
 .mg-over {
   position: absolute; inset: 0; z-index: 20;
