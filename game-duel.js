@@ -21,13 +21,15 @@
   'use strict';
 
   var TARGET = 10;              // things to collect, in the collecting games
-  var RACE_TAPS = 26;           // taps to get across, in the race
+  var RACE_TAPS = 18;           // taps to get across, in the race
   var EMOJI = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif';
 
-  /* The alien's pace. It is set from how long it should take a child who is
-     playing properly: at ONE_EVERY seconds a thing, doing nothing at all
-     loses in about fifteen seconds, and tapping at any real rate wins. */
-  var ONE_EVERY = 1.45;
+  /* How long the alien takes to finish on its own — about fifteen seconds in
+     every game, so putting the phone down always loses at roughly the same
+     speed. Its pace per thing is worked out from that and the target, because
+     one rate for all three made the race take thirty-seven seconds to lose:
+     the same pace, but twice as many things to do. */
+  var ALIEN_SECS = 15;
   var BEHIND_HELP = 0.55;       // how much it eases off when she is behind
   var AHEAD_PUSH = 1.22;        // and hurries when she is miles ahead
 
@@ -39,6 +41,7 @@
     { id: 'race', name: 'RACE!',
       how: 'Tap as fast as you can!', target: RACE_TAPS }
   ];
+  GAMES.forEach(function (g) { g.pace = ALIEN_SECS / g.target; });
 
   var FALLING = ['⭐', '💎', '🍬', '🪐', '☄️', '🍭'];
   var SAVED = 'duel.won';
@@ -237,7 +240,7 @@
        usually close, and usually hers. */
     _alien: function (dt) {
       var lead = this.mine - this.theirs;
-      var pace = ONE_EVERY;
+      var pace = this.game.pace;
       // It eases off for someone who is playing and behind — but not for
       // someone who has not started, or putting the phone down would be a way
       // of making it wait for you.

@@ -764,6 +764,20 @@
     </div>
   </div>
 
+  <!-- Every third mini game or so is locked, and one small question is the
+       key. Never a wall: getting it wrong just asks something else. -->
+  <div class="sheet sheet--key" id="key-sheet" hidden>
+    <div class="sheet-card">
+      <div class="key-lock" aria-hidden="true">🔐</div>
+      <h2 class="heading heading--sm" id="key-title">Unlock it!</h2>
+      <p class="subheading" id="key-note">What does it come to?</p>
+      <div class="key-emoji" id="key-emoji" aria-hidden="true">🔢</div>
+      <div class="key-show" id="key-show">3 + 4 = ?</div>
+      <div class="key-opts" id="key-opts"></div>
+      <button class="linkish" id="key-back" type="button">Not now</button>
+    </div>
+  </div>
+
   <div class="sheet sheet--quit" id="quit-sheet" hidden>
     <div class="sheet-card quit-card">
       <div class="quit-emoji" id="quit-emoji" aria-hidden="true">👋</div>
@@ -790,6 +804,7 @@
 <script src="aliens.js?v=dev"></script>
 <script src="game-duel.js?v=dev"></script>
 <script src="game-run.js?v=dev"></script>
+<script src="unlock.js?v=dev"></script>
 <script src="game-tree.js?v=dev"></script>
 <script src="game-pairs.js?v=dev"></script>
 <script src="game-catch.js?v=dev"></script>
