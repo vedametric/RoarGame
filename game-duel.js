@@ -9,10 +9,27 @@
  *   POP    bubbles appear all over — pop ten before the alien does
  *   RACE   tap as fast as you can — first one across the line
  *
- * It is deliberately weighted her way. The alien works at a steady pace that
- * a child who is actually trying will beat comfortably, and it eases off if
- * she falls behind. But it never stops: put the phone down and it finishes
- * on its own and wins, because a reward you cannot lose is not a reward.
+ * The alien plays for real. It picks a thing on the board, locks a beam onto
+ * it, and takes it a moment later — so its score comes off the same board
+ * hers does, and you can watch it earn every point.
+ *
+ * That beam is the whole game. It is a warning with a countdown on it: the
+ * ring round the thing closes as the alien's grip tightens, and if she taps
+ * it first she takes it out from under them. Stealing is the best thing in
+ * the game and it is entirely her doing.
+ *
+ * It used to score off a timer instead, one point every 1.5 seconds whatever
+ * was happening, while only about fourteen things fell in the fifteen seconds
+ * it took to finish. She had to catch ten of fourteen — a seventy per cent
+ * hit rate on moving targets — merely to draw. That is not a hard game, it is
+ * a rigged one, and it is why the alien looked like it was loafing in the
+ * corner: it was. Both now draw from one board, and the board is stocked for
+ * two.
+ *
+ * Still weighted her way: the beam telegraphs for the best part of a second
+ * before it takes anything, and it slows down further if she falls behind.
+ * But it never stops — put the phone down and it wins on its own, because a
+ * reward you cannot lose is not a reward.
  *
  * It also never nags. Losing gets a cheerful "next time" from an alien that
  * is plainly pleased to have met her.
@@ -32,6 +49,14 @@
   var ALIEN_SECS = 15;
   var BEHIND_HELP = 0.55;       // how much it eases off when she is behind
   var AHEAD_PUSH = 1.22;        // and hurries when she is miles ahead
+
+  /* The beam. LOCK is how long the ring takes to close — her window to steal
+     the thing — and COOL is the breath it takes between one and the next.
+     They add up to the same 1.5 seconds a point that the timer used to take,
+     so the alien is exactly as quick as it always was; the difference is that
+     now it has to find something to take. */
+  var LOCK = 0.95;
+  var COOL = 0.55;
 
   var GAMES = [
     { id: 'grab', name: 'CATCH THE STARS',
@@ -119,6 +144,10 @@
       this.spawn = 0;
       this.alienAcc = 0;
       this.shake = 0;
+      // Where the alien is, what it is reaching for, and how far through its
+      // grip is. It starts on its own side and comes out to work.
+      this.al = { x: this.W ? this.W * 0.74 : 0, target: null,
+                  lock: 0, lockFor: LOCK, cool: 0.6, startle: 0, took: 0 };
       this._render();
     },
 
@@ -137,6 +166,8 @@
       this.canvas.width = Math.floor(this.W * d);
       this.canvas.height = Math.floor(this.H * d);
       this.ctx.setTransform(d, 0, 0, d, 0, 0);
+      // Turning the phone changes the board out from under the alien.
+      if (this.al) this.al.x = clamp(this.al.x || this.W * 0.74, 0, this.W);
     },
 
     _bind: function () {
@@ -172,15 +203,29 @@
         var o = this.things[i];
         if (o.gone) continue;
         var d = Math.hypot(o.x - x, o.y - y);
-        if (d < o.r * 2.1 && d < bestD) { bestD = d; best = i; }
+        if (d < o.r * 2.4 && d < bestD) { bestD = d; best = i; }
       }
       if (best < 0) return false;
 
       var got = this.things[best];
       got.gone = true;
       this.mine++;
-      this.pops.push({ x: got.x, y: got.y, age: 0, life: 0.5, text: '+1' });
-      global.RoarAudio.sfx(this.game.id === 'pop' ? 'puff' : 'nom');
+
+      /* Taking the one the alien had its beam on. This is the best thing in
+         the game, so it is worth saying out loud rather than quietly adding
+         one to her score like any other tap. */
+      var stolen = this.al && this.al.target === got;
+      if (stolen) {
+        this.al.target = null;
+        this.al.lock = 0;
+        this.al.cool = COOL;
+        this.al.startle = 1;
+        this.pops.push({ x: got.x, y: got.y, age: 0, life: 0.9, text: 'STOLE IT!' });
+        global.RoarAudio.sfx('sparkle');
+      } else {
+        this.pops.push({ x: got.x, y: got.y, age: 0, life: 0.5, text: '+1' });
+        global.RoarAudio.sfx(this.game.id === 'pop' ? 'puff' : 'nom');
+      }
       this._checkDone();
       return true;
     },
@@ -235,30 +280,112 @@
       this._render();
     },
 
-    /* The opponent. It works at a steady pace, eases off when she is behind
-       and hurries a little when she is a long way ahead — so the finish is
-       usually close, and usually hers. */
-    _alien: function (dt) {
+    /* How hard it is trying. Eases off for someone who is playing and behind
+       — but not for someone who has not started, or putting the phone down
+       would be a way of making it wait for you. */
+    _effort: function () {
       var lead = this.mine - this.theirs;
-      var pace = this.game.pace;
-      // It eases off for someone who is playing and behind — but not for
-      // someone who has not started, or putting the phone down would be a way
-      // of making it wait for you.
-      if (lead < 0 && this.mine > 0) pace *= 1 + BEHIND_HELP;
-      else if (lead > 3) pace /= AHEAD_PUSH;   // she is miles ahead: it hurries
-      this.alienAcc += dt;
-      if (this.alienAcc >= pace) {
-        this.alienAcc -= pace;
-        this.theirs++;
-        if (this.theirs >= this.game.target) this._finish(false);
+      if (lead < 0 && this.mine > 0) return 1 + BEHIND_HELP;   // slower
+      if (lead > 3) return 1 / AHEAD_PUSH;                     // quicker
+      return 1;
+    },
+
+    /* The opponent.
+       In the race there is nothing on the board to take, so it runs on a
+       clock and you watch it come down its own lane. In the other two it
+       plays the board: find something, lock on, take it — and the locking is
+       done out loud so she gets the chance to take it first. */
+    _alien: function (dt) {
+      if (this.game.id === 'race') {
+        var pace = this.game.pace * this._effort();
+        this.alienAcc += dt;
+        if (this.alienAcc >= pace) {
+          this.alienAcc -= pace;
+          this.theirs++;
+          if (this.theirs >= this.game.target) this._finish(false);
+        }
+        return;
       }
+
+      var a = this.al;
+      a.startle = Math.max(0, a.startle - dt * 1.6);
+
+      // Whatever it was reaching for may have drifted off the board, or she
+      // may have got there first.
+      if (a.target && (a.target.gone || this.things.indexOf(a.target) < 0)) {
+        a.target = null;
+        a.lock = 0;
+        if (a.cool <= 0) a.cool = COOL * 0.5;
+      }
+
+      if (a.cool > 0) {
+        a.cool -= dt;
+      } else if (!a.target) {
+        a.target = this._pick();
+        if (a.target) {
+          a.lockFor = LOCK * this._effort();
+          a.lock = a.lockFor;
+        }
+      } else {
+        a.lock -= dt;
+        if (a.lock <= 0) this._take(a.target);
+      }
+
+      // It slides along under whatever it is working on, so the beam is short
+      // and you can see which thing is about to go.
+      var want = a.target ? clamp(a.target.x, this.W * 0.14, this.W * 0.86)
+                          : this.W * 0.74;
+      a.x += (want - a.x) * clamp(dt * 2.8, 0, 1);
+    },
+
+    // How long a thing has left before it leaves the board on its own.
+    _lifeLeft: function (o) {
+      if (!o.vy) return 99;
+      return this.game.id === 'grab'
+        ? (this.H + o.r - o.y) / o.vy      // falling
+        : (o.y + o.r * 2) / o.vy;          // rising
+    },
+
+    /* What to go for. Only things that will still be there when the grip
+       closes — reaching for something about to fall off the bottom looks
+       stupid and wastes its turn — and of those, the nearest, so it works its
+       own side of the board and leaves her a share. */
+    _pick: function () {
+      var need = LOCK * this._effort() + 0.35;
+      var best = null, bestD = 1e9;
+      for (var i = 0; i < this.things.length; i++) {
+        var o = this.things[i];
+        if (o.gone || this._lifeLeft(o) < need) continue;
+        var d = Math.abs(o.x - this.al.x);
+        if (d < bestD) { bestD = d; best = o; }
+      }
+      return best;
+    },
+
+    _take: function (o) {
+      var a = this.al;
+      o.gone = true;
+      this.theirs++;
+      a.took++;
+      a.target = null;
+      a.lock = 0;
+      a.cool = COOL * this._effort();
+      this.pops.push({ x: o.x, y: o.y, age: 0, life: 0.5, text: '−1', them: true });
+      global.RoarAudio.sfx('alien');
+      if (this.theirs >= this.game.target) this._finish(false);
     },
 
     _things: function (dt) {
       var i, o;
       this.spawn -= dt;
-      var want = this.game.id === 'grab' ? 0.42 : 0.55;
-      if (this.spawn <= 0 && this.things.filter(function (x) { return !x.gone; }).length < 6) {
+      /* Stocked for two. Six things at a time was barely enough for one: with
+         the six-at-once cap and the time each took to cross, only about
+         fourteen ever appeared in the fifteen seconds a round lasts, and she
+         needed ten of them. Nine at a time, appearing faster — and because
+         every one taken frees a slot at once, a board being actively played
+         refills quicker than one being ignored. */
+      var want = this.game.id === 'grab' ? 0.28 : 0.38;
+      if (this.spawn <= 0 && this.things.filter(function (x) { return !x.gone; }).length < 9) {
         this.spawn = want;
         this.things.push(this.game.id === 'grab' ? this._faller() : this._bubble());
       }
@@ -289,7 +416,9 @@
       return {
         kind: 'fall', emoji: FALLING[(Math.random() * FALLING.length) | 0],
         x: rnd(this.W * 0.12, this.W * 0.88), y: -s * 0.08,
-        vy: rnd(s * 0.30, s * 0.44), r: s * 0.055, r0: s * 0.055,
+        // Slower than they were, which is both easier to hit and longer on
+        // the board — the two things the round was short of.
+        vy: rnd(s * 0.24, s * 0.34), r: s * 0.055, r0: s * 0.055,
         age: 0, wob: rnd(0, 6.28)
       };
     },
@@ -347,13 +476,22 @@
 
       this._ground(c, W, H);
 
-      // the alien, over on its side of the ground, working away
+      // The alien, drawn where it has moved to rather than parked in the
+      // corner, with a jolt when it has just been robbed.
       var s = Math.min(W, H) * 0.30;
       var mood = this.over ? (this.iWon ? 'lose' : 'win') : 'busy';
-      global.Aliens.draw(c, this.planet, W * 0.74, H * 0.88, s, this.t, mood);
+      var ax = (this.al ? this.al.x : W * 0.74) +
+               (this.al && this.al.startle > 0.01
+                 ? Math.sin(this.t * 42) * s * 0.09 * this.al.startle : 0);
+      global.Aliens.draw(c, this.planet, ax, H * 0.88, s, this.t, mood);
 
-      if (this.game.id === 'race') this._race(c, W, H);
-      else this._thingsDraw(c);
+      if (this.game.id === 'race') {
+        this._race(c, W, H);
+      } else {
+        this._beam(c);          // under the things, so it never hides one
+        this._thingsDraw(c);
+        this._ring(c);          // and the countdown over the top of them
+      }
 
       this._popsDraw(c);
       c.restore();
@@ -435,6 +573,59 @@
       }
     },
 
+    /* The beam, and the ring that closes around what it is holding.
+       Drawn as thinly as it can be and still be unmissable: this is a small
+       screen and every pixel spent on the alien's arm is a pixel of board she
+       cannot see. The beam goes under the things; the ring goes over them. */
+
+    _beamTo: function () {
+      var a = this.al;
+      if (!a || !a.target || a.target.gone || this.over) return null;
+      return { a: a, o: a.target,
+               grip: clamp(1 - a.lock / (a.lockFor || LOCK), 0, 1) };
+    },
+
+    _beam: function (c) {
+      var b = this._beamTo();
+      if (!b) return;
+      var s = Math.min(this.W, this.H);
+      var from = { x: b.a.x, y: this.H * 0.80 };
+      var g = c.createLinearGradient(from.x, from.y, b.o.x, b.o.y);
+      g.addColorStop(0, this.alien.skin);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      c.save();
+      c.globalAlpha = 0.20 + b.grip * 0.35;
+      c.strokeStyle = g;
+      c.lineWidth = s * (0.012 + b.grip * 0.016);
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(from.x, from.y);
+      c.lineTo(b.o.x, b.o.y);
+      c.stroke();
+      c.restore();
+    },
+
+    _ring: function (c) {
+      var b = this._beamTo();
+      if (!b) return;
+      var o = b.o;
+      // The ring tightens onto the thing as the grip closes, so how long she
+      // has is a size rather than a number.
+      var r = o.r * (2.5 - b.grip * 1.1);
+      c.save();
+      c.strokeStyle = 'rgba(255,255,255,0.30)';
+      c.lineWidth = 2;
+      c.beginPath(); c.arc(o.x, o.y, r, 0, 6.2832); c.stroke();
+
+      c.strokeStyle = this.alien.skin;
+      c.lineWidth = 3.5;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.arc(o.x, o.y, r, -Math.PI / 2, -Math.PI / 2 + 6.2832 * b.grip);
+      c.stroke();
+      c.restore();
+    },
+
     _thingsDraw: function (c) {
       for (var i = 0; i < this.things.length; i++) {
         var o = this.things[i];
@@ -476,8 +667,11 @@
         var p = this.pops[i];
         var k = 1 - p.age / p.life;
         c.globalAlpha = clamp(k * 1.6, 0, 1);
-        c.font = '900 22px system-ui, sans-serif';
-        c.fillStyle = '#ffd24c';
+        // A steal is worth shouting about; a thing the alien took is worth
+        // seeing go, in the alien's own colour so it is obvious who has it.
+        var big = p.text.length > 3;
+        c.font = '900 ' + (big ? 20 : 22) + 'px system-ui, sans-serif';
+        c.fillStyle = p.them ? this.alien.skin : big ? '#9df08a' : '#ffd24c';
         c.fillText(p.text, p.x, p.y - (1 - k) * 30);
       }
       c.restore();
@@ -487,5 +681,7 @@
   DuelGame.GAMES = GAMES;        // exposed for testing
   DuelGame.TARGET = TARGET;
   DuelGame.RACE_TAPS = RACE_TAPS;
+  DuelGame.LOCK = LOCK;
+  DuelGame.COOL = COOL;
   global.DuelGame = DuelGame;
 })(window);
