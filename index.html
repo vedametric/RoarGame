@@ -346,6 +346,69 @@
     </div>
   </section>
 
+  <!-- ═════════════════════ COLOURING ═════════════════════
+       A colouring book: pick a colour, tap a bit of the picture. -->
+  <section class="screen" id="screen-colour">
+    <div class="mg-head">
+      <div class="co-name" id="co-name">🏠 a house</div>
+      <div class="mg-note" id="co-count">1 / 12</div>
+      <div class="mg-best" id="co-best">★ 0</div>
+    </div>
+    <canvas id="colour-canvas"></canvas>
+    <div class="co-palette" id="co-palette"></div>
+    <div class="co-row">
+      <button class="co-btn" id="co-prev" type="button">‹ BACK</button>
+      <button class="co-btn co-btn--quiet" id="co-clear" type="button">🧽 START AGAIN</button>
+      <button class="co-btn" id="co-next" type="button">NEXT ›</button>
+    </div>
+    <p class="mg-hint" id="co-done" hidden>🎉 all coloured in!</p>
+  </section>
+
+  <!-- ═════════════════════ DRAWING ═════════════════════
+       A blank page. Colours, three sizes, a rainbow pen, a rubber, stickers,
+       undo and a clean page. -->
+  <section class="screen" id="screen-draw">
+    <canvas id="draw-canvas"></canvas>
+    <div class="dr-tools" id="dr-tools">
+      <div class="co-palette" id="dr-palette"></div>
+      <div class="dr-stickers" id="dr-stickers" hidden></div>
+      <div class="dr-row">
+        <button class="dr-tool" data-tool="pen" type="button" aria-label="pen">✏️</button>
+        <button class="dr-tool" data-tool="rainbow" type="button" aria-label="rainbow pen">🌈</button>
+        <button class="dr-tool" data-tool="eraser" type="button" aria-label="rubber">🧽</button>
+        <button class="dr-tool" data-tool="sticker" type="button" aria-label="stickers">⭐</button>
+        <span class="dr-gap"></span>
+        <button class="dr-tool dr-size" data-size="0" type="button" aria-label="thin"><i style="width:6px;height:6px"></i></button>
+        <button class="dr-tool dr-size" data-size="1" type="button" aria-label="medium"><i style="width:13px;height:13px"></i></button>
+        <button class="dr-tool dr-size" data-size="2" type="button" aria-label="fat"><i style="width:22px;height:22px"></i></button>
+        <span class="dr-gap"></span>
+        <button class="dr-tool" data-tool="undo" id="dr-undo" type="button" aria-label="undo">↩️</button>
+        <button class="dr-tool" id="dr-clear" type="button" aria-label="clean page">🗑️</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ WORD SEARCH ═════════════════════ -->
+  <section class="screen" id="screen-ws">
+    <div class="mg-head">
+      <div class="mg-score" id="ws-score">0 / 4</div>
+      <div class="mg-note" id="ws-note">puzzle 1 · 6×6</div>
+      <div class="mg-best" id="ws-best">★ 0</div>
+    </div>
+    <canvas id="ws-canvas"></canvas>
+    <div class="ws-words" id="ws-words"></div>
+    <button class="btn btn--ghost cp-replay" id="ws-hint" type="button">💡 GIVE ME A CLUE</button>
+    <div class="mg-over" id="ws-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🔤</div>
+        <h2 class="heading heading--sm">You found them all!</h2>
+        <div class="mg-over-score" id="ws-over-score">0</div>
+        <p class="mg-over-sub">puzzles finished</p>
+        <button class="btn btn--go" id="ws-next" type="button">NEXT PUZZLE</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ═════════════════════ HOW MANY PLAYERS ═════════════════════ -->
   <section class="screen" id="screen-count">
     <h2 class="heading">How many players?</h2>
@@ -899,6 +962,9 @@
 <script src="game-snake.js?v=dev"></script>
 <script src="game-clock.js?v=dev"></script>
 <script src="game-roar.js?v=dev"></script>
+<script src="game-colour.js?v=dev"></script>
+<script src="game-draw.js?v=dev"></script>
+<script src="game-wordsearch.js?v=dev"></script>
 <script src="stats.js?v=dev"></script>
 <script src="app.js?v=dev"></script>
 </body>

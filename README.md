@@ -299,6 +299,61 @@ been round — which, with a hundred three-letter words, takes a very long time.
 Single letters are read a little higher and slower, because a letter at normal
 pitch can sound like a different one.
 
+## 🖍️ COLOURING — *a colouring book*
+
+On the **MINI GAMES** shelf. Twelve pictures — a house, a fish, a flower, a
+butterfly, a rocket, a car, a cat, a hot air balloon, an ice cream, a rainbow,
+a teddy bear and a dinosaur — each one black lines on a white page. Pick a
+colour from the row underneath and **tap a bit of the picture**: it floods
+with that colour up to the nearest line. Tap it again with another colour to
+change your mind, or with ✕ to rub it out.
+
+The pictures are drawn in code, in `game-colour.js`, not loaded as images, so
+every line is as crisp as the screen. Two layers do the work: the colours
+underneath, the lines painted on top, and a tap floods the colour layer only —
+so the lines never smudge, whatever gets filled. The outlines are drawn with
+three brushes: plain lines, *blobs* (a cloud made of circles is wiped clean
+inside so it is one cloud, not seven slivers) and *solids* (a pupil too small to
+be worth colouring is filled in as line).
+
+**Every picture is saved as she goes**, so the one she coloured yesterday is
+still coloured today. Colouring in the very last patch is worth confetti, and
+the ★ counts the pictures she has finished. **START AGAIN** asks first, because
+it is the one thing that cannot be undone.
+
+## 🎨 DRAWING — *a blank page*
+
+Also on the shelf. A white page and a finger. Thirteen colours, three pen
+sizes, a **🌈 rainbow pen** that changes colour as it goes, a **🧽 rubber**,
+**⭐ stickers** to stamp on (tap the star, pick one, tap the page), **↩️ undo**,
+and **🗑️** for a clean page — which asks first.
+
+Nothing is drawn straight onto the screen. Every stroke and every sticker goes
+into a list and the picture is that list drawn from the top, which is what
+makes undo a matter of taking the last thing off, and what lets the whole
+drawing be kept in localStorage as a few kilobytes of numbers rather than a
+screenshot — so it is still there tomorrow. Points are kept as a fraction of
+the page width, so a drawing made on one phone looks the same on another.
+
+## 🔤 WORD SEARCH
+
+Also on the shelf. A grid of letters with words hidden in it; **drag a finger
+along a word** to find it. The words come from the SPELLING BEE list, each with
+its picture beside it, so a child who cannot read *FOX* yet can still hunt for
+the letters next to the fox — and hears the word said when she finds it.
+**Tapping a word in the list reads it out.**
+
+It starts kindly: a six-by-six grid, four three-letter words, all reading left
+to right or top to bottom. The grid grows and the words get longer as the
+puzzles go by — up to ten-by-ten and seven-letter words — and diagonals only
+turn up from the fifth puzzle. Words never run backwards; that is a grown-up's
+puzzle. Dragging from the wrong end of a word still counts, because the
+letters are all there in a line and she found it.
+
+A wrong drag costs nothing but a wobble. **💡 GIVE ME A CLUE** rings the first
+letter of a word she has not found yet and says the word. Finding them all is
+confetti and a **NEXT PUZZLE** button; the ★ counts the puzzles finished.
+
 ## One player or two
 
 Choose at the start. **Two players** share the phone head to head; a
@@ -494,6 +549,9 @@ game-count.js   COUNTING — spoken numbers, forever
 game-calc.js    SIENNA'S CALCULATOR — arithmetic, read aloud
 game-spell.js   SPELLING BEE — the words, and the game around them
 game-clock.js   WHAT'S THE TIME? — clock drawing, and the questions
+game-colour.js  COLOURING — twelve line drawings, and the flood fill
+game-draw.js    DRAWING — pens, stickers, undo
+game-wordsearch.js  WORD SEARCH — the grid, and the drag
 app.js          screen flow, photos, results
 ```
 
