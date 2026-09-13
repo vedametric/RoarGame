@@ -72,7 +72,10 @@
     { id: 'tree',  emoji: '🌳', name: 'GROW A TREE', note: 'and pick the fruit',  kind: 'mini' },
     { id: 'copy',  emoji: '🎵', name: 'COPY ME',     note: 'play the tune back',  kind: 'mini' },
     { id: 'odd',   emoji: '🔍', name: 'ODD ONE OUT', note: 'spot the odd one',    kind: 'mini' },
-    { id: 'cups',  emoji: '🥤', name: 'WHICH CUP?',  note: 'follow the mouse',    kind: 'mini' }
+    { id: 'cups',  emoji: '🥤', name: 'WHICH CUP?',  note: 'follow the mouse',    kind: 'mini' },
+    { id: 'colour', emoji: '🖍️', name: 'COLOURING',  note: 'tap to colour it in', kind: 'mini' },
+    { id: 'draw',  emoji: '🎨', name: 'DRAWING',     note: 'a page and a finger', kind: 'mini' },
+    { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -112,7 +115,10 @@
     tree:    function () { RoarAudio.resume(); startTree(); },
     copy:    function () { RoarAudio.resume(); startCopy(); },
     odd:     function () { RoarAudio.resume(); startOdd(); },
-    cups:    function () { RoarAudio.resume(); startCups(); }
+    cups:    function () { RoarAudio.resume(); startCups(); },
+    colour:  function () { RoarAudio.resume(); startColour(); },
+    draw:    function () { RoarAudio.resume(); startDraw(); },
+    ws:      function () { RoarAudio.resume(); startWordSearch(); }
   };
 
   var MINI_IDS = {};   // filled from MINIS, so the list stays the one truth
@@ -181,7 +187,8 @@
                   'screen-snake': 1, 'screen-duel': 1, 'screen-run': 1,
                   'screen-pairs': 1, 'screen-catch': 1, 'screen-bounce': 1,
                   'screen-tree': 1, 'screen-copy': 1, 'screen-odd': 1,
-                  'screen-cups': 1 };
+                  'screen-cups': 1, 'screen-colour': 1, 'screen-draw': 1,
+                  'screen-ws': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -203,6 +210,9 @@
     try { if (CopyGame.running) CopyGame.stop(); } catch (e) {}
     try { if (OddGame.running) OddGame.stop(); } catch (e) {}
     try { if (CupsGame.running) CupsGame.stop(); } catch (e) {}
+    try { if (ColourGame.running) ColourGame.stop(); } catch (e) {}
+    try { if (DrawGame.running) DrawGame.stop(); } catch (e) {}
+    try { if (WordSearch.running) WordSearch.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -251,7 +261,7 @@
          which in Pairs meant a card you turned over kept showing its back. */
       [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame, DuelGame, RunGame,
        PairsGame, CatchGame, BounceGame, TreeGame, CopyGame, OddGame,
-       CupsGame].forEach(function (g) {
+       CupsGame, ColourGame, DrawGame, WordSearch].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -302,7 +312,8 @@
     'screen-duel': 'Space duel', 'screen-run': 'Run!', 'screen-run-pick': 'Run!',
     'screen-pairs': 'Pairs', 'screen-catch': 'Catch it!', 'screen-bounce': 'Bounce',
     'screen-tree': 'Grow a tree', 'screen-copy': 'Copy me',
-    'screen-odd': 'Odd one out', 'screen-cups': 'Which cup?'
+    'screen-odd': 'Odd one out', 'screen-cups': 'Which cup?',
+    'screen-colour': 'Colouring', 'screen-draw': 'Drawing', 'screen-ws': 'Word search'
   };
 
   function showBar(id) {
@@ -1544,6 +1555,84 @@
   }
   on('cu-again', function () { Confetti.stop(); CupsGame.again(); });
   miniLeave('screen-cups', { emoji: '🥤', title: 'Stop chasing him?', stay: 'KEEP WATCHING' });
+
+  /* ── colouring, drawing and word search ───────────────────────
+     The two picture ones keep whatever she made, so leaving them is not a
+     loss and the question says so. Wiping a picture is the one thing that
+     cannot be undone, so that gets the same sheet before it happens. */
+
+  function askWipe(opts, wipe) {
+    askQuit({
+      emoji: opts.emoji, title: opts.title, msg: 'It will be gone for good.',
+      stay: 'KEEP IT', leave: 'START AGAIN',
+      onLeave: function () { wipe(); holdPlay(false); }
+    });
+  }
+
+  function startColour() {
+    stopEverything();
+    show('screen-colour');
+    keepAwake();
+    RoarAudio.releaseMic();
+    ColourGame.start({
+      canvas: $('colour-canvas'),
+      els: { name: $('co-name'), count: $('co-count'), best: $('co-best'),
+             palette: $('co-palette'), done: $('co-done') },
+      onDone: function (id) { try { Track.event('Colour', 'finished', id); } catch (e) {} }
+    });
+  }
+  on('co-prev', function () { ColourGame.next(-1); });
+  on('co-next', function () { ColourGame.next(1); });
+  on('co-clear', function () {
+    askWipe({ emoji: '🧽', title: 'Rub it all out?' }, function () { ColourGame.clear(); });
+  });
+  LEAVE['screen-colour'] = function () {
+    askQuit({ emoji: '🖍️', title: 'Stop colouring?', msg: 'Your picture is kept.',
+              stay: 'KEEP COLOURING', leave: 'STOP', loses: false,
+              onLeave: function () { stopEverything(); show('screen-minis'); } });
+  };
+
+  function startDraw() {
+    stopEverything();
+    show('screen-draw');
+    keepAwake();
+    RoarAudio.releaseMic();
+    DrawGame.start({
+      canvas: $('draw-canvas'),
+      els: { tools: $('dr-tools'), palette: $('dr-palette'), stickers: $('dr-stickers'),
+             undo: $('dr-undo') }
+    });
+  }
+  on('dr-clear', function () {
+    askWipe({ emoji: '🗑️', title: 'Clean page?' }, function () { DrawGame.clear(); });
+  });
+  LEAVE['screen-draw'] = function () {
+    askQuit({ emoji: '🎨', title: 'Stop drawing?', msg: 'Your drawing is kept.',
+              stay: 'KEEP DRAWING', leave: 'STOP', loses: false,
+              onLeave: function () { stopEverything(); show('screen-minis'); } });
+  };
+
+  function startWordSearch() {
+    stopEverything();
+    show('screen-ws');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('ws-over').hidden = true;
+    WordSearch.start({
+      canvas: $('ws-canvas'),
+      els: { score: $('ws-score'), note: $('ws-note'), best: $('ws-best'),
+             words: $('ws-words'), over: $('ws-over'), overScore: $('ws-over-score') },
+      onOver: function (n) { try { Track.event('WordSearch', 'finished', 'puzzle', n); } catch (e) {} }
+    });
+  }
+  on('ws-hint', function () { WordSearch.showHint(); });
+  on('ws-next', function () { Confetti.stop(); WordSearch.next(); });
+  // Tapping a word in the list reads it out, so the list is a help and not a test.
+  $('ws-words').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-word]') : null;
+    if (b) WordSearch.say(parseInt(b.getAttribute('data-word'), 10));
+  });
+  miniLeave('screen-ws', { emoji: '🔤', title: 'Stop searching?', stay: 'KEEP LOOKING' });
 
   /* ── results ──────────────────────────────────────────────── */
 
