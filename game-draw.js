@@ -19,6 +19,7 @@
   'use strict';
 
   var SAVED = 'draw.page';
+  var BG = 'draw.bg';           // a selfie behind the drawing, for DECORATE ME
   var GAL = 'draw.gallery';     // the saved pictures, newest first
   var GAL_MAX = 9;              // how many we keep before the oldest drops off
   var MAX_ITEMS = 400;          // strokes and stickers kept on one page
@@ -29,11 +30,26 @@
     '#2f6bff', '#8e5cff', '#ff5cb8', '#ffb3c7', '#8b5a2b', '#9e9e9e'
   ];
   var SIZES = [0.012, 0.028, 0.06];     // thin, medium, fat — as a share of the width
-  var STICKERS = ['⭐', '❤️', '🌈', '🦄', '🐱', '🐶', '🌸', '🦋', '🚀', '🍦', '🐸', '😀', '🐙', '🎈'];
+  // Sunglasses, hats, hearts and cool stuff — for decorating a photo of her.
+  var STICKERS = ['🕶️', '😎', '🎩', '🧢', '👑', '👒', '❤️', '💖', '💋', '⭐',
+                  '✨', '🌈', '🦄', '🎀', '🔥', '💫', '🐱', '🐶', '🌸', '🦋'];
 
   function save(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function saved(k, d) {
     try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; }
+  }
+
+  // A data: URL to a Blob, done synchronously — iOS Safari only lets the
+  // share sheet open from inside the tap that asked for it, so there is no
+  // room for an async fetch() first: by the time it resolved, the tap would
+  // no longer count as a user gesture and iOS would silently refuse to share.
+  function dataURLToBlob(u) {
+    var comma = u.indexOf(','), head = u.slice(0, comma), body = u.slice(comma + 1);
+    var mime = (/:(.*?)[;,]/.exec(head) || [])[1] || 'image/jpeg';
+    var bin = /;base64/i.test(head) ? atob(body) : decodeURIComponent(body);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
   }
 
   var DrawGame = {
@@ -59,6 +75,7 @@
       this.stroke = null;
       this.paused = false;
       this.running = true;
+      this._loadBg();               // a selfie she left behind, if any
 
       this._build();
       this._buildSave();
@@ -133,6 +150,7 @@
         case 'undo':  this.undo(); return;
         case 'clear': this.clear(); return;
         case 'save':  this.save(); return;
+        case 'photo': this.decorate(); return;
         case 'gallery': this.openGallery(); return;
         case 'pen': case 'rainbow': case 'eraser': case 'sticker':
           this.tool = tool;
@@ -277,10 +295,58 @@
     clear: function () {
       this.items = [];
       this.stroke = null;
+      this.bg = null; this.bgImg = null;      // a clean page loses the selfie too
+      try { localStorage.removeItem(BG); } catch (e) {}
       global.RoarAudio.sfx('whoosh');
       this._keep();
       this._draw();
       this._mark();
+    },
+
+    /* ── DECORATE ME: a selfie behind the drawing ────────────────
+       She takes a photo of herself, it becomes the background, and every pen
+       and sticker lands on top of it — sunglasses, a hat, hearts, a scribble.
+       Saving then keeps the decorated photo itself, so her face is the whole
+       picture, not a badge in the corner. */
+
+    decorate: function () {
+      var self = this;
+      global.RoarAudio.sfx('tick');
+      this._openCamera(function (photo) {
+        if (!photo) { self._toast("Couldn't open the camera 📷"); return; }
+        self._setBackground(photo.toDataURL('image/jpeg', 0.85));
+        self.tool = 'sticker';                 // straight into decorating
+        self._mark();
+        self._toast('Now decorate it! 😎');
+        try { global.Say.speak('Now decorate it!'); } catch (e) {}
+      });
+    },
+
+    _setBackground: function (dataUrl) {
+      var self = this;
+      this.bg = dataUrl;
+      var img = new Image();
+      img.onload = function () { if (self.running) { self.bgImg = img; self._draw(); } };
+      img.src = dataUrl;
+      try { save(BG, dataUrl); } catch (e) {}
+    },
+
+    _loadBg: function () {
+      var self = this, d = saved(BG, null);
+      this.bg = d || null; this.bgImg = null;
+      if (!d) return;
+      var img = new Image();
+      img.onload = function () { if (self.running) { self.bgImg = img; self._draw(); } };
+      img.src = d;
+    },
+
+    // Cover-fit a square photo into a box, centred, so her face fills it with
+    // no white bars however the box is shaped.
+    _drawBg: function (c, img, W, H) {
+      if (!img || !img.width) return;
+      var s = Math.max(W / img.width, H / img.height);
+      var w = img.width * s, h = img.height * s;
+      c.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
     },
 
     _trim: function () {
@@ -303,14 +369,16 @@
       var c = this.ctx;
       c.fillStyle = '#ffffff';
       c.fillRect(0, 0, this.W, this.H);
+      if (this.bgImg) this._drawBg(c, this.bgImg, this.W, this.H);
       for (var i = 0; i < this.items.length; i++) this._drawItem(c, this.items[i]);
     },
 
-    // The whole picture, on a white page, at any size — the live canvas uses
-    // this.W, but the saved card paints it into a box of its own choosing.
+    // The whole picture — selfie behind, pens and stickers on top — at any
+    // size, so the live canvas and the saved card paint from the same routine.
     _paintInto: function (c, W, H) {
       c.fillStyle = '#ffffff';
       c.fillRect(0, 0, W, H);
+      if (this.bgImg) this._drawBg(c, this.bgImg, W, H);
       for (var i = 0; i < this.items.length; i++) this._drawItem(c, this.items[i], null, W);
     },
 
@@ -412,28 +480,58 @@
     },
 
     save: function () {
-      if (!this.items.length) {
+      var self = this;
+      if (!this.items.length && !this.bg) {
         global.RoarAudio.sfx('spellbad');
         try { global.Say.speak('Draw something first!'); } catch (e) {}
+        this._toast('Draw something first! ✏️');
         return;
       }
       global.RoarAudio.sfx('tick');
-      this._openCamera();
+      // If she decorated a selfie, her face is already the picture — no need
+      // to snap again. A plain drawing gets the smile-and-snap so the saved
+      // card still comes with a photo of her.
+      if (this.bg) { this._finishSave(null); }
+      else { this._openCamera(function (photo) { self._finishSave(photo); }); }
+    },
+
+    // A little message that slides in and fades — so a tap always shows it did
+    // something, even on a phone with the sound turned off.
+    _toast: function (msg) {
+      var t = this.el.toast;
+      if (!t) return;
+      t.textContent = msg;
+      t.hidden = false;
+      t.classList.remove('is-in');
+      void t.offsetWidth;                 // restart the animation
+      t.classList.add('is-in');
+      clearTimeout(this._toastT);
+      this._toastT = setTimeout(function () { t.classList.remove('is-in'); t.hidden = true; }, 1800);
     },
 
     /* ── the camera ───────────────────────────────────────────── */
 
-    _openCamera: function () {
+    // Opens the front camera, counts down, snaps, and hands the photo (a
+    // square canvas) to `onDone` — or null if there was no camera. The
+    // countdown only starts once the video actually has a frame, so the snap
+    // is never a black rectangle from a camera that had not warmed up yet.
+    _openCamera: function (onDone) {
       var self = this, cam = this.el.cam || {};
-      if (!cam.wrap) { this._finishSave(null); return; }
+      this._onSnap = onDone || function () {};
+      if (!cam.wrap) { this._noCamera(); return; }
       cam.wrap.hidden = false;
       if (cam.count) cam.count.textContent = '';
       if (cam.hint) cam.hint.textContent = 'Smile! 📸';
       try { global.Say.speak('Smile!'); } catch (e) {}
       var md = navigator.mediaDevices;
       if (!md || !md.getUserMedia) { this._noCamera(); return; }
+      // If nothing comes back at all, don't leave her staring at a frozen
+      // "Smile!" — give up after a few seconds.
+      clearTimeout(this._camGiveUp);
+      this._camGiveUp = setTimeout(function () { if (!self._stream) self._noCamera(); }, 7000);
       md.getUserMedia({ video: { facingMode: 'user', width: 640, height: 640 }, audio: false })
         .then(function (stream) {
+          clearTimeout(self._camGiveUp);
           if (!self.running || !cam.wrap || cam.wrap.hidden) {
             stream.getTracks().forEach(function (t) { t.stop(); });
             return;
@@ -446,17 +544,28 @@
             var pr = cam.video.play();
             if (pr && pr.catch) pr.catch(function () {});
           }
-          self._countdown(3);
+          self._whenReady(0);
         })
         .catch(function () { self._noCamera(); });
     },
 
-    // No camera, or she said no to it: keep the drawing anyway, just without
-    // her face on it, and say so rather than failing silently.
+    // Wait (up to ~4s) for the video to actually carry a frame before the
+    // countdown, so a cold camera never gets snapped as black.
+    _whenReady: function (tries) {
+      var self = this, cam = this.el.cam || {}, v = cam.video;
+      if (!this.running || !cam.wrap || cam.wrap.hidden) return;
+      if ((v && v.videoWidth > 0) || tries > 40) { this._countdown(3); return; }
+      this._cdTimer = setTimeout(function () { self._whenReady(tries + 1); }, 100);
+    },
+
+    // No camera, or she said no to it: hand back no photo. The caller decides
+    // what that means (save the drawing alone; or a DECORATE ME that just
+    // steps back).
     _noCamera: function () {
+      var done = this._onSnap || function () {};
+      this._onSnap = null;
       this._closeCamera();
-      try { global.Say.speak('Saved your drawing!'); } catch (e) {}
-      this._finishSave(null);
+      done(null);
     },
 
     _countdown: function (n) {
@@ -473,6 +582,8 @@
 
     _snap: function () {
       var cam = this.el.cam || {}, v = cam.video, photo = null;
+      var done = this._onSnap || function () {};
+      this._onSnap = null;
       clearTimeout(this._cdTimer);
       if (v && v.videoWidth) {
         var S = 480, pc = document.createElement('canvas');
@@ -488,11 +599,12 @@
         try { global.RoarAudio.sfx('gold'); } catch (e) {}
       }
       this._closeCamera();
-      this._finishSave(photo);
+      done(photo);
     },
 
     _closeCamera: function () {
       clearTimeout(this._cdTimer);
+      clearTimeout(this._camGiveUp);
       var cam = (this.el && this.el.cam) || {};
       if (this._stream) {
         try { this._stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
@@ -511,10 +623,20 @@
       try { global.RoarAudio.sfx('sparkle'); } catch (e) {}
     },
 
+    // The saved card. Three shapes, all with her face big and clear:
+    //   • decorated a selfie  → one panel: the photo with her decorations.
+    //   • plain drawing + snap → two panels: her photo on top, drawing below.
+    //   • drawing, no camera   → one panel: the drawing on its own.
     _compose: function (photo) {
-      var ratio = Math.min(1.7, Math.max(1.0, this.H / this.W));
-      var CW = 760, M = 30, DW = CW - 2 * M, DH = Math.round(DW * ratio);
-      var capH = 128, CH = M + DH + capH + M;
+      var self = this;
+      var ratio = Math.min(1.6, Math.max(1.0, this.H / this.W));
+      var CW = 760, M = 30, DW = CW - 2 * M, capH = 128, gap = 22;
+      var twoPanel = !this.bg && !!photo;
+
+      var PP = DW;                                   // square photo panel
+      var DH = Math.round(DW * (twoPanel ? Math.min(1.2, ratio) : ratio));
+      var CH = M + (twoPanel ? PP + gap : 0) + DH + capH + M;
+
       var card = document.createElement('canvas');
       card.width = CW; card.height = CH;
       var c = card.getContext('2d');
@@ -525,26 +647,30 @@
         else { c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
                c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
       }
+      function panel(x, y, w, h, render) {
+        var d = document.createElement('canvas');
+        d.width = w; d.height = h;
+        render(d.getContext('2d'), w, h);
+        c.save(); rrect(x, y, w, h, 18); c.clip(); c.drawImage(d, x, y); c.restore();
+        c.lineWidth = 6; c.strokeStyle = '#ffffff'; rrect(x, y, w, h, 18); c.stroke();
+        c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.12)'; rrect(x, y, w, h, 18); c.stroke();
+      }
 
-      // the card itself
       c.fillStyle = '#fbf3e4';
       rrect(0, 0, CW, CH, 34); c.fill();
 
-      // the drawing, painted into its own box and dropped in with a frame
-      var d = document.createElement('canvas');
-      d.width = DW; d.height = DH;
-      this._paintInto(d.getContext('2d'), DW, DH);
-      c.save();
-      rrect(M, M, DW, DH, 18); c.clip();
-      c.drawImage(d, M, M);
-      c.restore();
-      c.lineWidth = 6; c.strokeStyle = '#ffffff';
-      rrect(M, M, DW, DH, 18); c.stroke();
-      c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.12)';
-      rrect(M, M, DW, DH, 18); c.stroke();
+      var y = M;
+      if (twoPanel) {
+        panel(M, y, DW, PP, function (d, w, h) {
+          d.fillStyle = '#000'; d.fillRect(0, 0, w, h);
+          self._drawBg(d, photo, w, h);
+        });
+        y += PP + gap;
+      }
+      panel(M, y, DW, DH, function (d, w, h) { self._paintInto(d, w, h); });
+      y += DH;
 
-      // caption
-      var capY = M + DH + capH * 0.42;
+      var capY = y + capH * 0.42;
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillStyle = '#7a3fb0';
       c.font = '900 40px system-ui, -apple-system, "Segoe UI", sans-serif';
@@ -555,19 +681,6 @@
       try { when = new Date().toLocaleDateString(); } catch (e) {}
       c.fillText(when, CW / 2, capY + 40);
 
-      // her photo, a round badge on the corner of the drawing
-      if (photo) {
-        var PD = 156, cx = M + DW - PD * 0.36, cy = M + DH - PD * 0.36;
-        c.save();
-        c.beginPath(); c.arc(cx, cy, PD / 2, 0, Math.PI * 2); c.clip();
-        c.drawImage(photo, cx - PD / 2, cy - PD / 2, PD, PD);
-        c.restore();
-        c.lineWidth = 8; c.strokeStyle = '#ffd24c';
-        c.beginPath(); c.arc(cx, cy, PD / 2, 0, Math.PI * 2); c.stroke();
-        c.lineWidth = 3; c.strokeStyle = '#ffffff';
-        c.beginPath(); c.arc(cx, cy, PD / 2 - 5, 0, Math.PI * 2); c.stroke();
-      }
-
       try { return card.toDataURL('image/jpeg', 0.85); }
       catch (e) { return card.toDataURL(); }
     },
@@ -576,28 +689,36 @@
       var sv = this.el.saved || {};
       if (!sv.wrap) return;
       if (sv.img) sv.img.src = url;
-      if (sv.hint) sv.hint.textContent = navigator.share ? '' : 'Press and hold the picture to save it 💾';
+      if (sv.hint) sv.hint.textContent = navigator.share ? 'kept in 🖼️ my pictures' : 'Press and hold the picture to save it, or find it in 🖼️ my pictures';
       sv.wrap.hidden = false;
     },
 
+    // "Save to Photos": on a phone this hands the finished card to the system
+    // share sheet, where "Save Image" drops it into the camera roll. A web
+    // page cannot write to the Photos app itself — the sheet is the only door
+    // — so where there is no share sheet we fall back to the long-press hint,
+    // and either way the picture is already safe in MY PICTURES.
     doShare: function (url) {
-      var self = this, sv = this.el.saved || {};
+      var sv = this.el.saved || {};
       url = url || (sv.img && sv.img.src);
       if (!url) return;
-      if (navigator.share && typeof fetch === 'function') {
-        fetch(url).then(function (r) { return r.blob(); }).then(function (b) {
-          var file = new File([b], 'sienna-drawing.png', { type: b.type || 'image/png' });
-          if (navigator.canShare && !navigator.canShare({ files: [file] })) throw new Error('no files');
-          return navigator.share({ files: [file], title: 'My drawing', text: 'Look what I drew! 🎨' });
-        }).catch(function () { self._shareHint(); });
-      } else {
-        this._shareHint();
+      if (navigator.share) {
+        try {
+          var file = new File([dataURLToBlob(url)], 'sienna-drawing.jpg', { type: 'image/jpeg' });
+          if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+            // Called straight away, still inside the tap, so iOS allows it.
+            var pr = navigator.share({ files: [file], title: 'My drawing', text: 'Look what I drew! 🎨' });
+            if (pr && pr.catch) pr.catch(function () {});   // they cancelled — no error to the child
+            return;
+          }
+        } catch (e) { /* fall through to the hint */ }
       }
+      this._shareHint();
     },
 
     _shareHint: function () {
       var sv = this.el.saved || {};
-      if (sv.hint) sv.hint.textContent = 'Press and hold the picture to save it 💾';
+      if (sv.hint) sv.hint.textContent = 'Press and hold the picture to save it, or find it in 🖼️ my pictures';
     },
 
     /* ── the gallery ──────────────────────────────────────────── */

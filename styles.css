@@ -2300,6 +2300,12 @@ body.has-topbar .screen--flat { padding-top: 0; }
   box-shadow: none; border: 3px solid rgba(255,255,255,.18);
   padding: 8px 16px;
 }
+.dr-save--me {
+  color: #fff;
+  background: linear-gradient(180deg, #31d8ff, #2f6bff);
+  box-shadow: 0 4px 0 #1e3fa0, 0 8px 18px rgba(47,107,255,.4);
+}
+.dr-save--me:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e3fa0; }
 
 /* the camera */
 .dr-cam {
@@ -2374,4 +2380,22 @@ body.has-topbar .screen--flat { padding-top: 0; }
 .dr-gal-empty {
   grid-column: 1 / -1; margin: 20px 0; font-size: 14px; font-weight: 700;
   color: rgba(201,189,240,.8); line-height: 1.5;
+}
+
+/* a brief message on the drawing screen — proof that a tap did something */
+.dr-toast {
+  position: absolute; z-index: 28; left: 50%; top: 18%;
+  transform: translate(-50%, -8px);
+  padding: 12px 20px; border-radius: 999px;
+  font-size: 15px; font-weight: 900; color: #43210a;
+  background: linear-gradient(180deg, #ffe14d, #ffb020);
+  box-shadow: 0 8px 22px rgba(0,0,0,.4);
+  opacity: 0; pointer-events: none; white-space: nowrap;
+}
+.dr-toast.is-in { animation: drToast 1.8s ease forwards; }
+@keyframes drToast {
+  0%   { opacity: 0; transform: translate(-50%, -8px); }
+  12%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
 }

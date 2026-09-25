@@ -1610,7 +1610,8 @@
              saved: { wrap: $('dr-saved'), img: $('dr-saved-img'), hint: $('dr-saved-hint'),
                       share: $('dr-saved-share'), keep: $('dr-saved-keep'),
                       again: $('dr-saved-again'), gallery: $('dr-saved-gallery') },
-             gallery: { wrap: $('dr-gallery'), grid: $('dr-gal-grid'), close: $('dr-gallery-close') } }
+             gallery: { wrap: $('dr-gallery'), grid: $('dr-gal-grid'), close: $('dr-gallery-close') },
+             toast: $('dr-toast') }
     });
   }
   on('dr-clear', function () {
