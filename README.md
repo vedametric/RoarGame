@@ -325,8 +325,9 @@ it is the one thing that cannot be undone.
 
 Also on the shelf. A white page and a finger. Thirteen colours, three pen
 sizes, a **🌈 rainbow pen** that changes colour as it goes, a **🧽 rubber**,
-**⭐ stickers** to stamp on (tap the star, pick one, tap the page), **↩️ undo**,
-and **🗑️** for a clean page — which asks first.
+**⭐ stickers** to stamp on — sunglasses, hats, crowns, hearts and other cool
+stuff (tap the star, pick one, tap the page) — **↩️ undo**, and **🗑️** for a
+clean page, which asks first.
 
 Nothing is drawn straight onto the screen. Every stroke and every sticker goes
 into a list and the picture is that list drawn from the top, which is what
@@ -335,21 +336,29 @@ drawing be kept in localStorage as a few kilobytes of numbers rather than a
 screenshot — so it is still there tomorrow. Points are kept as a fraction of
 the page width, so a drawing made on one phone looks the same on another.
 
-**💾 SAVE keeps the drawing — with a photo of her holding it.** Tap SAVE and
-the front camera comes up with *"smile!"* and a three-two-one countdown, then
-it snaps her. The drawing and her face are painted onto one card — **"by
-Sienna 🦄"** and the date, her photo a round badge in the corner — and that
-card is what gets kept. The camera is only ever open for those few seconds and
-every path hands the tracks straight back; a *just save the drawing* button
-skips the photo, and if the camera is unavailable or she says no to it, the
-drawing is saved on its own rather than not at all.
+**📸 DECORATE ME — a photo of herself to decorate.** Tap it and the front
+camera comes up with *"smile!"* and a three-two-one countdown; the selfie it
+snaps becomes the background of the page, and every pen and sticker then lands
+on top of it — sunglasses on her nose, a crown on her head, hearts, a
+scribble. The camera only warms up and snaps once it actually has a picture,
+so the photo is never a black rectangle from a camera that had not woken yet.
 
-**📤 SAVE / SHARE** hands the finished card to the phone's own share sheet
-(Web Share), which is how it reaches the camera roll, Messages or anywhere
-else on an iPhone; where that is not available it says to press and hold the
-picture to save it. **🖼️ MY PICTURES** is the shelf of everything she has
-kept — the last nine cards, tap one to see it big again. All of it is on the
-phone: the photos and drawings never leave it.
+**💾 SAVE keeps it — with her face big and clear.** If she decorated a selfie,
+the whole photo with her decorations is what gets kept. If it is a plain
+drawing, SAVE does the *smile-and-snap* first and keeps a card with **her
+photo on top and the drawing below** — either way her face is the picture, not
+a badge in the corner. It is captioned **"by Sienna 🦄"** and dated. The
+camera is only ever open for those few seconds and every path hands the tracks
+straight back; if the camera is unavailable or she says no to it, the drawing
+is saved on its own rather than not at all.
+
+**📥 SAVE TO PHOTOS** hands the finished card to the phone's own share sheet
+(Web Share) — the only way a web page can reach the iPhone camera roll — where
+*Save Image* drops it into Photos; called straight from the tap so iOS allows
+it. Where there is no share sheet it says to press and hold the picture to save
+it. **🖼️ MY PICTURES** is the shelf of everything she has kept — the last nine,
+tap one to see it big again. All of it stays on the phone: the photos and
+drawings never leave it.
 
 ## 🔤 WORD SEARCH
 

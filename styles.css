@@ -2300,6 +2300,12 @@ body.has-topbar .screen--flat { padding-top: 0; }
   box-shadow: none; border: 3px solid rgba(255,255,255,.18);
   padding: 8px 16px;
 }
+.dr-save--me {
+  color: #fff;
+  background: linear-gradient(180deg, #31d8ff, #2f6bff);
+  box-shadow: 0 4px 0 #1e3fa0, 0 8px 18px rgba(47,107,255,.4);
+}
+.dr-save--me:active { transform: translateY(3px); box-shadow: 0 1px 0 #1e3fa0; }
 
 /* the camera */
 .dr-cam {
