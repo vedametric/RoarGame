@@ -335,6 +335,22 @@ drawing be kept in localStorage as a few kilobytes of numbers rather than a
 screenshot — so it is still there tomorrow. Points are kept as a fraction of
 the page width, so a drawing made on one phone looks the same on another.
 
+**💾 SAVE keeps the drawing — with a photo of her holding it.** Tap SAVE and
+the front camera comes up with *"smile!"* and a three-two-one countdown, then
+it snaps her. The drawing and her face are painted onto one card — **"by
+Sienna 🦄"** and the date, her photo a round badge in the corner — and that
+card is what gets kept. The camera is only ever open for those few seconds and
+every path hands the tracks straight back; a *just save the drawing* button
+skips the photo, and if the camera is unavailable or she says no to it, the
+drawing is saved on its own rather than not at all.
+
+**📤 SAVE / SHARE** hands the finished card to the phone's own share sheet
+(Web Share), which is how it reaches the camera roll, Messages or anywhere
+else on an iPhone; where that is not available it says to press and hold the
+picture to save it. **🖼️ MY PICTURES** is the shelf of everything she has
+kept — the last nine cards, tap one to see it big again. All of it is on the
+phone: the photos and drawings never leave it.
+
 ## 🔤 WORD SEARCH
 
 Also on the shelf. A grid of letters with words hidden in it; **drag a finger
@@ -353,6 +369,22 @@ letters are all there in a line and she found it.
 A wrong drag costs nothing but a wobble. **💡 GIVE ME A CLUE** rings the first
 letter of a word she has not found yet and says the word. Finding them all is
 confetti and a **NEXT PUZZLE** button; the ★ counts the puzzles finished.
+
+## 🍉 SLICE IT!
+
+Also on the shelf. Fruit are lobbed up from the bottom of the screen; **swipe
+a finger through them to slice them in half**. Every fruit is drawn in code — a
+coloured ball with a shine and a little leaf — so when it is cut it falls apart
+into two real halves, flesh and seeds showing, with a burst of juice in its own
+colour. Catch several in one sweep and each past the first is worth double,
+which is where the big scores come from.
+
+**The one thing not to slice is the 💣 bomb.** Slicing a bomb costs a life;
+three bombs and the round is over. Letting fruit fall past you costs nothing —
+this is a game about slicing lots, not about being punished — so a small child
+hacking wildly at the screen still has a wonderful time and still racks up a
+score. It speeds up as the score climbs: fruit come faster and, now and then, a
+whole handful at once. The ★ keeps the best.
 
 ## One player or two
 
@@ -550,8 +582,9 @@ game-calc.js    SIENNA'S CALCULATOR — arithmetic, read aloud
 game-spell.js   SPELLING BEE — the words, and the game around them
 game-clock.js   WHAT'S THE TIME? — clock drawing, and the questions
 game-colour.js  COLOURING — twelve line drawings, and the flood fill
-game-draw.js    DRAWING — pens, stickers, undo
+game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
+game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 app.js          screen flow, photos, results
 ```
 

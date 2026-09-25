@@ -75,7 +75,8 @@
     { id: 'cups',  emoji: '🥤', name: 'WHICH CUP?',  note: 'follow the mouse',    kind: 'mini' },
     { id: 'colour', emoji: '🖍️', name: 'COLOURING',  note: 'tap to colour it in', kind: 'mini' },
     { id: 'draw',  emoji: '🎨', name: 'DRAWING',     note: 'a page and a finger', kind: 'mini' },
-    { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' }
+    { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' },
+    { id: 'slice', emoji: '🍉', name: 'SLICE IT!',   note: 'swipe the fruit',      kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -118,7 +119,8 @@
     cups:    function () { RoarAudio.resume(); startCups(); },
     colour:  function () { RoarAudio.resume(); startColour(); },
     draw:    function () { RoarAudio.resume(); startDraw(); },
-    ws:      function () { RoarAudio.resume(); startWordSearch(); }
+    ws:      function () { RoarAudio.resume(); startWordSearch(); },
+    slice:   function () { RoarAudio.resume(); startSlice(); }
   };
 
   var MINI_IDS = {};   // filled from MINIS, so the list stays the one truth
@@ -188,7 +190,7 @@
                   'screen-pairs': 1, 'screen-catch': 1, 'screen-bounce': 1,
                   'screen-tree': 1, 'screen-copy': 1, 'screen-odd': 1,
                   'screen-cups': 1, 'screen-colour': 1, 'screen-draw': 1,
-                  'screen-ws': 1 };
+                  'screen-ws': 1, 'screen-slice': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -213,6 +215,7 @@
     try { if (ColourGame.running) ColourGame.stop(); } catch (e) {}
     try { if (DrawGame.running) DrawGame.stop(); } catch (e) {}
     try { if (WordSearch.running) WordSearch.stop(); } catch (e) {}
+    try { if (SliceGame.running) SliceGame.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -261,7 +264,7 @@
          which in Pairs meant a card you turned over kept showing its back. */
       [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame, DuelGame, RunGame,
        PairsGame, CatchGame, BounceGame, TreeGame, CopyGame, OddGame,
-       CupsGame, ColourGame, DrawGame, WordSearch].forEach(function (g) {
+       CupsGame, ColourGame, DrawGame, WordSearch, SliceGame].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -313,7 +316,8 @@
     'screen-pairs': 'Pairs', 'screen-catch': 'Catch it!', 'screen-bounce': 'Bounce',
     'screen-tree': 'Grow a tree', 'screen-copy': 'Copy me',
     'screen-odd': 'Odd one out', 'screen-cups': 'Which cup?',
-    'screen-colour': 'Colouring', 'screen-draw': 'Drawing', 'screen-ws': 'Word search'
+    'screen-colour': 'Colouring', 'screen-draw': 'Drawing', 'screen-ws': 'Word search',
+    'screen-slice': 'Slice it!'
   };
 
   function showBar(id) {
@@ -1600,7 +1604,13 @@
     DrawGame.start({
       canvas: $('draw-canvas'),
       els: { tools: $('dr-tools'), palette: $('dr-palette'), stickers: $('dr-stickers'),
-             undo: $('dr-undo') }
+             undo: $('dr-undo'),
+             cam: { wrap: $('dr-cam'), video: $('dr-cam-video'), count: $('dr-cam-count'),
+                    hint: $('dr-cam-hint'), skip: $('dr-cam-skip') },
+             saved: { wrap: $('dr-saved'), img: $('dr-saved-img'), hint: $('dr-saved-hint'),
+                      share: $('dr-saved-share'), keep: $('dr-saved-keep'),
+                      again: $('dr-saved-again'), gallery: $('dr-saved-gallery') },
+             gallery: { wrap: $('dr-gallery'), grid: $('dr-gal-grid'), close: $('dr-gallery-close') } }
     });
   }
   on('dr-clear', function () {
@@ -1633,6 +1643,21 @@
     if (b) WordSearch.say(parseInt(b.getAttribute('data-word'), 10));
   });
   miniLeave('screen-ws', { emoji: '🔤', title: 'Stop searching?', stay: 'KEEP LOOKING' });
+
+  function startSlice() {
+    stopEverything();
+    show('screen-slice');
+    keepAwake();
+    RoarAudio.releaseMic();
+    $('sl-over').hidden = true;
+    SliceGame.start({
+      canvas: $('slice-canvas'),
+      els: { score: $('sl-score'), best: $('sl-best'), lives: $('sl-lives'),
+             over: $('sl-over'), overScore: $('sl-over-score'), overBest: $('sl-over-best') }
+    });
+  }
+  on('sl-again', function () { Confetti.stop(); SliceGame.again(); });
+  miniLeave('screen-slice', { emoji: '🍉', title: 'Stop slicing?', stay: 'KEEP SLICING' });
 
   /* ── results ──────────────────────────────────────────────── */
 
