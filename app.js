@@ -42,6 +42,7 @@
   function active() { return players.slice(0, playerCount); }
 
   function $(id) { return document.getElementById(id); }
+  function $$(sel) { return document.querySelector(sel); }
   function on(id, fn) { var e = $(id); if (e) e.addEventListener('click', fn); }
 
   /* ── the games ────────────────────────────────────────────────
@@ -76,7 +77,8 @@
     { id: 'colour', emoji: '🖍️', name: 'COLOURING',  note: 'tap to colour it in', kind: 'mini' },
     { id: 'draw',  emoji: '🎨', name: 'DRAWING',     note: 'a page and a finger', kind: 'mini' },
     { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' },
-    { id: 'slice', emoji: '🍉', name: 'SLICE IT!',   note: 'swipe the fruit',      kind: 'mini' }
+    { id: 'slice', emoji: '🍉', name: 'SLICE IT!',   note: 'swipe the fruit',      kind: 'mini' },
+    { id: 'animal', emoji: '🐐', name: 'ANIMAL WORLD', note: 'roam · eat · poop',    kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -120,7 +122,8 @@
     colour:  function () { RoarAudio.resume(); startColour(); },
     draw:    function () { RoarAudio.resume(); startDraw(); },
     ws:      function () { RoarAudio.resume(); startWordSearch(); },
-    slice:   function () { RoarAudio.resume(); startSlice(); }
+    slice:   function () { RoarAudio.resume(); startSlice(); },
+    animal:  function () { RoarAudio.resume(); stopEverything(); show('screen-animal-pick'); }
   };
 
   var MINI_IDS = {};   // filled from MINIS, so the list stays the one truth
@@ -190,7 +193,7 @@
                   'screen-pairs': 1, 'screen-catch': 1, 'screen-bounce': 1,
                   'screen-tree': 1, 'screen-copy': 1, 'screen-odd': 1,
                   'screen-cups': 1, 'screen-colour': 1, 'screen-draw': 1,
-                  'screen-ws': 1, 'screen-slice': 1 };
+                  'screen-ws': 1, 'screen-slice': 1, 'screen-animal': 1 };
 
   // Anything that is running gets torn down before a new screen appears, so a
   // stray tap can never leave two game loops fighting over the same canvas.
@@ -216,6 +219,7 @@
     try { if (DrawGame.running) DrawGame.stop(); } catch (e) {}
     try { if (WordSearch.running) WordSearch.stop(); } catch (e) {}
     try { if (SliceGame.running) SliceGame.stop(); } catch (e) {}
+    try { if (AnimalSim.running) AnimalSim.stop(); } catch (e) {}
     clearTimeout(countdownTimer);
     pendingStart = null;
     RoarAudio.stopAllVoices();
@@ -264,7 +268,7 @@
          which in Pairs meant a card you turned over kept showing its back. */
       [GrabGame, RoarGame, BalloonGame, CountGame, SnakeGame, DuelGame, RunGame,
        PairsGame, CatchGame, BounceGame, TreeGame, CopyGame, OddGame,
-       CupsGame, ColourGame, DrawGame, WordSearch, SliceGame].forEach(function (g) {
+       CupsGame, ColourGame, DrawGame, WordSearch, SliceGame, AnimalSim].forEach(function (g) {
         if (!g || !g.running || !g.setPaused || g.paused) return;
         try { g.setPaused(true); held.push(g); } catch (e) {}
       });
@@ -317,7 +321,7 @@
     'screen-tree': 'Grow a tree', 'screen-copy': 'Copy me',
     'screen-odd': 'Odd one out', 'screen-cups': 'Which cup?',
     'screen-colour': 'Colouring', 'screen-draw': 'Drawing', 'screen-ws': 'Word search',
-    'screen-slice': 'Slice it!'
+    'screen-slice': 'Slice it!', 'screen-animal': 'Animal world', 'screen-animal-pick': 'Animal world'
   };
 
   function showBar(id) {
@@ -1659,6 +1663,25 @@
   }
   on('sl-again', function () { Confetti.stop(); SliceGame.again(); });
   miniLeave('screen-slice', { emoji: '🍉', title: 'Stop slicing?', stay: 'KEEP SLICING' });
+
+  function startAnimal(kind) {
+    stopEverything();
+    show('screen-animal');
+    keepAwake();
+    RoarAudio.releaseMic();
+    AnimalSim.start({
+      canvas: $('animal-canvas'),
+      animal: kind,
+      els: { buttons: { poop: $$('#an-btns [data-act="poop"]'), butt: $$('#an-btns [data-act="butt"]'),
+                        jump: $$('#an-btns [data-act="jump"]'), up: $$('#an-btns [data-act="up"]'),
+                        down: $$('#an-btns [data-act="down"]') } }
+    });
+  }
+  $('an-picks').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-animal]') : null;
+    if (b) { RoarAudio.resume(); startAnimal(b.getAttribute('data-animal')); }
+  });
+  miniLeave('screen-animal', { emoji: '🐐', title: 'Stop roaming?', stay: 'KEEP PLAYING' });
 
   /* ── results ──────────────────────────────────────────────── */
 
