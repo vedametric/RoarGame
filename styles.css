@@ -251,7 +251,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
    rather than three times over. */
 
 #screen-pairs, #screen-catch, #screen-bounce,
-#screen-colour, #screen-draw, #screen-ws {
+#screen-colour, #screen-draw, #screen-ws, #screen-slice {
   padding: calc(env(safe-area-inset-top, 0px) + var(--tb) + 6px) 10px
            calc(env(safe-area-inset-bottom, 0px) + 10px);
   display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -270,7 +270,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
 }
 #pairs-canvas, #catch-canvas, #bounce-canvas,
 #copy-canvas, #odd-canvas, #cups-canvas,
-#colour-canvas, #draw-canvas, #ws-canvas {
+#colour-canvas, #draw-canvas, #ws-canvas, #slice-canvas {
   flex: 1 1 auto; width: 100%; max-width: 460px; min-height: 0;
   border-radius: 18px; touch-action: none;
   border: 3px solid rgba(255,255,255,.14);
@@ -286,6 +286,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
 #draw-canvas   { background: #ffffff; border-color: rgba(255,255,255,.4); }
 /* The grid is square, so the board is too, and the words get the rest. */
 #ws-canvas     { background: #12213f; flex: 0 0 auto; aspect-ratio: 1 / 1; max-height: 52vh; }
+#slice-canvas  { background: #0d1b2e; }
 
 /* ── colouring and drawing ────────────────────────────────────
    One row of colours shared by both, big enough for a finger, and the one
@@ -2279,3 +2280,98 @@ body.has-topbar .screen--flat { padding-top: 0; }
   height: min(56vh, 92vw, 400px);
 }
 .screen--clock.is-play .ck-ask { font-size: clamp(15px, 4.2vw, 17px); opacity: .8; }
+
+
+/* ── drawing: save, camera, gallery ───────────────────────────
+   The SAVE row under the tools, the front-camera screen, the finished
+   card and the shelf of everything she has kept. */
+
+.dr-row--save { margin-top: 2px; }
+.dr-save {
+  appearance: none; cursor: pointer; font-family: inherit; color: #43210a;
+  padding: 11px 20px; font-size: 14px; font-weight: 900; letter-spacing: .04em;
+  border: 0; border-radius: 999px;
+  background: linear-gradient(180deg, #ffe14d, #ffb020);
+  box-shadow: 0 4px 0 #b8480a, 0 8px 18px rgba(255,120,20,.35);
+}
+.dr-save:active { transform: translateY(3px); box-shadow: 0 1px 0 #b8480a; }
+.dr-save--ghost {
+  color: #fff; background: rgba(255,255,255,.08);
+  box-shadow: none; border: 3px solid rgba(255,255,255,.18);
+  padding: 8px 16px;
+}
+
+/* the camera */
+.dr-cam {
+  position: absolute; inset: 0; z-index: 24;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 20px;
+  background: rgba(9,4,22,.92);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.dr-cam-frame {
+  position: relative; width: min(74vw, 300px); aspect-ratio: 1 / 1;
+  border-radius: 28px; overflow: hidden;
+  border: 5px solid #ffd24c; box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  background: #000;
+}
+.dr-cam-video {
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scaleX(-1);            /* a mirror, the way a selfie should look */
+}
+.dr-cam-count {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: clamp(70px, 24vw, 130px); font-weight: 900; color: #fff;
+  text-shadow: 0 4px 20px rgba(0,0,0,.6); pointer-events: none;
+}
+.dr-cam-hint {
+  margin: 0; font-size: 22px; font-weight: 900; color: #ffd24c; text-align: center;
+}
+.dr-cam-skip { padding: 10px 20px; font-size: 13px; }
+
+/* the finished card */
+.dr-saved, .dr-gallery {
+  position: absolute; inset: 0; z-index: 26;
+  display: grid; place-items: center; padding: 18px;
+  background: rgba(9,4,22,.72);
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+}
+.dr-saved-card, .dr-gallery-card {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: min(92vw, 380px); max-height: 92vh; overflow-y: auto;
+  padding: 20px 20px 18px; border-radius: 26px; text-align: center;
+  background: linear-gradient(180deg, #38215f, #241246);
+  border: 3px solid rgba(255,210,76,.7);
+  box-shadow: 0 16px 40px rgba(0,0,0,.5);
+  animation: winPop .45s cubic-bezier(.2,1.5,.4,1);
+}
+.dr-saved-emoji { font-size: 40px; line-height: 1; }
+.dr-saved-img {
+  width: 100%; border-radius: 16px; background: #fff;
+  box-shadow: 0 8px 22px rgba(0,0,0,.45);
+}
+.dr-saved-hint {
+  margin: 0; font-size: 12px; font-weight: 700; color: rgba(201,189,240,.85);
+  min-height: 1em;
+}
+.dr-saved .btn, .dr-gallery .btn { padding: 14px 26px; font-size: 17px; }
+.dr-saved-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.dr-saved-row .btn { padding: 11px 16px; font-size: 13px; }
+
+/* the gallery */
+.dr-gal-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  width: 100%; padding: 2px;
+}
+.dr-gal-item {
+  appearance: none; border: 0; padding: 0; cursor: pointer;
+  border-radius: 12px; overflow: hidden; background: #fff;
+  box-shadow: 0 3px 10px rgba(0,0,0,.4);
+  aspect-ratio: 1 / 1;
+}
+.dr-gal-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dr-gal-item:active { transform: scale(.94); }
+.dr-gal-empty {
+  grid-column: 1 / -1; margin: 20px 0; font-size: 14px; font-weight: 700;
+  color: rgba(201,189,240,.8); line-height: 1.5;
+}

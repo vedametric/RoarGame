@@ -385,6 +385,68 @@
         <button class="dr-tool" data-tool="undo" id="dr-undo" type="button" aria-label="undo">↩️</button>
         <button class="dr-tool" id="dr-clear" type="button" aria-label="clean page">🗑️</button>
       </div>
+      <div class="dr-row dr-row--save">
+        <button class="dr-save" data-tool="save" type="button">💾 SAVE</button>
+        <button class="dr-save dr-save--ghost" data-tool="gallery" type="button">🖼️ MY PICTURES</button>
+      </div>
+    </div>
+
+    <!-- The camera: front-facing, up for only the few seconds it takes to
+         count down and snap her smiling next to her drawing. -->
+    <div class="dr-cam" id="dr-cam" hidden>
+      <div class="dr-cam-frame">
+        <video id="dr-cam-video" class="dr-cam-video" playsinline muted autoplay></video>
+        <div class="dr-cam-count" id="dr-cam-count"></div>
+      </div>
+      <p class="dr-cam-hint" id="dr-cam-hint">Smile! 📸</p>
+      <button class="btn btn--ghost dr-cam-skip" id="dr-cam-skip" type="button">just save the drawing</button>
+    </div>
+
+    <!-- The finished card: her drawing and her face, kept and shareable. -->
+    <div class="dr-saved" id="dr-saved" hidden>
+      <div class="dr-saved-card">
+        <div class="dr-saved-emoji">🎉</div>
+        <h2 class="heading heading--sm">Saved!</h2>
+        <img class="dr-saved-img" id="dr-saved-img" alt="your saved drawing" />
+        <p class="dr-saved-hint" id="dr-saved-hint"></p>
+        <button class="btn btn--go" id="dr-saved-share" type="button">📤 SAVE / SHARE</button>
+        <div class="dr-saved-row">
+          <button class="btn btn--ghost" id="dr-saved-keep" type="button">KEEP DRAWING</button>
+          <button class="btn btn--ghost" id="dr-saved-again" type="button">NEW PAGE</button>
+        </div>
+        <button class="linkish" id="dr-saved-gallery" type="button">see my pictures 🖼️</button>
+      </div>
+    </div>
+
+    <!-- Every picture she has kept. -->
+    <div class="dr-gallery" id="dr-gallery" hidden>
+      <div class="dr-gallery-card">
+        <h2 class="heading heading--sm">My pictures 🖼️</h2>
+        <div class="dr-gal-grid" id="dr-gal-grid"></div>
+        <button class="btn btn--go" id="dr-gallery-close" type="button">DONE</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ SLICE IT! ═════════════════════
+       Fruit are lobbed up; swipe to slice them, but never the bomb. -->
+  <section class="screen" id="screen-slice">
+    <div class="mg-head">
+      <div class="mg-score" id="sl-score">0</div>
+      <div class="mg-note" id="sl-lives">❤️❤️❤️</div>
+      <div class="mg-best" id="sl-best">★ 0</div>
+    </div>
+    <canvas id="slice-canvas"></canvas>
+    <p class="mg-hint">swipe to slice · dodge the bomb 💣</p>
+    <div class="mg-over" id="sl-over" hidden>
+      <div class="mg-over-card">
+        <div class="mg-over-emoji">🍉</div>
+        <h2 class="heading heading--sm">Sliced out!</h2>
+        <div class="mg-over-score" id="sl-over-score">0</div>
+        <p class="mg-over-sub">fruit sliced</p>
+        <p class="mg-over-best" id="sl-over-best">best ★ 0</p>
+        <button class="btn btn--go" id="sl-again" type="button">PLAY AGAIN</button>
+      </div>
     </div>
   </section>
 
@@ -965,6 +1027,7 @@
 <script src="game-colour.js?v=dev"></script>
 <script src="game-draw.js?v=dev"></script>
 <script src="game-wordsearch.js?v=dev"></script>
+<script src="game-slice.js?v=dev"></script>
 <script src="stats.js?v=dev"></script>
 <script src="app.js?v=dev"></script>
 </body>
