@@ -2375,3 +2375,21 @@ body.has-topbar .screen--flat { padding-top: 0; }
   grid-column: 1 / -1; margin: 20px 0; font-size: 14px; font-weight: 700;
   color: rgba(201,189,240,.8); line-height: 1.5;
 }
+
+/* a brief message on the drawing screen — proof that a tap did something */
+.dr-toast {
+  position: absolute; z-index: 28; left: 50%; top: 18%;
+  transform: translate(-50%, -8px);
+  padding: 12px 20px; border-radius: 999px;
+  font-size: 15px; font-weight: 900; color: #43210a;
+  background: linear-gradient(180deg, #ffe14d, #ffb020);
+  box-shadow: 0 8px 22px rgba(0,0,0,.4);
+  opacity: 0; pointer-events: none; white-space: nowrap;
+}
+.dr-toast.is-in { animation: drToast 1.8s ease forwards; }
+@keyframes drToast {
+  0%   { opacity: 0; transform: translate(-50%, -8px); }
+  12%  { opacity: 1; transform: translate(-50%, 0); }
+  80%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}

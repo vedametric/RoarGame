@@ -36,6 +36,19 @@
     try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; }
   }
 
+  // A data: URL to a Blob, done synchronously — iOS Safari only lets the
+  // share sheet open from inside the tap that asked for it, so there is no
+  // room for an async fetch() first: by the time it resolved, the tap would
+  // no longer count as a user gesture and iOS would silently refuse to share.
+  function dataURLToBlob(u) {
+    var comma = u.indexOf(','), head = u.slice(0, comma), body = u.slice(comma + 1);
+    var mime = (/:(.*?)[;,]/.exec(head) || [])[1] || 'image/jpeg';
+    var bin = /;base64/i.test(head) ? atob(body) : decodeURIComponent(body);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+
   var DrawGame = {
     running: false,
     PALETTE: PALETTE,
@@ -415,10 +428,25 @@
       if (!this.items.length) {
         global.RoarAudio.sfx('spellbad');
         try { global.Say.speak('Draw something first!'); } catch (e) {}
+        this._toast('Draw something first! ✏️');
         return;
       }
       global.RoarAudio.sfx('tick');
       this._openCamera();
+    },
+
+    // A little message that slides in and fades — so a tap always shows it did
+    // something, even on a phone with the sound turned off.
+    _toast: function (msg) {
+      var t = this.el.toast;
+      if (!t) return;
+      t.textContent = msg;
+      t.hidden = false;
+      t.classList.remove('is-in');
+      void t.offsetWidth;                 // restart the animation
+      t.classList.add('is-in');
+      clearTimeout(this._toastT);
+      this._toastT = setTimeout(function () { t.classList.remove('is-in'); t.hidden = true; }, 1800);
     },
 
     /* ── the camera ───────────────────────────────────────────── */
@@ -576,28 +604,36 @@
       var sv = this.el.saved || {};
       if (!sv.wrap) return;
       if (sv.img) sv.img.src = url;
-      if (sv.hint) sv.hint.textContent = navigator.share ? '' : 'Press and hold the picture to save it 💾';
+      if (sv.hint) sv.hint.textContent = navigator.share ? 'kept in 🖼️ my pictures' : 'Press and hold the picture to save it, or find it in 🖼️ my pictures';
       sv.wrap.hidden = false;
     },
 
+    // "Save to Photos": on a phone this hands the finished card to the system
+    // share sheet, where "Save Image" drops it into the camera roll. A web
+    // page cannot write to the Photos app itself — the sheet is the only door
+    // — so where there is no share sheet we fall back to the long-press hint,
+    // and either way the picture is already safe in MY PICTURES.
     doShare: function (url) {
-      var self = this, sv = this.el.saved || {};
+      var sv = this.el.saved || {};
       url = url || (sv.img && sv.img.src);
       if (!url) return;
-      if (navigator.share && typeof fetch === 'function') {
-        fetch(url).then(function (r) { return r.blob(); }).then(function (b) {
-          var file = new File([b], 'sienna-drawing.png', { type: b.type || 'image/png' });
-          if (navigator.canShare && !navigator.canShare({ files: [file] })) throw new Error('no files');
-          return navigator.share({ files: [file], title: 'My drawing', text: 'Look what I drew! 🎨' });
-        }).catch(function () { self._shareHint(); });
-      } else {
-        this._shareHint();
+      if (navigator.share) {
+        try {
+          var file = new File([dataURLToBlob(url)], 'sienna-drawing.jpg', { type: 'image/jpeg' });
+          if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+            // Called straight away, still inside the tap, so iOS allows it.
+            var pr = navigator.share({ files: [file], title: 'My drawing', text: 'Look what I drew! 🎨' });
+            if (pr && pr.catch) pr.catch(function () {});   // they cancelled — no error to the child
+            return;
+          }
+        } catch (e) { /* fall through to the hint */ }
       }
+      this._shareHint();
     },
 
     _shareHint: function () {
       var sv = this.el.saved || {};
-      if (sv.hint) sv.hint.textContent = 'Press and hold the picture to save it 💾';
+      if (sv.hint) sv.hint.textContent = 'Press and hold the picture to save it, or find it in 🖼️ my pictures';
     },
 
     /* ── the gallery ──────────────────────────────────────────── */
