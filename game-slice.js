@@ -7,11 +7,9 @@
  * two real halves, flesh-side showing, rather than an emoji that can only
  * ever be whole. A burst of juice in the fruit's own colour goes with it.
  *
- * The one thing you must not slice is a bomb. Slicing a bomb costs a life;
- * three bombs and the round is over. Letting fruit fall past you costs
- * nothing — this is a game about slicing lots, not about being punished —
- * so a small child hacking wildly at the screen still has a wonderful time
- * and still racks up a score.
+ * Nothing to lose here — no bombs, no lives, no game over. Letting fruit
+ * fall past you costs nothing, so a small child hacking wildly at the
+ * screen still has a wonderful time and just keeps racking up a score.
  *
  * It speeds up as the score climbs: fruit come faster and, now and then, a
  * whole fistful at once, which is where the big combo scores come from —
@@ -21,7 +19,6 @@
   'use strict';
 
   var SAVED = 'slice.best';
-  var LIVES = 3;
   var TAU = Math.PI * 2;
 
   // Each fruit is a rind colour and a flesh colour, plus a leaf on top.
@@ -98,7 +95,6 @@
 
     _newGame: function () {
       this.score = 0;
-      this.lives = LIVES;
       this.fruits = [];      // whole fruit still in the air
       this.halves = [];      // sliced-off pieces falling away
       this.juice = [];       // particles
@@ -106,12 +102,9 @@
       this.blade = [];       // recent finger points, newest last
       this.slicing = false;
       this.combo = 0;        // fruit cut in the current swipe
-      this.flash = 0;        // red flash when a bomb goes off
-      this.over = false;
       this.newBest = false;
       this.time = 0;
       this.nextSpawn = 0.6;
-      this.warmup = 5;       // no bombs for the first few throws
       this._render();
     },
 
@@ -141,7 +134,7 @@
         return { x: e.clientX - r.left, y: e.clientY - r.top };
       }
       this._down = function (e) {
-        if (!self.running || self.paused || self.over) return;
+        if (!self.running || self.paused) return;
         e.preventDefault();
         try { self.canvas.setPointerCapture(e.pointerId); } catch (err) {}
         var p = at(e);
@@ -180,12 +173,12 @@
 
     // The blade moved from (ax,ay) to (bx,by): slice anything it crossed.
     _cut: function (ax, ay, bx, by) {
-      if (this.over || this.paused) return;
+      if (this.paused) return;
       for (var i = this.fruits.length - 1; i >= 0; i--) {
         var f = this.fruits[i];
         if (segDist(f.x, f.y, ax, ay, bx, by) <= f.r) {
-          if (f.bomb) { this.fruits.splice(i, 1); this._boom(f); }
-          else { this.fruits.splice(i, 1); this._slice(f, ax, ay, bx, by); }
+          this.fruits.splice(i, 1);
+          this._slice(f, ax, ay, bx, by);
         }
       }
     },
@@ -217,60 +210,26 @@
       global.RoarAudio.sfx(gain > 1 ? 'gold' : 'nom');
     },
 
-    _boom: function (f) {
-      this.lives--;
-      this.flash = 1;
-      for (var j = 0; j < 26; j++) {
-        var a = rand(0, TAU), v = rand(0.2, 1) * this.H * 0.34;
-        this.juice.push({ x: f.x, y: f.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
-          r: rand(2, 7), c: j % 2 ? '#ffb020' : '#3a3a44', life: rand(0.4, 0.9), age: 0 });
-      }
-      global.RoarAudio.sfx('bomb');
-      if (this.lives <= 0) this._finish();
-      else global.RoarAudio.sfx('bust');
-      this._render();
-    },
-
-    _finish: function () {
-      this.over = true;
-      this.slicing = false;
-      this.blade = [];
-      global.RoarAudio.sfx('bust');
-      if (this.newBest) {
-        global.RoarAudio.sfx('win');
-        try { global.Confetti.start(['#ff5b5b', '#ffd24c', '#6ec531', '#4a7bff', '#ff7ab0']); } catch (e) {}
-      }
-      this._render();
-      if (this.cfg.onOver) this.cfg.onOver(this.score, this.best, this.newBest);
-    },
-
     /* ── throwing fruit ───────────────────────────────────────── */
 
     _spawn: function () {
       // Faster, and bigger handfuls, as the score climbs.
       var pace = Math.min(1, this.score / 60);
       var wave = 1 + ((Math.random() < 0.25 + pace * 0.4) ? 1 : 0) + ((Math.random() < pace * 0.5) ? 1 : 0);
-      var bombChance = this.warmup > 0 ? 0 : Math.min(0.22, 0.06 + pace * 0.16);
-      var bombed = false;
-      for (var i = 0; i < wave; i++) {
-        var bomb = !bombed && Math.random() < bombChance;
-        if (bomb) bombed = true;
-        this._throw(bomb);
-        if (this.warmup > 0) this.warmup--;
-      }
+      for (var i = 0; i < wave; i++) this._throw();
       this.nextSpawn = rand(0.75, 1.15) * (1 - pace * 0.55);
     },
 
-    _throw: function (bomb) {
+    _throw: function () {
       var x = rand(this.W * 0.16, this.W * 0.84);
       var rise = rand(0.62, 0.82) * this.H;                 // how high it should reach
       var vy = -Math.sqrt(2 * this.g * rise);
       var vx = (this.W * 0.5 - x) * rand(0.5, 1.1) + rand(-0.12, 0.12) * this.W;
       this.fruits.push({
         x: x, y: this.H + this.R, vx: vx, vy: vy,
-        r: this.R * (bomb ? 0.92 : rand(0.9, 1.12)),
+        r: this.R * rand(0.9, 1.12),
         rot: rand(0, TAU), vr: rand(-2, 2),
-        bomb: bomb, type: bomb ? null : pick(FRUIT)
+        type: pick(FRUIT)
       });
     },
 
@@ -280,7 +239,7 @@
       var self = this;
       var dt = Math.min(0.05, (now - this.last) / 1000);
       this.last = now;
-      if (!this.paused && !this.over) this._step(dt);
+      if (!this.paused) this._step(dt);
       this._draw(now);
       if (this.running) this.raf = requestAnimationFrame(function (t) { self._loop(t); });
     },
@@ -288,7 +247,6 @@
     _step: function (dt) {
       var i, o;
       this.time += dt;
-      this.flash = Math.max(0, this.flash - dt * 2);
 
       this.nextSpawn -= dt;
       if (this.nextSpawn <= 0) this._spawn();
@@ -325,21 +283,6 @@
       var e = this.el;
       if (e.score) e.score.textContent = this.score;
       if (e.best) e.best.textContent = '★ ' + this.best;
-      if (e.lives) {
-        var s = '';
-        for (var i = 0; i < LIVES; i++) s += i < this.lives ? '❤️' : '🖤';
-        e.lives.textContent = s;
-      }
-      if (e.over) {
-        e.over.hidden = !this.over;
-        if (this.over) {
-          if (e.overScore) e.overScore.textContent = this.score;
-          if (e.overBest) {
-            e.overBest.textContent = this.newBest ? '🎉 A NEW BEST!' : 'best ★ ' + this.best;
-            e.overBest.classList.toggle('is-new', !!this.newBest);
-          }
-        }
-      }
     },
 
     /* ── drawing ──────────────────────────────────────────────── */
@@ -359,10 +302,7 @@
       c.globalAlpha = 1;
 
       for (i = 0; i < this.halves.length; i++) this._half(c, this.halves[i]);
-      for (i = 0; i < this.fruits.length; i++) {
-        if (this.fruits[i].bomb) this._bomb(c, this.fruits[i]);
-        else this._fruit(c, this.fruits[i]);
-      }
+      for (i = 0; i < this.fruits.length; i++) this._fruit(c, this.fruits[i]);
 
       for (i = 0; i < this.pops.length; i++) {
         var p = this.pops[i];
@@ -375,11 +315,6 @@
       c.globalAlpha = 1;
 
       this._blade(c);
-
-      if (this.flash > 0.01) {
-        c.fillStyle = 'rgba(255,60,60,' + (this.flash * 0.4) + ')';
-        c.fillRect(0, 0, W, H);
-      }
     },
 
     _fruit: function (c, f) {
@@ -421,26 +356,6 @@
       for (var s = -1; s <= 1; s++) {
         c.beginPath(); c.arc(s * r * 0.32, r * 0.42, Math.max(1.5, r * 0.06), 0, TAU); c.fill();
       }
-      c.restore();
-    },
-
-    _bomb: function (c, f) {
-      c.save();
-      c.translate(f.x, f.y);
-      c.rotate(f.rot);
-      var r = f.r;
-      c.fillStyle = '#20242c';
-      c.beginPath(); c.arc(0, 0, r, 0, TAU); c.fill();
-      var g = c.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.05, -r * 0.35, -r * 0.35, r * 1.1);
-      g.addColorStop(0, 'rgba(255,255,255,.4)');
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      c.fillStyle = g;
-      c.beginPath(); c.arc(0, 0, r, 0, TAU); c.fill();
-      // fuse + spark
-      c.strokeStyle = '#b0783a'; c.lineWidth = Math.max(2, r * 0.12);
-      c.beginPath(); c.moveTo(0, -r); c.quadraticCurveTo(r * 0.5, -r * 1.4, r * 0.7, -r * 1.1); c.stroke();
-      c.fillStyle = '#ffd24c';
-      c.beginPath(); c.arc(r * 0.7, -r * 1.1, r * 0.16, 0, TAU); c.fill();
       c.restore();
     },
 

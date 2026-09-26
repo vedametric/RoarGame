@@ -1654,14 +1654,11 @@
     show('screen-slice');
     keepAwake();
     RoarAudio.releaseMic();
-    $('sl-over').hidden = true;
     SliceGame.start({
       canvas: $('slice-canvas'),
-      els: { score: $('sl-score'), best: $('sl-best'), lives: $('sl-lives'),
-             over: $('sl-over'), overScore: $('sl-over-score'), overBest: $('sl-over-best') }
+      els: { score: $('sl-score'), best: $('sl-best') }
     });
   }
-  on('sl-again', function () { Confetti.stop(); SliceGame.again(); });
   miniLeave('screen-slice', { emoji: '🍉', title: 'Stop slicing?', stay: 'KEEP SLICING' });
 
   function startAnimal(kind) {
