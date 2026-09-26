@@ -313,7 +313,7 @@
       var self = this;
       global.RoarAudio.sfx('tick');
       this._openCamera(function (photo) {
-        if (!photo) { self._toast("Couldn't open the camera 📷"); return; }
+        if (!photo) return;                 // _noCamera already explained why
         self._setBackground(photo.toDataURL('image/jpeg', 0.85));
         self.tool = 'sticker';                 // straight into decorating
         self._mark();
@@ -518,18 +518,25 @@
     _openCamera: function (onDone) {
       var self = this, cam = this.el.cam || {};
       this._onSnap = onDone || function () {};
-      if (!cam.wrap) { this._noCamera(); return; }
+      if (!cam.wrap) { this._noCamera('none'); return; }
       cam.wrap.hidden = false;
       if (cam.count) cam.count.textContent = '';
-      if (cam.hint) cam.hint.textContent = 'Smile! 📸';
-      try { global.Say.speak('Smile!'); } catch (e) {}
+      if (cam.hint) cam.hint.textContent = 'Getting the camera ready… 📷';
+      // The manual TAKE PHOTO button only makes sense once we have a picture;
+      // hide it until the video is actually showing her.
+      if (cam.snap) cam.snap.hidden = true;
       var md = navigator.mediaDevices;
-      if (!md || !md.getUserMedia) { this._noCamera(); return; }
-      // If nothing comes back at all, don't leave her staring at a frozen
-      // "Smile!" — give up after a few seconds.
+      if (!md || !md.getUserMedia) { this._noCamera('none'); return; }
+      // NOTE: no timer runs while the "Allow camera?" prompt is up — a child
+      // takes her time tapping Allow, and a give-up here used to fire mid-
+      // prompt and throw the camera away. getUserMedia's own promise is the
+      // only authority on whether the camera opened. A long absolute safety
+      // net only matters if the browser never answers at all.
       clearTimeout(this._camGiveUp);
-      this._camGiveUp = setTimeout(function () { if (!self._stream) self._noCamera(); }, 7000);
-      md.getUserMedia({ video: { facingMode: 'user', width: 640, height: 640 }, audio: false })
+      this._camGiveUp = setTimeout(function () { if (!self._stream) self._noCamera('slow'); }, 40000);
+      // Simplest possible constraint: just the front camera. Asking for an
+      // exact size can make iOS refuse a camera it would otherwise give us.
+      md.getUserMedia({ video: { facingMode: 'user' }, audio: false })
         .then(function (stream) {
           clearTimeout(self._camGiveUp);
           if (!self.running || !cam.wrap || cam.wrap.hidden) {
@@ -537,34 +544,55 @@
             return;
           }
           self._stream = stream;
+          if (cam.hint) cam.hint.textContent = 'Smile! 📸';
+          try { global.Say.speak('Smile!'); } catch (e) {}
           if (cam.video) {
             cam.video.srcObject = stream;
             cam.video.muted = true;
             cam.video.setAttribute('playsinline', '');
+            cam.video.setAttribute('autoplay', '');
             var pr = cam.video.play();
             if (pr && pr.catch) pr.catch(function () {});
           }
           self._whenReady(0);
         })
-        .catch(function () { self._noCamera(); });
+        .catch(function (err) {
+          var denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+          self._noCamera(denied ? 'denied' : 'fail');
+        });
     },
 
-    // Wait (up to ~4s) for the video to actually carry a frame before the
-    // countdown, so a cold camera never gets snapped as black.
+    // Wait (up to ~8s) for the video to actually carry a frame before the
+    // countdown, so a cold camera never gets snapped as black. As soon as a
+    // frame is showing, reveal the manual TAKE PHOTO button so she can snap
+    // herself even if the auto-countdown misbehaves.
     _whenReady: function (tries) {
       var self = this, cam = this.el.cam || {}, v = cam.video;
       if (!this.running || !cam.wrap || cam.wrap.hidden) return;
-      if ((v && v.videoWidth > 0) || tries > 40) { this._countdown(3); return; }
+      if (v && v.videoWidth > 0 && v.readyState >= 2) {
+        if (cam.snap) cam.snap.hidden = false;
+        this._countdown(3);
+        return;
+      }
+      if (tries > 80) {
+        // Never got a frame. If the stream is dead, tell her; otherwise let
+        // her try the manual button rather than snapping a black square.
+        if (cam.snap) cam.snap.hidden = false;
+        if (cam.hint) cam.hint.textContent = 'Tap 📸 when you can see yourself';
+        return;
+      }
       this._cdTimer = setTimeout(function () { self._whenReady(tries + 1); }, 100);
     },
 
-    // No camera, or she said no to it: hand back no photo. The caller decides
-    // what that means (save the drawing alone; or a DECORATE ME that just
-    // steps back).
-    _noCamera: function () {
+    // No camera, permission refused, or she said no to it: hand back no photo.
+    // A short message says what happened, then the caller decides what null
+    // means (save the drawing alone; or a DECORATE ME that just steps back).
+    _noCamera: function (why) {
       var done = this._onSnap || function () {};
       this._onSnap = null;
       this._closeCamera();
+      if (why === 'denied') this._toast('Let the camera turn on to add your photo 📷');
+      else if (why === 'fail' || why === 'slow') this._toast("Camera didn't come on — saved your drawing 📷");
       done(null);
     },
 
@@ -581,25 +609,29 @@
     },
 
     _snap: function () {
-      var cam = this.el.cam || {}, v = cam.video, photo = null;
+      var cam = this.el.cam || {}, v = cam.video;
+      clearTimeout(this._cdTimer);
+      if (!(v && v.videoWidth)) {
+        // Snapped before a real frame arrived — keep the camera up and wait for
+        // one rather than saving a black square.
+        if (cam.hint) cam.hint.textContent = 'One moment… 📷';
+        this._whenReady(0);
+        return;
+      }
       var done = this._onSnap || function () {};
       this._onSnap = null;
-      clearTimeout(this._cdTimer);
-      if (v && v.videoWidth) {
-        var S = 480, pc = document.createElement('canvas');
-        pc.width = pc.height = S;
-        var pctx = pc.getContext('2d');
-        var side = Math.min(v.videoWidth, v.videoHeight);
-        // Mirror the front camera so it reads like a mirror, not back-to-front.
-        pctx.save();
-        pctx.translate(S, 0); pctx.scale(-1, 1);
-        pctx.drawImage(v, (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side, 0, 0, S, S);
-        pctx.restore();
-        photo = pc;
-        try { global.RoarAudio.sfx('gold'); } catch (e) {}
-      }
+      var S = 480, pc = document.createElement('canvas');
+      pc.width = pc.height = S;
+      var pctx = pc.getContext('2d');
+      var side = Math.min(v.videoWidth, v.videoHeight);
+      // Mirror the front camera so it reads like a mirror, not back-to-front.
+      pctx.save();
+      pctx.translate(S, 0); pctx.scale(-1, 1);
+      pctx.drawImage(v, (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side, 0, 0, S, S);
+      pctx.restore();
+      try { global.RoarAudio.sfx('gold'); } catch (e) {}
       this._closeCamera();
-      done(photo);
+      done(pc);
     },
 
     _closeCamera: function () {
@@ -611,6 +643,7 @@
         this._stream = null;
       }
       if (cam.video) { try { cam.video.pause(); } catch (e) {} cam.video.srcObject = null; }
+      if (cam.snap) cam.snap.hidden = true;
       if (cam.wrap) cam.wrap.hidden = true;
     },
 

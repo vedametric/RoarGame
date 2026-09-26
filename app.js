@@ -1610,7 +1610,7 @@
       els: { tools: $('dr-tools'), palette: $('dr-palette'), stickers: $('dr-stickers'),
              undo: $('dr-undo'),
              cam: { wrap: $('dr-cam'), video: $('dr-cam-video'), count: $('dr-cam-count'),
-                    hint: $('dr-cam-hint'), skip: $('dr-cam-skip') },
+                    hint: $('dr-cam-hint'), skip: $('dr-cam-skip'), snap: $('dr-cam-snap') },
              saved: { wrap: $('dr-saved'), img: $('dr-saved-img'), hint: $('dr-saved-hint'),
                       share: $('dr-saved-share'), keep: $('dr-saved-keep'),
                       again: $('dr-saved-again'), gallery: $('dr-saved-gallery') },
