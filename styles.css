@@ -2333,6 +2333,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
 .dr-cam-hint {
   margin: 0; font-size: 22px; font-weight: 900; color: #ffd24c; text-align: center;
 }
+.dr-cam-snap { padding: 14px 30px; font-size: 20px; }
 .dr-cam-skip { padding: 10px 20px; font-size: 13px; }
 
 /* the finished card */
