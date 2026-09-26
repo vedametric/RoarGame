@@ -388,12 +388,11 @@ into two real halves, flesh and seeds showing, with a burst of juice in its own
 colour. Catch several in one sweep and each past the first is worth double,
 which is where the big scores come from.
 
-**The one thing not to slice is the 💣 bomb.** Slicing a bomb costs a life;
-three bombs and the round is over. Letting fruit fall past you costs nothing —
-this is a game about slicing lots, not about being punished — so a small child
-hacking wildly at the screen still has a wonderful time and still racks up a
-score. It speeds up as the score climbs: fruit come faster and, now and then, a
-whole handful at once. The ★ keeps the best.
+**Nothing to lose — no bombs, no lives, no game over.** Letting fruit fall past
+you costs nothing, so a small child hacking wildly at the screen still has a
+wonderful time and just keeps racking up a score. It speeds up as the score
+climbs: fruit come faster and, now and then, a whole handful at once. The ★
+keeps the best.
 
 ## 🐐 ANIMAL WORLD
 
