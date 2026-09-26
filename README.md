@@ -395,6 +395,34 @@ hacking wildly at the screen still has a wonderful time and still racks up a
 score. It speeds up as the score climbs: fruit come faster and, now and then, a
 whole handful at once. The ★ keeps the best.
 
+## 🐐 ANIMAL WORLD
+
+Also on the shelf. **Pick an animal — a goat, a fly or a monkey — and roam a
+little 3D meadow**, eating, pooping and generally messing about. There is no
+timer and nothing to lose: it is a sandbox, the way a small child plays. A
+thumb on the left of the screen walks and turns you; the buttons on the right
+do the rest.
+
+The world is drawn with the same plain perspective the hot air balloon uses:
+everything lives at a world (x, y, z) and its screen position is that divided
+by depth, seen from a camera a little way behind the animal at eye height. The
+ground is a carpet of grass blades laid out on a fixed grid in the world, so as
+you walk they stream past and the meadow feels solid rather than a flat
+backdrop. Trees, rocks, flowers, the barn, the pond, the food and the other
+animals wandering about are billboards — flat pictures stood up in the world,
+scaled by distance and drawn back to front. It is all painted in code; there
+are no image assets and no 3D library.
+
+**Each animal plays differently.** The **🐐 goat** walks and can **💥 HEADBUTT**
+things so they tumble away, and a good butt at a tree shakes an apple loose; it
+eats grass, flowers and apples. The **🐵 monkey** can **⤴ JUMP**, and a jump
+under a tree knocks a banana down; it eats bananas and apples. The **🪰 fly**
+actually flies — **🔼 UP and 🔽 DOWN** through the air — and, being a fly, eats
+the **💩 poop** everyone leaves behind. Everyone can **💩 POOP** once their belly
+is full enough, which is half the fun and also what feeds the fly, so the
+meadow runs as its own silly little food web. A belly meter fills as you eat
+and empties as you poop; the ★ counts everything you get up to.
+
 ## One player or two
 
 Choose at the start. **Two players** share the phone head to head; a
@@ -594,6 +622,7 @@ game-colour.js  COLOURING — twelve line drawings, and the flood fill
 game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
+game-animal.js  ANIMAL WORLD — a pseudo-3D meadow to roam as an animal
 app.js          screen flow, photos, results
 ```
 

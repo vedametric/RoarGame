@@ -453,6 +453,33 @@
     </div>
   </section>
 
+  <!-- ═════════════════════ ANIMAL WORLD ═════════════════════
+       Pick an animal, then roam a little 3D meadow eating and pooping. -->
+  <section class="screen" id="screen-animal-pick">
+    <h2 class="heading">Who do you want to be?</h2>
+    <div class="an-picks" id="an-picks">
+      <button class="an-pick" data-animal="goat" type="button">
+        <span class="an-pick-emoji">🐐</span><b>GOAT</b><i>eat &amp; headbutt</i></button>
+      <button class="an-pick" data-animal="fly" type="button">
+        <span class="an-pick-emoji">🪰</span><b>FLY</b><i>fly &amp; eat poop</i></button>
+      <button class="an-pick" data-animal="monkey" type="button">
+        <span class="an-pick-emoji">🐵</span><b>MONKEY</b><i>jump for bananas</i></button>
+    </div>
+    <p class="mg-hint">a little world to explore 🌳</p>
+  </section>
+
+  <section class="screen screen--flat" id="screen-animal">
+    <canvas id="animal-canvas"></canvas>
+    <div class="an-btns" id="an-btns">
+      <button class="an-btn an-btn--poop" data-act="poop" type="button" hidden>💩<b>POOP</b></button>
+      <button class="an-btn an-btn--go" data-act="butt" type="button" hidden>💥<b>BUTT</b></button>
+      <button class="an-btn an-btn--go" data-act="jump" type="button" hidden>⤴<b>JUMP</b></button>
+      <button class="an-btn an-btn--go" data-act="up" type="button" hidden>🔼<b>UP</b></button>
+      <button class="an-btn an-btn--go" data-act="down" type="button" hidden>🔽<b>DOWN</b></button>
+    </div>
+    <p class="an-hint">left thumb to walk · buttons to play</p>
+  </section>
+
   <!-- ═════════════════════ WORD SEARCH ═════════════════════ -->
   <section class="screen" id="screen-ws">
     <div class="mg-head">
@@ -1031,6 +1058,7 @@
 <script src="game-draw.js?v=dev"></script>
 <script src="game-wordsearch.js?v=dev"></script>
 <script src="game-slice.js?v=dev"></script>
+<script src="game-animal.js?v=dev"></script>
 <script src="stats.js?v=dev"></script>
 <script src="app.js?v=dev"></script>
 </body>
