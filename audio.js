@@ -775,7 +775,7 @@
 
     sfx: function (type) {
       if (!this.ctx || this.muted) return;
-      var ctx = this.ctx, t = ctx.currentTime;
+      var self = this, ctx = this.ctx, t = ctx.currentTime;
 
       var voice = function (wave, f0, f1, dur, vol, delay) {
         var o = ctx.createOscillator(), g = ctx.createGain();
@@ -787,6 +787,40 @@
         g.gain.exponentialRampToValueAtTime(0.0001, t + delay + dur);
         o.connect(g); g.connect(ctx.destination);
         o.start(t + delay); o.stop(t + delay + dur + 0.03);
+      };
+
+      // A burst of filtered noise — the crack/thwack of an impact, which a
+      // pure tone can't give. Uses the shared noise buffer.
+      var noiseHit = function (ftype, freq, q, dur, vol, delay) {
+        var src = ctx.createBufferSource();
+        src.buffer = self._noise();
+        var f = ctx.createBiquadFilter();
+        f.type = ftype; f.frequency.value = freq; if (q) f.Q.value = q;
+        var g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t + delay);
+        g.gain.exponentialRampToValueAtTime(vol, t + delay + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + delay + dur);
+        src.connect(f); f.connect(g); g.connect(ctx.destination);
+        src.start(t + delay); src.stop(t + delay + dur + 0.03);
+      };
+
+      // A wavering falling voice — the "waaah" of a cartoon cry. A little
+      // vibrato on top so it warbles rather than sitting on one note.
+      var wail = function (f0, f1, dur, vol, delay) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        var lfo = ctx.createOscillator(), lg = ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(f0, t + delay);
+        o.frequency.linearRampToValueAtTime(f1, t + delay + dur);
+        lfo.type = 'sine'; lfo.frequency.value = 12; lg.gain.value = f0 * 0.04;
+        lfo.connect(lg); lg.connect(o.frequency);
+        g.gain.setValueAtTime(0.0001, t + delay);
+        g.gain.exponentialRampToValueAtTime(vol, t + delay + 0.05);
+        g.gain.setValueAtTime(vol, t + delay + dur * 0.55);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + delay + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t + delay); o.stop(t + delay + dur + 0.05);
+        lfo.start(t + delay); lfo.stop(t + delay + dur + 0.05);
       };
 
       switch (type) {
@@ -865,6 +899,21 @@
                              voice('sine', f, f * 1.02, 0.36, 0.06, 0.50 + i * 0.07);
                            });
                            voice('square', 262, 523, 0.5, 0.07, 0);          break;
+        /* THE SMACK GAME. A slap is a bright crack over a low thump; a punch
+           is heavier and lower, more boom than crack. The face then cries or
+           whimpers — both wavering falling voices, light and comedy, not
+           distressing. */
+        case 'smack':  noiseHit('bandpass', 2200, 1.1, 0.07, 0.22, 0);
+                       noiseHit('highpass', 4200, 0.7, 0.04, 0.12, 0);
+                       voice('sine',      220,   80, 0.14, 0.16, 0);    break;
+        case 'punch':  noiseHit('lowpass',  520, 0.8, 0.13, 0.26, 0);
+                       voice('sine',      160,   45, 0.22, 0.22, 0);
+                       voice('sawtooth',  120,   40, 0.18, 0.12, 0.01); break;
+        case 'cry':    wail(720, 400, 0.5,  0.14, 0);
+                       wail(650, 360, 0.55, 0.12, 0.5);                 break;
+        case 'whimper': wail(770, 560, 0.18, 0.08, 0);
+                        wail(710, 520, 0.18, 0.07, 0.22);
+                        wail(660, 500, 0.20, 0.06, 0.44);               break;
         case 'win':    [523, 659, 784, 1046].forEach(function (f, i) {
                          voice('triangle', f, f, 0.3, 0.16, i * 0.11);
                        });                                             break;
