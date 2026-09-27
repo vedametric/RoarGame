@@ -238,9 +238,18 @@
       }
       this.pops.push({ x: sw.cx, y: sw.cy - this.rad * 0.3, t: 0, big: power > 1.05 });
 
-      try { global.RoarAudio.sfx('thud'); } catch (e) {}
-      if (power > 1.05) { try { global.RoarAudio.sfx('bust'); } catch (e) {} }
-      if (Math.random() < 0.55) { try { global.Say.speak(pick(OWS)); } catch (e) {} }
+      // The impact: a slap for an ordinary hit, a heavier punch for a big one.
+      var hard = power > 1.05;
+      try { global.RoarAudio.sfx(hard ? 'punch' : 'smack'); } catch (e) {}
+      // The face's reaction — cry, whimper or a spoken "ow" — throttled so a
+      // flurry of fast taps doesn't stack a dozen wails on top of each other.
+      if (this.time - (this._lastVoice || -1) > 0.3) {
+        this._lastVoice = this.time;
+        var r = Math.random();
+        if (hard) { try { global.RoarAudio.sfx('cry'); } catch (e) {} }
+        else if (r < 0.4) { try { global.RoarAudio.sfx('whimper'); } catch (e) {} }
+        else if (r < 0.68) { try { global.Say.speak(pick(OWS)); } catch (e) {} }
+      }
     },
 
     /* ── the loop ────────────────────────────────────────────────── */

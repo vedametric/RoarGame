@@ -428,8 +428,10 @@ Also on the shelf, and pure daft fun. **A big silly head floats in front of
 you and a cartoon hand follows your finger — tap to smack it.** Every smack the
 head snaps aside, squashes, pulls a face (dizzy eyes, tongue out, a big OW), a
 red hand-print lands on its cheek and stars spin off, then it wobbles back
-upright on a spring and waits for the next one. Nothing to lose: it just counts
-your smacks, and the ★ keeps your best.
+upright on a spring and waits for the next one. You hear it too — a slap for an
+ordinary hit, a heavier punch for a big one, and the face crying or whimpering
+back at you. Nothing to lose: it just counts your smacks, and the ★ keeps your
+best.
 
 The head is a shaded ovoid drawn with a little real 3D — the eyes, nose, mouth,
 brows and ears are pinned to points on the ball and projected through the head's
