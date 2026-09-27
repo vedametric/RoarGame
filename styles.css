@@ -251,7 +251,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
    rather than three times over. */
 
 #screen-pairs, #screen-catch, #screen-bounce,
-#screen-colour, #screen-draw, #screen-ws, #screen-slice {
+#screen-colour, #screen-draw, #screen-ws, #screen-slice, #screen-smack {
   padding: calc(env(safe-area-inset-top, 0px) + var(--tb) + 6px) 10px
            calc(env(safe-area-inset-bottom, 0px) + 10px);
   display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -270,7 +270,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
 }
 #pairs-canvas, #catch-canvas, #bounce-canvas,
 #copy-canvas, #odd-canvas, #cups-canvas,
-#colour-canvas, #draw-canvas, #ws-canvas, #slice-canvas {
+#colour-canvas, #draw-canvas, #ws-canvas, #slice-canvas, #smack-canvas {
   flex: 1 1 auto; width: 100%; max-width: 460px; min-height: 0;
   border-radius: 18px; touch-action: none;
   border: 3px solid rgba(255,255,255,.14);
@@ -287,6 +287,12 @@ body.has-topbar .screen--flat { padding-top: 0; }
 /* The grid is square, so the board is too, and the words get the rest. */
 #ws-canvas     { background: #12213f; flex: 0 0 auto; aspect-ratio: 1 / 1; max-height: 52vh; }
 #slice-canvas  { background: #0d1b2e; }
+#smack-canvas  { background: #2a1150; }
+/* the smack game's hint row carries a NEW FACE button next to the text */
+.mg-hint--row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
+}
+.sm-new { padding: 8px 16px; font-size: 13px; }
 
 /* ── colouring and drawing ────────────────────────────────────
    One row of colours shared by both, big enough for a finger, and the one
