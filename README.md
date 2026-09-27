@@ -422,6 +422,23 @@ is full enough, which is half the fun and also what feeds the fly, so the
 meadow runs as its own silly little food web. A belly meter fills as you eat
 and empties as you poop; the ★ counts everything you get up to.
 
+## ✋ THE SMACK GAME
+
+Also on the shelf, and pure daft fun. **A big silly head floats in front of
+you and a cartoon hand follows your finger — tap to smack it.** Every smack the
+head snaps aside, squashes, pulls a face (dizzy eyes, tongue out, a big OW), a
+red hand-print lands on its cheek and stars spin off, then it wobbles back
+upright on a spring and waits for the next one. Nothing to lose: it just counts
+your smacks, and the ★ keeps your best.
+
+The head is a shaded ovoid drawn with a little real 3D — the eyes, nose, mouth,
+brows and ears are pinned to points on the ball and projected through the head's
+own turn, so when a smack rolls it to one side the whole face rides round the
+curve and the far ear tucks away behind. **A fresh face is rolled every time the
+game loads** (and on 🎲 **NEW FACE**): skin and hair colour, hair style, the size
+and spacing of the eyes, the brows, the nose, the ears, freckles, maybe glasses
+— a different daftie to smack each time. All painted in code; no image assets.
+
 ## One player or two
 
 Choose at the start. **Two players** share the phone head to head; a
@@ -622,6 +639,7 @@ game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a pseudo-3D meadow to roam as an animal
+game-smack.js   THE SMACK GAME — a random 3D face and a hand to smack it
 app.js          screen flow, photos, results
 ```
 

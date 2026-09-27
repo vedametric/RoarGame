@@ -444,6 +444,22 @@
     <p class="mg-hint">swipe to slice the fruit</p>
   </section>
 
+  <!-- ═════════════════════ THE SMACK GAME ═════════════════════
+       A randomly-generated 3D face and a big hand you control. Tap to smack
+       it; the face reacts, wobbles and pulls a silly expression. -->
+  <section class="screen" id="screen-smack">
+    <div class="mg-head">
+      <div class="mg-score" id="sm-score">0</div>
+      <div class="mg-note">✋ smacks</div>
+      <div class="mg-best" id="sm-best">★ 0</div>
+    </div>
+    <canvas id="smack-canvas"></canvas>
+    <div class="mg-hint mg-hint--row">
+      <span>tap the face to smack it!</span>
+      <button class="btn btn--ghost sm-new" id="sm-new" type="button">🎲 NEW FACE</button>
+    </div>
+  </section>
+
   <!-- ═════════════════════ ANIMAL WORLD ═════════════════════
        Pick an animal, then roam a little 3D meadow eating and pooping. -->
   <section class="screen" id="screen-animal-pick">
@@ -1050,6 +1066,7 @@
 <script src="game-wordsearch.js?v=dev"></script>
 <script src="game-slice.js?v=dev"></script>
 <script src="game-animal.js?v=dev"></script>
+<script src="game-smack.js?v=dev"></script>
 <script src="stats.js?v=dev"></script>
 <script src="app.js?v=dev"></script>
 </body>
