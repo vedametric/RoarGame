@@ -293,6 +293,7 @@ body.has-topbar .screen--flat { padding-top: 0; }
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
 }
 .sm-new { padding: 8px 16px; font-size: 13px; }
+#sm-note.is-combo { color: #ffd24c; animation: an-full .35s ease-in-out infinite alternate; }
 
 /* ── colouring and drawing ────────────────────────────────────
    One row of colours shared by both, big enough for a finger, and the one
@@ -2457,4 +2458,42 @@ body.has-topbar .screen--flat { padding-top: 0; }
   margin: 0; text-align: center; pointer-events: none;
   font-size: 11px; font-weight: 800; letter-spacing: .05em;
   color: rgba(255,255,255,.7); text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+
+/* the HUD over the meadow: score, a belly bar, and the current little quest */
+.an-hud {
+  position: absolute; z-index: 6; pointer-events: none;
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+  top: calc(env(safe-area-inset-top, 0px) + var(--tb) + 8px);
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+}
+.an-hud-row { display: flex; gap: 10px; align-items: baseline; }
+.an-hud-score { font-size: 22px; font-weight: 900; color: #ffd24c; text-shadow: 0 2px 4px rgba(0,0,0,.5); }
+.an-hud-best { font-size: 12px; font-weight: 800; color: #9df08a; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.an-belly {
+  position: relative; width: 120px; height: 16px; border-radius: 10px; overflow: hidden;
+  background: rgba(0,0,0,.35); border: 2px solid rgba(255,255,255,.5);
+}
+.an-belly i { display: block; height: 100%; width: 20%; background: linear-gradient(90deg, #9df08a, #ffd24c); transition: width .25s ease; }
+.an-belly.is-full i { background: linear-gradient(90deg, #ffb347, #ff5e5e); animation: an-full .7s ease-in-out infinite alternate; }
+@keyframes an-full { from { filter: brightness(1); } to { filter: brightness(1.5); } }
+.an-belly span {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 9px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+.an-quest {
+  font-size: 13px; font-weight: 900; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6);
+  background: rgba(0,0,0,.28); padding: 5px 10px; border-radius: 12px; border: 2px solid rgba(255,255,255,.25);
+}
+.an-btn.is-ready { border-color: #ffd24c; box-shadow: 0 0 0 4px rgba(255,210,76,.35), 0 6px 16px rgba(0,0,0,.35); }
+
+/* the thumb-stick: shows where the thumb went down, and where it is now */
+.an-stick {
+  position: absolute; z-index: 5; pointer-events: none;
+  width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.45); background: rgba(255,255,255,.12);
+}
+.an-stick i {
+  position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+  background: rgba(255,255,255,.75); box-shadow: 0 4px 12px rgba(0,0,0,.35);
 }

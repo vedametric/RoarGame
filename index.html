@@ -445,17 +445,18 @@
   </section>
 
   <!-- ═════════════════════ THE SMACK GAME ═════════════════════
-       A randomly-generated 3D face and a big hand you control. Tap to smack
-       it; the face reacts, wobbles and pulls a silly expression. -->
+       A randomly-generated 3D head (Three.js) and a hand you control. Tap to
+       smack it; the head is knocked round on its neck, pulls a face, and a
+       hand-print sticks to its cheek. Quick smacks chain into a combo. -->
   <section class="screen" id="screen-smack">
     <div class="mg-head">
       <div class="mg-score" id="sm-score">0</div>
-      <div class="mg-note">✋ smacks</div>
+      <div class="mg-note" id="sm-note">✋ smacks</div>
       <div class="mg-best" id="sm-best">★ 0</div>
     </div>
     <canvas id="smack-canvas"></canvas>
     <div class="mg-hint mg-hint--row">
-      <span>tap the face to smack it!</span>
+      <span>tap to smack · swipe for a big one</span>
       <button class="btn btn--ghost sm-new" id="sm-new" type="button">🎲 NEW FACE</button>
     </div>
   </section>
@@ -477,6 +478,15 @@
 
   <section class="screen screen--flat" id="screen-animal">
     <canvas id="animal-canvas"></canvas>
+    <div class="an-hud">
+      <div class="an-hud-row">
+        <span class="an-hud-score">★ <b id="an-score">0</b></span>
+        <span class="an-hud-best" id="an-best">★ 0</span>
+      </div>
+      <div class="an-belly" id="an-belly-wrap" title="belly"><i id="an-belly"></i><span>belly</span></div>
+      <div class="an-quest" id="an-quest">🌸 eat flowers · 0/5</div>
+    </div>
+    <div class="an-stick" id="an-stick" hidden><i id="an-stick-knob"></i></div>
     <div class="an-btns" id="an-btns">
       <button class="an-btn an-btn--poop" data-act="poop" type="button" hidden>💩<b>POOP</b></button>
       <button class="an-btn an-btn--go" data-act="butt" type="button" hidden>💥<b>BUTT</b></button>
@@ -484,7 +494,7 @@
       <button class="an-btn an-btn--go" data-act="up" type="button" hidden>🔼<b>UP</b></button>
       <button class="an-btn an-btn--go" data-act="down" type="button" hidden>🔽<b>DOWN</b></button>
     </div>
-    <p class="an-hint">left thumb to walk · buttons to play</p>
+    <p class="an-hint">left thumb to walk · drag right to look · buttons to play</p>
   </section>
 
   <!-- ═════════════════════ WORD SEARCH ═════════════════════ -->
@@ -1065,6 +1075,7 @@
 <script src="game-draw.js?v=dev"></script>
 <script src="game-wordsearch.js?v=dev"></script>
 <script src="game-slice.js?v=dev"></script>
+<script src="vendor/three.min.js"></script>
 <script src="game-animal.js?v=dev"></script>
 <script src="game-smack.js?v=dev"></script>
 <script src="stats.js?v=dev"></script>

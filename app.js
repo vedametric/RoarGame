@@ -1672,7 +1672,7 @@
     RoarAudio.releaseMic();
     SmackGame.start({
       canvas: $('smack-canvas'),
-      els: { score: $('sm-score'), best: $('sm-best') }
+      els: { score: $('sm-score'), best: $('sm-best'), note: $('sm-note') }
     });
   }
   on('sm-new', function () { SmackGame.again(); });
@@ -1688,9 +1688,12 @@
       animal: kind,
       els: { buttons: { poop: $$('#an-btns [data-act="poop"]'), butt: $$('#an-btns [data-act="butt"]'),
                         jump: $$('#an-btns [data-act="jump"]'), up: $$('#an-btns [data-act="up"]'),
-                        down: $$('#an-btns [data-act="down"]') } }
+                        down: $$('#an-btns [data-act="down"]') },
+             score: $('an-score'), best: $('an-best'), belly: $('an-belly'), bellyWrap: $('an-belly-wrap'),
+             quest: $('an-quest'), stick: { base: $('an-stick'), knob: $('an-stick-knob') } }
     });
   }
+
   $('an-picks').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-animal]') : null;
     if (b) { RoarAudio.resume(); startAnimal(b.getAttribute('data-animal')); }

@@ -397,49 +397,53 @@ keeps the best.
 ## 🐐 ANIMAL WORLD
 
 Also on the shelf. **Pick an animal — a goat, a fly or a monkey — and roam a
-little 3D meadow**, eating, pooping and generally messing about. There is no
-timer and nothing to lose: it is a sandbox, the way a small child plays. A
-thumb on the left of the screen walks and turns you; the buttons on the right
-do the rest.
+real 3D meadow**, eating, pooping and generally messing about. There is no
+timer and nothing to lose. A thumb anywhere on the left of the screen walks you
+(relative to the camera, the way a phone game should); drag on the right to
+look around; the buttons on the right do the animal's tricks. Arrow keys or WASD
+work on a computer, with Space for the trick and E to poop.
 
-The world is drawn with the same plain perspective the hot air balloon uses:
-everything lives at a world (x, y, z) and its screen position is that divided
-by depth, seen from a camera a little way behind the animal at eye height. The
-ground is a carpet of grass blades laid out on a fixed grid in the world, so as
-you walk they stream past and the meadow feels solid rather than a flat
-backdrop. Trees, rocks, flowers, the barn, the pond, the food and the other
-animals wandering about are billboards — flat pictures stood up in the world,
-scaled by distance and drawn back to front. It is all painted in code; there
-are no image assets and no 3D library.
+It's built on [Three.js](https://threejs.org) (a copy lives in `vendor/`, so
+the site still needs no build step and no CDN): real lighting with a sun that
+casts shadows, rolling ground from layered sines that everything sits on,
+thousands of instanced grass blades, fog for distance, a sky dome, drifting
+clouds, and a third-person camera that glides round behind you. Trees hold
+fruit in their canopies, rocks roll when you hit them, there's a pond, a barn
+and a fence round the edge, sheep and chickens wander about (and scatter when
+you charge them), and butterflies flit over the flowers. Every animal, tree
+and creature is built from primitives in code — no image assets.
 
-**Each animal plays differently.** The **🐐 goat** walks and can **💥 HEADBUTT**
-things so they tumble away, and a good butt at a tree shakes an apple loose; it
-eats grass, flowers and apples. The **🐵 monkey** can **⤴ JUMP**, and a jump
-under a tree knocks a banana down; it eats bananas and apples. The **🪰 fly**
-actually flies — **🔼 UP and 🔽 DOWN** through the air — and, being a fly, eats
-the **💩 poop** everyone leaves behind. Everyone can **💩 POOP** once their belly
-is full enough, which is half the fun and also what feeds the fly, so the
-meadow runs as its own silly little food web. A belly meter fills as you eat
-and empties as you poop; the ★ counts everything you get up to.
+**Each animal plays differently.** The **🐐 goat** can **💥 HEADBUTT**: charge
+a tree and an apple shakes loose, charge a rock and it goes rolling, charge a
+sheep and it leaps bleating; it eats grass, flowers and apples. The **🐵
+monkey** can **⤴ JUMP** — a real jump with gravity — and a jump under a tree
+knocks a banana down; it eats bananas and apples. The **🪰 fly** flies **🔼 UP
+and 🔽 DOWN**, right up to the clouds, and, being a fly, eats the **💩 poop**
+everyone (sheep and chickens included) leaves behind. Everyone can **💩 POOP**
+once their belly is full enough. A belly bar fills as you eat and empties as
+you poop, and a little **quest** in the corner — "eat 5 flowers", "scare 3
+sheep", "fly over the pond" — gives you something to aim at, with a fanfare
+and confetti when it's done. The ★ counts everything you get up to.
 
 ## ✋ THE SMACK GAME
 
-Also on the shelf, and pure daft fun. **A big silly head floats in front of
-you and a cartoon hand follows your finger — tap to smack it.** Every smack the
-head snaps aside, squashes, pulls a face (dizzy eyes, tongue out, a big OW), a
-red hand-print lands on its cheek and stars spin off, then it wobbles back
-upright on a spring and waits for the next one. You hear it too — a slap for an
-ordinary hit, a heavier punch for a big one, and the face crying or whimpering
-back at you. Nothing to lose: it just counts your smacks, and the ★ keeps your
-best.
+Also on the shelf, and pure daft fun. **A big silly 3D head sits in a
+spotlight and a hand follows your finger — tap to smack it.** The head is
+knocked round on its neck on springs, squashes, pulls a face — real eyelids
+squint, the mouth drops open, the brows knit — a red hand-print sticks to the
+cheek right where the hand landed, sweat and tears fly, and a comic "SMACK!"
+pops at the point of impact. Knock its hat clean off. Quick smacks chain into a
+**combo** worth more each hit, and a big combo leaves it dizzy — eyes spinning,
+stars orbiting — until it shakes itself off. A fast **swipe** across the face
+is a harder backhand. You hear it too: a slap or a heavier punch, and the face
+crying or whimpering back at you. Nothing to lose: the ★ keeps your best.
 
-The head is a shaded ovoid drawn with a little real 3D — the eyes, nose, mouth,
-brows and ears are pinned to points on the ball and projected through the head's
-own turn, so when a smack rolls it to one side the whole face rides round the
-curve and the far ear tucks away behind. **A fresh face is rolled every time the
-game loads** (and on 🎲 **NEW FACE**): skin and hair colour, hair style, the size
-and spacing of the eyes, the brows, the nose, the ears, freckles, maybe glasses
-— a different daftie to smack each time. All painted in code; no image assets.
+Built on the same Three.js as Animal World, so it's a real lit, shadowed head
+with a hand that casts a shadow on it. **A fresh face is rolled every time the
+game loads** (and on 🎲 **NEW FACE**): skin, hair colour and style, eye size
+and spacing and colour, brows, nose, ears, freckles, glasses, a moustache or a
+beard, and maybe a hat — a top hat, a cap, a party hat or a crown. All built
+from primitives in code; no image assets.
 
 ## One player or two
 
@@ -640,8 +644,9 @@ game-colour.js  COLOURING — twelve line drawings, and the flood fill
 game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
-game-animal.js  ANIMAL WORLD — a pseudo-3D meadow to roam as an animal
-game-smack.js   THE SMACK GAME — a random 3D face and a hand to smack it
+game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
+game-smack.js   THE SMACK GAME — a random 3D head (Three.js) and a hand to smack it
+vendor/         three.min.js, the one library the site uses
 app.js          screen flow, photos, results
 ```
 
