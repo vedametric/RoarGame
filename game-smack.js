@@ -16,8 +16,8 @@
  *
  * Somebody is always watching: one onlooker stands at the back, peeking over
  * the head's shoulder. Every smack they throw their hands to their cheeks,
- * shake their head and shout "No!" in their own voice — then duck down out of
- * sight, and a different person pops up in their place.
+ * shake their head and shout "No!" in their own voice. It's the same person
+ * for as long as the face lasts; a new face brings a different onlooker.
  *
  * Gameplay: it counts your smacks, and quick smacks chain into a combo worth
  * more each hit. A big combo leaves the head dizzy, eyes spinning, until it
@@ -622,8 +622,10 @@
     /* ── the person at the back ────────────────────────────────────
        One onlooker at a time, standing behind the head and peeking over its
        shoulder. A smack makes them clap their hands to their cheeks, shake
-       their head and shout "No!" in their own voice; then they duck down out
-       of sight behind the counter and somebody different pops up. */
+       their head and shout "No!" in their own voice, then calm down and wait
+       for the next one. They stay for as long as the face does: a new face
+       (a new game, or 🎲 NEW FACE) sends them off and somebody different
+       pops up in their place. */
 
     _bystander: function () {
       var T = global.THREE, old = this.by;
@@ -683,7 +685,7 @@
 
       this.scene.add(g);
       this.by = { g: g, head: head, arms: arms, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
-                  pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', off: -4.6, react: 0, said: false, t: 0 };
+                  pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', off: -4.6, react: 0, saidAt: -9, t: 0 };
       this._byPlace();
     },
 
@@ -697,12 +699,18 @@
       b.g.rotation.y = -b.side * 0.28;               // turned toward the head
     },
 
-    // A smack: they react (once per person) — the "No!" is the whole point.
+    // A smack: they throw their hands up and shout "No!". Smacks that come
+    // thick and fast keep their hands up, and they shout again once they've
+    // drawn breath, rather than gabbling over themselves.
     _byReact: function () {
       var b = this.by; if (!b) return;
-      if (b.state === 'duck') { this._byQueued = true; return; }   // the next person will say it
-      if (b.state === 'react') { b.react = Math.max(b.react, BY_REACT * 0.7); return; }
-      b.state = 'react'; b.react = BY_REACT; b.said = true; this._byQueued = false;
+      if (b.state === 'react') {
+        if (b.t - b.saidAt < 0.7) { b.react = Math.max(b.react, BY_REACT * 0.7); return; }
+        b.react = BY_REACT - 0.15;                 // hands stay up; no dip
+      } else {
+        b.state = 'react'; b.react = BY_REACT;
+      }
+      b.saidAt = b.t;
       var word = pick(NOS);
       if (b.bubble.material.map) b.bubble.material.map.dispose();
       b.bubble.material.map = this._bubbleTex(word.toUpperCase()); b.bubble.material.needsUpdate = true;
@@ -712,9 +720,8 @@
     _byStep: function (dt) {
       var b = this.by, T = global.THREE; if (!b) return;
       b.t += dt;
-      if (b.state === 'rise') { b.off = Math.min(0, b.off + dt * 20); if (b.off >= 0) { b.state = 'idle'; if (this._byQueued) this._byReact(); } }
-      else if (b.state === 'react') { b.react -= dt; if (b.react <= 0) { b.state = 'duck'; } }
-      else if (b.state === 'duck') { b.off -= dt * 22; if (b.off <= -4.6) { this._bystander(); return; } }
+      if (b.state === 'rise') { b.off = Math.min(0, b.off + dt * 20); if (b.off >= 0) b.state = 'idle'; }
+      else if (b.state === 'react') { b.react -= dt; if (b.react <= 0) b.state = 'idle'; }
       b.g.position.y = this.floorY + b.off + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0);
 
       // how far into the reaction: ramps up fast, holds, lets go at the end
