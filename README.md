@@ -432,7 +432,7 @@ spotlight and a hand follows your finger — tap to smack it.** The head is
 knocked round on its neck on springs, squashes, pulls a face — real eyelids
 squint, the mouth drops open, the brows knit — a red hand-print sticks to the
 cheek right where the hand landed, sweat and tears fly, and a comic "SMACK!"
-pops at the point of impact. Knock its hat clean off. Quick smacks chain into a
+pops at the point of impact. Knock its hat clean off. And somebody is always watching: **one person stands at the back**, peeking over the head's shoulder, and every smack they clap their hands to their cheeks, shake their head and shout **"No!"** in their own voice — then duck out of sight, and a **different person** pops up in their place. Quick smacks chain into a
 **combo** worth more each hit, and a big combo leaves it dizzy — eyes spinning,
 stars orbiting — until it shakes itself off. A fast **swipe** across the face
 is a harder backhand. You hear it too: a slap or a heavier punch, and the face

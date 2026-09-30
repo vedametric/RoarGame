@@ -14,6 +14,11 @@
  * freckles, glasses, a moustache or beard, a hat. Everything is built from
  * primitives in code; there are no image assets.
  *
+ * Somebody is always watching: one onlooker stands at the back, peeking over
+ * the head's shoulder. Every smack they throw their hands to their cheeks,
+ * shake their head and shout "No!" in their own voice — then duck down out of
+ * sight, and a different person pops up in their place.
+ *
  * Gameplay: it counts your smacks, and quick smacks chain into a combo worth
  * more each hit. A big combo leaves the head dizzy, eyes spinning, until it
  * shakes itself off. A fast swipe across the face is a harder backhand. The ★
@@ -32,7 +37,10 @@
   var HAIRDOS = ['short', 'puff', 'spikes', 'mohawk', 'bun', 'long', 'curly', 'bald'];
   var HATS = ['none', 'none', 'top', 'cap', 'party', 'crown'];
   var NOSES = ['button', 'round', 'long'];
-  var OWS = ['Ow!', 'Ouch!', 'Hey!', 'Oof!', 'Yikes!', 'Ooh!', 'Stop it!', 'Not the face!'];
+  var NOS = ['No!', 'Nooo!', 'No no no!', 'Oh no!', 'Noooo!', 'No!'];
+  var PANTS = [0x2b3a67, 0x333333, 0x5a3e2b, 0x1e5b4a, 0x6b2f5a];
+  var BY_STYLES = ['short', 'long', 'bun', 'bald', 'puff', 'cap'];
+  var BY_REACT = 1.1;        // how long the onlooker's "No!" lasts, in seconds
   var WORDS = ['SMACK!', 'WHAP!', 'SLAP!', 'POW!', 'THWACK!'];
   var EXPR = ['ow', 'dizzy', 'shock', 'wince', 'tongue'];
 
@@ -104,6 +112,7 @@
         this.camera.fov = W / H < 0.7 ? 46 : 38;
         this.camera.updateProjectionMatrix();
       }
+      this._byPlace();
     },
 
     /* ── the studio ────────────────────────────────────────────── */
@@ -144,7 +153,7 @@
         if (o.material) { var ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(function (m) { if (m && m.map) m.map.dispose(); if (m) m.dispose(); }); }
       });
       while (this.scene.children.length) this.scene.remove(this.scene.children[0]);
-      this.scene = null; this.pivot = null; this.hand = null;
+      this.scene = null; this.pivot = null; this.hand = null; this.by = null;
     },
 
     _newGame: function () {
@@ -270,6 +279,7 @@
       H.updateMatrixWorld(true);
       this._resetPose();
       this.blinkT = rand(1.5, 4);
+      this._bystander();
     },
 
     _hair: function (face, F, hairM, on, aim) {
@@ -461,13 +471,14 @@
       if (this.hat && !this.hat.loose && (hard || this.combo >= 3 || Math.random() < 0.3)) this._knockHat(side, power);
 
       try { global.RoarAudio.sfx(hard ? 'punch' : 'smack'); } catch (e) {}
+      // the face cries (or whimpers) — throttled so a flurry of taps doesn't
+      // stack a dozen wails — and the person at the back shouts "No!"
       if (now - (this._lastVoice || -1) > 0.35) {
         this._lastVoice = now;
-        var r = Math.random();
-        if (hard || this.combo >= 4) { try { global.RoarAudio.sfx('cry'); } catch (e) {} }
-        else if (r < 0.4) { try { global.RoarAudio.sfx('whimper'); } catch (e) {} }
-        else if (r < 0.7) { try { global.Say.speak(pick(OWS)); } catch (e) {} }
+        var cry = hard || this.combo >= 3 || Math.random() < 0.55;
+        try { global.RoarAudio.sfx(cry ? 'cry' : 'whimper'); } catch (e) {}
       }
+      this._byReact();
       this._render();
     },
 
@@ -504,6 +515,7 @@
         if (!sw.hit && k >= 0.5) { sw.hit = true; if (sw.landed) this._hit(sw); }
         if (k >= 1) this.swing = null;
       }
+      this._byStep(dt);
 
       // the loose hat falls, bounces, then pops back on
       var hat = this.hat;
@@ -605,6 +617,157 @@
       this.camera.position.set(this.camBase.x + rand(-sh, sh), this.camBase.y + rand(-sh, sh), this.camBase.z);
       this.camera.lookAt(0, -0.1, 0);
       this.renderer.render(this.scene, this.camera);
+    },
+
+    /* ── the person at the back ────────────────────────────────────
+       One onlooker at a time, standing behind the head and peeking over its
+       shoulder. A smack makes them clap their hands to their cheeks, shake
+       their head and shout "No!" in their own voice; then they duck down out
+       of sight behind the counter and somebody different pops up. */
+
+    _bystander: function () {
+      var T = global.THREE, old = this.by;
+      if (!this.scene) return;
+      if (old) { this._disposeGroup(old.g); this.scene.remove(old.g); if (old.bubble) { old.bubble.material.map.dispose(); old.bubble.material.dispose(); this.scene.remove(old.bubble); } }
+
+      // roll somebody who doesn't look like the last one
+      var P, tries = 0;
+      do {
+        P = { skin: pick(SKIN), hair: pick(HAIRC), style: pick(BY_STYLES), shirt: pick(SHIRT), pants: pick(PANTS),
+              glasses: Math.random() < 0.25, tall: rand(0.9, 1.08), wide: rand(0.9, 1.12), hatC: pick(SHIRT) };
+      } while (old && (P.skin === old.P.skin || P.style === old.P.style || P.shirt === old.P.shirt) && ++tries < 20);
+
+      var std = function (c, r) { return new T.MeshStandardMaterial({ color: c, roughness: r == null ? 0.7 : r }); };
+      var skin = std(P.skin, 0.6), shirt = std(P.shirt, 0.8), pants = std(P.pants, 0.85), hair = std(P.hair, 0.75), dark = std(0x151515, 0.4);
+      var g = new T.Group();
+
+      [-1, 1].forEach(function (sd) { var leg = new T.Mesh(new T.CapsuleGeometry(0.2, 1.0, 4, 10), pants); leg.position.set(sd * 0.26, 0.72, 0); g.add(leg); });
+      var body = new T.Mesh(new T.CapsuleGeometry(0.55, 0.9, 6, 16), shirt); body.position.y = 2.05; body.scale.set(P.wide, 1, 0.72); g.add(body);
+      var neck = new T.Mesh(new T.CylinderGeometry(0.16, 0.19, 0.35, 10), skin); neck.position.y = 2.85; g.add(neck);
+
+      // arms hang from the shoulders; the reaction swings them up to the cheeks
+      var arms = [];
+      [-1, 1].forEach(function (sd) {
+        var sh = new T.Group(); sh.position.set(sd * 0.64 * P.wide, 2.6, 0);
+        var arm = new T.Mesh(new T.CapsuleGeometry(0.13, 0.8, 4, 10), shirt); arm.position.y = -0.52; sh.add(arm);
+        var hand = new T.Mesh(new T.SphereGeometry(0.17, 12, 8), skin); hand.position.y = -1.1; sh.add(hand);
+        sh.userData.side = sd; g.add(sh); arms.push(sh);
+      });
+
+      var head = new T.Group(); head.position.y = 3.38; g.add(head);
+      var skull = new T.Mesh(new T.SphereGeometry(0.55, 28, 20), skin); skull.scale.set(1, P.tall, 0.95); head.add(skull);
+      [-1, 1].forEach(function (sd) { var ear = new T.Mesh(new T.SphereGeometry(0.13, 10, 8), skin); ear.scale.set(0.5, 1, 0.8); ear.position.set(sd * 0.54, 0, 0); head.add(ear); });
+      var eyes = [];
+      [-1, 1].forEach(function (sd) {
+        var eg = new T.Group(); eg.position.set(sd * 0.19, 0.08, 0.46); head.add(eg);
+        var white = new T.Mesh(new T.SphereGeometry(0.11, 12, 8), std(0xffffff, 0.3)); eg.add(white);
+        var pupil = new T.Mesh(new T.SphereGeometry(0.06, 10, 6), dark); pupil.position.z = 0.08; eg.add(pupil);
+        var brow = new T.Mesh(new T.BoxGeometry(0.2, 0.045, 0.05), hair); brow.position.set(0, 0.17, 0.06); eg.add(brow);
+        eg.userData = { side: sd, pupil: pupil, brow: brow }; eyes.push(eg);
+      });
+      var nose = new T.Mesh(new T.SphereGeometry(0.08, 10, 8), skin); nose.position.set(0, -0.06, 0.55); head.add(nose);
+      var mouth = new T.Mesh(new T.SphereGeometry(0.11, 14, 10), std(0x5a1220, 0.6)); mouth.position.set(0, -0.26, 0.47); mouth.scale.set(1.3, 0.22, 0.5); head.add(mouth);
+
+      var cap = function (theta) { var m = new T.Mesh(new T.SphereGeometry(0.58, 24, 12, 0, TAU, 0, theta), hair); m.scale.set(1, P.tall, 0.97); return m; };
+      if (P.style === 'short') { var c1 = cap(Math.PI * 0.42); c1.rotation.x = -0.2; head.add(c1); }
+      else if (P.style === 'long') { head.add(cap(Math.PI * 0.45)); var back = new T.Mesh(new T.SphereGeometry(0.55, 16, 12), hair); back.scale.set(1, 1.3, 0.55); back.position.set(0, -0.3, -0.3); head.add(back); }
+      else if (P.style === 'bun') { head.add(cap(Math.PI * 0.4)); var bun = new T.Mesh(new T.SphereGeometry(0.2, 12, 10), hair); bun.position.set(0, 0.58 * P.tall, -0.2); head.add(bun); }
+      else if (P.style === 'puff') { for (var i = 0; i < 8; i++) { var a = i / 8 * TAU, pf = new T.Mesh(new T.SphereGeometry(rand(0.2, 0.28), 10, 8), hair); pf.position.set(Math.cos(a) * 0.4, 0.42 * P.tall + rand(0, 0.12), Math.sin(a) * 0.35 - 0.05); head.add(pf); } }
+      else if (P.style === 'cap') { var hc = std(P.hatC, 0.7); var dome = new T.Mesh(new T.SphereGeometry(0.6, 24, 12, 0, TAU, 0, Math.PI * 0.42), hc); dome.scale.y = P.tall; head.add(dome); var visor = new T.Mesh(new T.BoxGeometry(0.62, 0.05, 0.42), hc); visor.position.set(0, 0.28 * P.tall, 0.62); visor.rotation.x = 0.18; head.add(visor); }
+      if (P.glasses) { var gm = std(0x222222, 0.35); [-1, 1].forEach(function (sd) { var ring = new T.Mesh(new T.TorusGeometry(0.13, 0.02, 6, 18), gm); ring.position.set(sd * 0.19, 0.08, 0.55); head.add(ring); }); }
+
+      var side = old ? -old.side : (Math.random() < 0.5 ? -1 : 1);   // pop up on the other side from last time
+      var bubble = new T.Sprite(new T.SpriteMaterial({ map: this._bubbleTex('NO!'), transparent: true, depthTest: false }));
+      bubble.visible = false; bubble.renderOrder = 10;
+      this.scene.add(bubble);
+
+      this.scene.add(g);
+      this.by = { g: g, head: head, arms: arms, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
+                  pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', off: -4.6, react: 0, said: false, t: 0 };
+      this._byPlace();
+    },
+
+    // Stand them just outside the head's silhouette, whatever the screen shape.
+    _byPlace: function () {
+      var b = this.by; if (!b || !this.camera) return;
+      var dist = this.camBase ? this.camBase.z + 3.2 : 10.8;
+      var halfH = dist * Math.tan(this.camera.fov * Math.PI / 360), halfW = halfH * this.camera.aspect;
+      b.x = b.side * clamp(halfW * 0.66, 1.95, 3.4);
+      b.g.position.set(b.x, this.floorY + b.off, -3.2);
+      b.g.rotation.y = -b.side * 0.28;               // turned toward the head
+    },
+
+    // A smack: they react (once per person) — the "No!" is the whole point.
+    _byReact: function () {
+      var b = this.by; if (!b) return;
+      if (b.state === 'duck') { this._byQueued = true; return; }   // the next person will say it
+      if (b.state === 'react') { b.react = Math.max(b.react, BY_REACT * 0.7); return; }
+      b.state = 'react'; b.react = BY_REACT; b.said = true; this._byQueued = false;
+      var word = pick(NOS);
+      if (b.bubble.material.map) b.bubble.material.map.dispose();
+      b.bubble.material.map = this._bubbleTex(word.toUpperCase()); b.bubble.material.needsUpdate = true;
+      try { global.Say.speak(word, { pitch: b.pitch, rate: b.rate }); } catch (e) {}
+    },
+
+    _byStep: function (dt) {
+      var b = this.by, T = global.THREE; if (!b) return;
+      b.t += dt;
+      if (b.state === 'rise') { b.off = Math.min(0, b.off + dt * 20); if (b.off >= 0) { b.state = 'idle'; if (this._byQueued) this._byReact(); } }
+      else if (b.state === 'react') { b.react -= dt; if (b.react <= 0) { b.state = 'duck'; } }
+      else if (b.state === 'duck') { b.off -= dt * 22; if (b.off <= -4.6) { this._bystander(); return; } }
+      b.g.position.y = this.floorY + b.off + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0);
+
+      // how far into the reaction: ramps up fast, holds, lets go at the end
+      var env = b.state === 'react' ? clamp(Math.min((BY_REACT - b.react) / 0.1, b.react / 0.25), 0, 1) : 0;
+      for (var i = 0; i < 2; i++) {
+        var a = b.arms[i], sd = a.userData.side;
+        a.rotation.x = lerp(0.05, -2.5, env);
+        a.rotation.z = lerp(sd * 0.12, -sd * 0.15, env);
+      }
+      b.head.rotation.y = Math.sin(b.t * 26) * 0.42 * env + Math.sin(b.t * 0.8) * 0.06;
+      b.head.rotation.x = -0.12 * env;
+      b.mouth.scale.y = lerp(0.22, 1.25, env); b.mouth.scale.x = lerp(1.3, 0.95, env);
+      for (var k = 0; k < 2; k++) {
+        var e = b.eyes[k], u = e.userData, sc = 1 + env * 0.35;
+        e.scale.set(sc, sc, sc);
+        u.brow.position.y = 0.17 + env * 0.07; u.brow.rotation.z = u.side * env * 0.35;
+        // eyes on the head being smacked
+        u.pupil.position.x = -b.side * 0.03;
+      }
+      b.body.rotation.x = -0.1 * env;
+
+      // the speech bubble pops above them
+      var bb = b.bubble;
+      bb.visible = env > 0.02;
+      if (bb.visible) {
+        var hp = b.head.getWorldPosition(new T.Vector3());
+        var pop = 1 + Math.sin(Math.min(1, (BY_REACT - b.react) / 0.2) * Math.PI) * 0.25;
+        // above them but pulled toward the middle, so it never runs off a narrow screen
+        var bw = Math.min(2.3, Math.abs(b.x) * 1.05);
+        bb.position.set(hp.x * 0.42, hp.y + 1.0, hp.z + 0.6);
+        bb.scale.set(bw * pop, bw * 0.54 * pop, 1);
+        bb.material.opacity = Math.min(1, env * 1.5);
+      }
+    },
+
+    // A white speech bubble with a tail and the word in big red letters.
+    _bubbleTex: function (text) {
+      var T = global.THREE, cv = document.createElement('canvas'); cv.width = 512; cv.height = 280;
+      var c = cv.getContext('2d');
+      var x = 16, y = 12, w = 480, h = 200, r = 60;
+      c.fillStyle = '#fff'; c.strokeStyle = '#2a0a1a'; c.lineWidth = 12;
+      c.beginPath();
+      c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+      c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      c.lineTo(x + w * 0.42, y + h); c.lineTo(x + w * 0.3, y + h + 60); c.lineTo(x + w * 0.3, y + h);
+      c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
+      c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
+      c.fill(); c.stroke();
+      var fs = text.length > 6 ? 84 : 120;
+      c.font = '900 ' + fs + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = '#e8203c'; c.fillText(text, x + w / 2, y + h / 2 + 6);
+      var tex = new T.CanvasTexture(cv); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; return tex;
     },
 
     /* ── effects ───────────────────────────────────────────────── */
