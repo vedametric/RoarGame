@@ -15,9 +15,9 @@
  * primitives in code; there are no image assets.
  *
  * Somebody is always watching: one onlooker stands at the back, peeking over
- * the head's shoulder. Every smack they fling out their left arm, then their
- * right, kick up their left leg, then their right, shout "No!" or "Oh no!" in
- * their own voice, and run back and forth with their hands up. It's the same person
+ * the head's shoulder. Every smack they turn side-on, throw one hand out in
+ * front and sweep the other back behind, lean into a slanted pose with one leg
+ * up, and shout "Nooooo!" — all stock still on the spot. It's the same person
  * for as long as the face lasts; a new face brings a different onlooker.
  *
  * Gameplay: it counts your smacks, and quick smacks chain into a combo worth
@@ -42,16 +42,16 @@
   var PANTS = [0x2b3a67, 0x333333, 0x5a3e2b, 0x1e5b4a, 0x6b2f5a];
   var BY_STYLES = ['short', 'long', 'bun', 'bald', 'puff', 'cap'];
   // The onlooker's routine, as Sienna choreographed (and acted out for a
-  // photo): they turn side-on to the head, swing the left arm back, then the
-  // right, then lean right forward — slanted, one leg on the floor and the
-  // other up behind, arms swept back — and hop along in it toward the head,
-  // shouting "Nooooo!"; then they run back and forth with their hands up.
-  // Times in seconds.
+  // photo): they turn side-on to the head, throw one hand out in front and
+  // sweep the other back behind, then lean right forward — slanted, one leg on
+  // the floor and the other up behind — and hold it there, stock still, while
+  // shouting "Nooooo!"; then hands up, still on the spot. They stay rooted to
+  // one place throughout: no hopping, no running about. Times in seconds.
   var BY_STEP = 0.3;         // each arm beat
   var BY_SAY = BY_STEP * 2;  // into the lean, and the "Nooooo!"
-  var BY_HOLD = 1.5;         // how long they hop along in the lean
-  var BY_RUNAT = BY_SAY + BY_HOLD;
-  var BY_RUN = 2.0;          // how long they run about
+  var BY_HOLD = 1.5;         // how long the lean is held, stock still
+  var BY_HANDSAT = BY_SAY + BY_HOLD;
+  var BY_HANDS = 1.2;        // hands up, on the spot
   var BY_SETTLE = 0.4;       // calming back down
   var BY_Z = -5.5;           // how far back the ledge they stand on is
   var BY_TALL = 3.95;        // the onlooker's height before scaling
@@ -715,7 +715,7 @@
       g.rotation.order = 'YXZ';                     // lean in their own frame, then turn
       this.by = { g: g, up: up, head: head, arms: arms, legs: legs, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
                   pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', pop: 0, scale: 1,
-                  rt: 0, runLen: BY_RUN, run: 0, said: false, saidAt: -9, bubbleAt: 0, t: 0 };
+                  rt: 0, upLen: BY_HANDS, said: false, saidAt: -9, bubbleAt: 0, t: 0 };
       this._byPlace();
     },
 
@@ -728,7 +728,7 @@
       var feet = this._ndcAt(b.side * 0.62, 0.4, BY_Z);
       var perY = (this.camBase.z - BY_Z) * Math.tan(cam.fov * Math.PI / 360), perX = perY * cam.aspect;
       b.scale = clamp(0.44 * perY / BY_TALL, 0.3, 0.9);   // about a fifth of the screen tall
-      b.x = feet.x; b.y = feet.y; b.amp = 0.2 * perX;      // how far they run each way
+      b.x = feet.x; b.y = feet.y;                           // they hold this spot
       b.perX = perX;
       if (this.ledge) this.ledge.position.y = feet.y - 0.15;
       b.g.position.set(b.x, b.y, BY_Z);
@@ -753,9 +753,9 @@
     // shout again once they've drawn breath rather than gabbling.
     _byReact: function () {
       var b = this.by; if (!b) return;
-      if (b.state !== 'react') { b.state = 'react'; b.rt = 0; b.runLen = BY_RUN; b.said = false; return; }
-      if (b.rt < BY_RUNAT) return;
-      b.runLen = Math.max(b.runLen, b.rt - BY_RUNAT + 1.6);
+      if (b.state !== 'react') { b.state = 'react'; b.rt = 0; b.upLen = BY_HANDS; b.said = false; return; }
+      if (b.rt < BY_HANDSAT) return;
+      b.upLen = Math.max(b.upLen, b.rt - BY_HANDSAT + 1.2);
       if (b.t - b.saidAt > 0.9) this._bySay();
     },
 
@@ -777,57 +777,50 @@
       if (b.state === 'react') {
         b.rt += dt; rt = b.rt;
         if (!b.said && rt >= BY_SAY) this._bySay();
-        var end = BY_RUNAT + b.runLen;
-        if (rt >= end + BY_SETTLE) { b.state = 'idle'; b.run = 0; }
+        var end = BY_HANDSAT + b.upLen;
+        if (rt >= end + BY_SETTLE) b.state = 'idle';
         else act = clamp(Math.min(rt / 0.08, (end + BY_SETTLE - rt) / BY_SETTLE), 0, 1);
       }
       var ease = function (v) { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
       var reacting = b.state === 'react';
-      var endRun = BY_RUNAT + b.runLen;
+      var endUp = BY_HANDSAT + b.upLen;
 
       // turn side-on to the head, the way Sienna stands in the photo
       var turn = reacting ? ease(rt / 0.22) : 0;
-      // the beats: left arm back, then right
-      var armBack = [reacting ? ease(rt / 0.15) : 0, reacting ? ease((rt - BY_STEP) / 0.15) : 0];
-      // the lean: slanted forward, one leg planted, the other up behind — held
-      var pose = reacting ? ease((rt - BY_SAY) / 0.18) * (1 - ease((rt - BY_RUNAT) / 0.2)) : 0;
-      // then running about with hands up
-      var runW = reacting ? clamp(Math.min((rt - BY_RUNAT) / 0.15, (endRun - rt) / 0.3), 0, 1) : 0;
-      if (runW > 0) b.run += dt;
-      var ph = b.run;
-      var settle = reacting && rt > endRun ? 1 - clamp((rt - endRun) / BY_SETTLE, 0, 1) : 1;
+      // the beats: one hand out in front, then the other back behind
+      var armOut = [reacting ? ease(rt / 0.15) : 0, reacting ? ease((rt - BY_STEP) / 0.15) : 0];
+      // the lean: slanted forward, one leg planted, the other up behind — held still
+      var pose = reacting ? ease((rt - BY_SAY) / 0.18) * (1 - ease((rt - BY_HANDSAT) / 0.2)) : 0;
+      // then hands up, still on the spot
+      var handsW = reacting ? clamp(Math.min((rt - BY_HANDSAT) / 0.15, (endUp - rt) / 0.3), 0, 1) : 0;
+      var settle = reacting && rt > endUp ? 1 - clamp((rt - endUp) / BY_SETTLE, 0, 1) : 1;
 
       for (var i = 0; i < 2; i++) {
         var a = b.arms[i], sd = a.userData.side;
-        var bk = armBack[i] * settle;
-        // swept back behind them like wings, then up over the head when running
-        // (less swing while leaning, so with the slant they still point back and down)
-        a.rotation.x = lerp(lerp(lerp(0.05, 1.25, bk), 0.8, pose), -0.2, runW);
-        a.rotation.z = lerp(lerp(sd * 0.12, sd * 0.4, bk), sd * 2.7 + Math.sin(b.t * 14 + i) * 0.18, runW);
-        var stride = Math.sin(ph * 15 + (sd > 0 ? Math.PI : 0)) * 0.9 * runW;
-        // the left leg stays on the floor, the right goes up behind
-        var flap = i === 1 ? Math.sin((rt - BY_SAY) * 9) * 0.18 * pose : 0;
-        b.legs[i].rotation.x = (i === 0 ? -0.3 : 0.95) * pose + flap + stride;
+        var out = armOut[i] * settle;
+        // One hand out in FRONT, the other swept BACK — swinging an arm forward
+        // from the shoulder is negative, backward positive. Eased a little once
+        // the slant has carried them round.
+        var reach = i === 0 ? -1.15 : 1.3;
+        var held  = i === 0 ? -0.9  : 1.0;
+        a.rotation.x = lerp(lerp(0.05, lerp(reach, held, pose), out), -0.2, handsW);
+        a.rotation.z = lerp(lerp(sd * 0.12, sd * 0.3, out), sd * 2.7 + Math.sin(b.t * 14 + i) * 0.18, handsW);
+        // the left leg stays on the floor, the right goes up behind — and stays put
+        b.legs[i].rotation.x = (i === 0 ? -0.3 : 0.95) * pose;
         b.legs[i].rotation.z = 0;
       }
-      b.up.rotation.x = 0.55 * pose + 0.12 * runW;     // the slant from the hips
+      b.up.rotation.x = 0.55 * pose + 0.12 * handsW;   // the slant from the hips
 
-      // run back and forth behind the head, turning to face the way they go
-      var swing = Math.sin(ph * 2.6), dir = clamp(Math.cos(ph * 2.6) * 3, -1, 1);
-      var face = -b.side * Math.PI / 2;               // side-on, looking at the head
-      // hop along toward the head in the lean, then drift home while running
-      var tIn = reacting ? ease((rt - BY_SAY) / BY_HOLD) : 0;
-      var tOut = reacting ? ease((rt - BY_RUNAT) / (b.runLen * 0.6)) : 1;
-      var travel = -b.side * b.amp * 0.65 * tIn * (1 - tOut);   // not so far they vanish behind a hat
-      b.g.position.x = b.x + travel + swing * b.amp * runW;
-      b.g.rotation.y = lerp(lerp(-b.side * 0.28, face, turn * settle), dir * Math.PI / 2, runW);
+      // They keep to their one spot the whole way through — no hopping and no
+      // running about — so only the pose itself moves.
+      var face = -b.side * Math.PI / 2;                // side-on, looking at the head
+      b.g.position.x = b.x;
+      b.g.rotation.y = lerp(-b.side * 0.28, face, turn * settle);
       b.g.rotation.x = 0.12 * pose;                    // the whole body tips a little too
-      var bob = runW > 0 ? Math.abs(Math.sin(ph * 15)) * 0.14 * runW : 0;
-      if (pose > 0) bob += Math.abs(Math.sin((rt - BY_SAY) * 9)) * 0.22 * pose;   // hop, hop, hop
-      b.g.position.y = b.y + (bob + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0)) * b.scale;
+      b.g.position.y = b.y + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 * b.scale : 0);
 
       // the face: wide eyes all the way through, mouth open from the "No!" on
-      var shout = reacting && rt >= BY_SAY ? clamp(Math.min((rt - BY_SAY) / 0.08, (endRun + BY_SETTLE - rt) / BY_SETTLE), 0, 1) : 0;
+      var shout = reacting && rt >= BY_SAY ? clamp(Math.min((rt - BY_SAY) / 0.08, (endUp + BY_SETTLE - rt) / BY_SETTLE), 0, 1) : 0;
       var shake = reacting && rt >= BY_SAY ? clamp(1 - (rt - b.bubbleAt) / 0.6, 0, 1) : 0;
       b.head.rotation.y = Math.sin(b.t * 26) * 0.35 * shake + Math.sin(b.t * 0.8) * 0.06;
       b.head.rotation.x = -0.1 * act - 0.45 * pose;     // chin up, looking ahead, while leaning
