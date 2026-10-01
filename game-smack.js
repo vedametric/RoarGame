@@ -15,8 +15,9 @@
  * primitives in code; there are no image assets.
  *
  * Somebody is always watching: one onlooker stands at the back, peeking over
- * the head's shoulder. Every smack they throw their hands to their cheeks,
- * shake their head and shout "No!" in their own voice. It's the same person
+ * the head's shoulder. Every smack they fling out their left arm, then their
+ * right, kick up their left leg, then their right, shout "No!" or "Oh no!" in
+ * their own voice, and run back and forth with their hands up. It's the same person
  * for as long as the face lasts; a new face brings a different onlooker.
  *
  * Gameplay: it counts your smacks, and quick smacks chain into a combo worth
@@ -37,10 +38,18 @@
   var HAIRDOS = ['short', 'puff', 'spikes', 'mohawk', 'bun', 'long', 'curly', 'bald'];
   var HATS = ['none', 'none', 'top', 'cap', 'party', 'crown'];
   var NOSES = ['button', 'round', 'long'];
-  var NOS = ['No!', 'Nooo!', 'No no no!', 'Oh no!', 'Noooo!', 'No!'];
+  var NOS = ['No!', 'Oh no!', 'Nooo!', 'Oh noooo!', 'No no no!', 'Oh no!'];
   var PANTS = [0x2b3a67, 0x333333, 0x5a3e2b, 0x1e5b4a, 0x6b2f5a];
   var BY_STYLES = ['short', 'long', 'bun', 'bald', 'puff', 'cap'];
-  var BY_REACT = 1.1;        // how long the onlooker's "No!" lasts, in seconds
+  // The onlooker's routine, as Sienna choreographed it: left arm out, right arm
+  // out, left leg up, right leg up — then "No!" — then running back and forth
+  // with their hands up. Times in seconds.
+  var BY_STEP = 0.28;        // each arm/leg beat
+  var BY_SAY = BY_STEP * 4;  // the "No!" comes after the four beats
+  var BY_RUN = 2.4;          // how long they run about
+  var BY_SETTLE = 0.4;       // calming back down
+  var BY_Z = -5.5;           // how far back the ledge they stand on is
+  var BY_TALL = 3.95;        // the onlooker's height before scaling
   var WORDS = ['SMACK!', 'WHAP!', 'SLAP!', 'POW!', 'THWACK!'];
   var EXPR = ['ow', 'dizzy', 'shock', 'wince', 'tongue'];
 
@@ -132,6 +141,12 @@
       var floor = new T.Mesh(new T.PlaneGeometry(40, 30), new T.MeshStandardMaterial({ color: 0x2a1656, roughness: 0.6, metalness: 0.1 }));
       floor.material._own = true; floor.rotation.x = -Math.PI / 2; floor.position.y = -3.2; floor.receiveShadow = true; scene.add(floor);
       this.floorY = -3.2;
+      // a ledge along the back wall, up where the onlooker can be seen whole
+      var ledge = this.ledge = new T.Group();
+      var top = new T.Mesh(new T.BoxGeometry(40, 0.3, 1.6), new T.MeshStandardMaterial({ color: 0x4a2c86, roughness: 0.7 }));
+      var lip = new T.Mesh(new T.BoxGeometry(40, 0.08, 0.08), new T.MeshStandardMaterial({ color: 0xb58cff, roughness: 0.5, emissive: 0x2a1060 }));
+      lip.position.set(0, 0.16, 0.8); ledge.add(top); ledge.add(lip);
+      ledge.position.set(0, 2.2, BY_Z); scene.add(ledge);
 
       scene.add(new T.HemisphereLight(0xffffff, 0x3a2a66, 0.55));
       var key = new T.SpotLight(0xfff1dc, 1.35, 40, 0.7, 0.5, 1);
@@ -621,9 +636,10 @@
 
     /* ── the person at the back ────────────────────────────────────
        One onlooker at a time, standing behind the head and peeking over its
-       shoulder. A smack makes them clap their hands to their cheeks, shake
-       their head and shout "No!" in their own voice, then calm down and wait
-       for the next one. They stay for as long as the face does: a new face
+       shoulder. A smack sets off their routine (Sienna's choreography): left
+       arm out, right arm out, left leg up, right leg up, then "No!" or "Oh
+       no!" in their own voice, then running back and forth with their hands
+       up, before calming down to wait for the next one. They stay for as long as the face does: a new face
        (a new game, or 🎲 NEW FACE) sends them off and somebody different
        pops up in their place. */
 
@@ -643,7 +659,13 @@
       var skin = std(P.skin, 0.6), shirt = std(P.shirt, 0.8), pants = std(P.pants, 0.85), hair = std(P.hair, 0.75), dark = std(0x151515, 0.4);
       var g = new T.Group();
 
-      [-1, 1].forEach(function (sd) { var leg = new T.Mesh(new T.CapsuleGeometry(0.2, 1.0, 4, 10), pants); leg.position.set(sd * 0.26, 0.72, 0); g.add(leg); });
+      var legs = [];
+      [-1, 1].forEach(function (sd) {
+        var hip = new T.Group(); hip.position.set(sd * 0.26, 1.3, 0);
+        var leg = new T.Mesh(new T.CapsuleGeometry(0.2, 1.0, 4, 10), pants); leg.position.y = -0.58; hip.add(leg);
+        var shoe = new T.Mesh(new T.SphereGeometry(0.22, 10, 8), dark); shoe.scale.set(1, 0.6, 1.4); shoe.position.set(0, -1.18, 0.08); hip.add(shoe);
+        hip.userData.side = sd; g.add(hip); legs.push(hip);
+      });
       var body = new T.Mesh(new T.CapsuleGeometry(0.55, 0.9, 6, 16), shirt); body.position.y = 2.05; body.scale.set(P.wide, 1, 0.72); g.add(body);
       var neck = new T.Mesh(new T.CylinderGeometry(0.16, 0.19, 0.35, 10), skin); neck.position.y = 2.85; g.add(neck);
 
@@ -684,34 +706,55 @@
       this.scene.add(bubble);
 
       this.scene.add(g);
-      this.by = { g: g, head: head, arms: arms, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
-                  pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', off: -4.6, react: 0, saidAt: -9, t: 0 };
+      this.by = { g: g, head: head, arms: arms, legs: legs, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
+                  pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', pop: 0, scale: 1,
+                  rt: 0, runLen: BY_RUN, run: 0, said: false, saidAt: -9, bubbleAt: 0, t: 0 };
       this._byPlace();
     },
 
     // Stand them just outside the head's silhouette, whatever the screen shape.
+    // Stand them on the ledge up at the back, off to one side of the head and
+    // above its shoulders, so every arm and leg of the routine can be seen —
+    // worked out in screen terms, so it fits whatever the shape of the screen.
     _byPlace: function () {
-      var b = this.by; if (!b || !this.camera) return;
-      var dist = this.camBase ? this.camBase.z + 3.2 : 10.8;
-      var halfH = dist * Math.tan(this.camera.fov * Math.PI / 360), halfW = halfH * this.camera.aspect;
-      b.x = b.side * clamp(halfW * 0.66, 1.95, 3.4);
-      b.g.position.set(b.x, this.floorY + b.off, -3.2);
+      var b = this.by, cam = this.camera; if (!b || !cam) return;
+      var feet = this._ndcAt(b.side * 0.62, 0.4, BY_Z);
+      var perY = (this.camBase.z - BY_Z) * Math.tan(cam.fov * Math.PI / 360), perX = perY * cam.aspect;
+      b.scale = clamp(0.44 * perY / BY_TALL, 0.3, 0.9);   // about a fifth of the screen tall
+      b.x = feet.x; b.y = feet.y; b.amp = 0.2 * perX;      // how far they run each way
+      b.perX = perX;
+      if (this.ledge) this.ledge.position.y = feet.y - 0.15;
+      b.g.position.set(b.x, b.y, BY_Z);
       b.g.rotation.y = -b.side * 0.28;               // turned toward the head
     },
 
-    // A smack: they throw their hands up and shout "No!". Smacks that come
-    // thick and fast keep their hands up, and they shout again once they've
-    // drawn breath, rather than gabbling over themselves.
+    // The world point at screen position (nx, ny) — -1..1 each way — on the
+    // plane z = zPlane, as seen from where the camera rests.
+    _ndcAt: function (nx, ny, zPlane) {
+      var T = global.THREE, cam = this.camera;
+      var keep = cam.position.clone();
+      cam.position.copy(this.camBase); cam.lookAt(0, -0.1, 0); cam.updateMatrixWorld(true);
+      var ray = new T.Raycaster(); ray.setFromCamera(new T.Vector2(nx, ny), cam);
+      var hit = new T.Vector3();
+      ray.ray.intersectPlane(new T.Plane(new T.Vector3(0, 0, 1), -zPlane), hit);
+      cam.position.copy(keep); cam.lookAt(0, -0.1, 0); cam.updateMatrixWorld(true);
+      return hit;
+    },
+
+    // A smack: start the routine. Smacks during the arm-and-leg beats just let
+    // it play out; smacks while they're running keep them running, and they
+    // shout again once they've drawn breath rather than gabbling.
     _byReact: function () {
       var b = this.by; if (!b) return;
-      if (b.state === 'react') {
-        if (b.t - b.saidAt < 0.7) { b.react = Math.max(b.react, BY_REACT * 0.7); return; }
-        b.react = BY_REACT - 0.15;                 // hands stay up; no dip
-      } else {
-        b.state = 'react'; b.react = BY_REACT;
-      }
-      b.saidAt = b.t;
-      var word = pick(NOS);
+      if (b.state !== 'react') { b.state = 'react'; b.rt = 0; b.runLen = BY_RUN; b.said = false; return; }
+      if (b.rt < BY_SAY) return;
+      b.runLen = Math.max(b.runLen, b.rt - BY_SAY + 1.6);
+      if (b.t - b.saidAt > 0.9) this._bySay();
+    },
+
+    _bySay: function () {
+      var b = this.by, word = pick(NOS);
+      b.said = true; b.saidAt = b.t; b.bubbleAt = b.rt;
       if (b.bubble.material.map) b.bubble.material.map.dispose();
       b.bubble.material.map = this._bubbleTex(word.toUpperCase()); b.bubble.material.needsUpdate = true;
       try { global.Say.speak(word, { pitch: b.pitch, rate: b.rate }); } catch (e) {}
@@ -720,40 +763,80 @@
     _byStep: function (dt) {
       var b = this.by, T = global.THREE; if (!b) return;
       b.t += dt;
-      if (b.state === 'rise') { b.off = Math.min(0, b.off + dt * 20); if (b.off >= 0) b.state = 'idle'; }
-      else if (b.state === 'react') { b.react -= dt; if (b.react <= 0) b.state = 'idle'; }
-      b.g.position.y = this.floorY + b.off + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0);
+      if (b.state === 'rise') { b.pop = Math.min(1, b.pop + dt * 3.5); if (b.pop >= 1) b.state = 'idle'; }
+      var pp = b.pop, back = 1 + 2.2 * Math.pow(pp - 1, 3) + 1.2 * Math.pow(pp - 1, 2);   // pop in with a little overshoot
+      b.g.scale.setScalar(b.scale * Math.max(0.001, back));
+      var rt = 0, act = 0;
+      if (b.state === 'react') {
+        b.rt += dt; rt = b.rt;
+        if (!b.said && rt >= BY_SAY) this._bySay();
+        var end = BY_SAY + b.runLen;
+        if (rt >= end + BY_SETTLE) { b.state = 'idle'; b.run = 0; }
+        else act = clamp(Math.min(rt / 0.08, (end + BY_SETTLE - rt) / BY_SETTLE), 0, 1);
+      }
+      var ease = function (v) { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
+      var reacting = b.state === 'react';
+      var endRun = BY_SAY + b.runLen;
 
-      // how far into the reaction: ramps up fast, holds, lets go at the end
-      var env = b.state === 'react' ? clamp(Math.min((BY_REACT - b.react) / 0.1, b.react / 0.25), 0, 1) : 0;
+      // the beats: each limb snaps out on its count
+      var armOut = [reacting ? ease(rt / 0.12) : 0, reacting ? ease((rt - BY_STEP) / 0.12) : 0];
+      var legUp = [reacting ? Math.sin(clamp((rt - BY_STEP * 2) / BY_STEP, 0, 1) * Math.PI) : 0,
+                   reacting ? Math.sin(clamp((rt - BY_STEP * 3) / BY_STEP, 0, 1) * Math.PI) : 0];
+      // then running about with hands up
+      var runW = reacting ? clamp(Math.min((rt - BY_SAY) / 0.15, (endRun - rt) / 0.3), 0, 1) : 0;
+      if (runW > 0) b.run += dt;
+      var ph = b.run;
+      var settle = reacting && rt > endRun ? 1 - clamp((rt - endRun) / BY_SETTLE, 0, 1) : 1;
+
       for (var i = 0; i < 2; i++) {
         var a = b.arms[i], sd = a.userData.side;
-        a.rotation.x = lerp(0.05, -2.5, env);
-        a.rotation.z = lerp(sd * 0.12, -sd * 0.15, env);
+        var outW = armOut[i] * settle;
+        var z = lerp(sd * 0.12, sd * 1.45, outW);                       // flung out sideways
+        z = lerp(z, sd * 2.7 + Math.sin(b.t * 14 + i) * 0.18, runW);     // up over the head, waving
+        a.rotation.z = z;
+        a.rotation.x = lerp(0.05, 0, outW) + (runW > 0 ? -0.2 * runW : 0);
+        var L = b.legs[i];
+        var kick = legUp[i];
+        var stride = Math.sin(ph * 15 + (sd > 0 ? Math.PI : 0)) * 0.9 * runW;
+        L.rotation.z = sd * 0.85 * kick;                                  // leg up and out
+        L.rotation.x = -0.5 * kick + stride;
       }
-      b.head.rotation.y = Math.sin(b.t * 26) * 0.42 * env + Math.sin(b.t * 0.8) * 0.06;
-      b.head.rotation.x = -0.12 * env;
-      b.mouth.scale.y = lerp(0.22, 1.25, env); b.mouth.scale.x = lerp(1.3, 0.95, env);
-      for (var k = 0; k < 2; k++) {
-        var e = b.eyes[k], u = e.userData, sc = 1 + env * 0.35;
-        e.scale.set(sc, sc, sc);
-        u.brow.position.y = 0.17 + env * 0.07; u.brow.rotation.z = u.side * env * 0.35;
-        // eyes on the head being smacked
-        u.pupil.position.x = -b.side * 0.03;
-      }
-      b.body.rotation.x = -0.1 * env;
 
-      // the speech bubble pops above them
+      // run back and forth behind the head, turning to face the way they go
+      var swing = Math.sin(ph * 2.6), dir = clamp(Math.cos(ph * 2.6) * 3, -1, 1);
+      b.g.position.x = b.x + swing * b.amp * runW;
+      b.g.rotation.y = -b.side * 0.28 + dir * 1.3 * runW;
+      var bob = runW > 0 ? Math.abs(Math.sin(ph * 15)) * 0.14 * runW : 0;
+      var hop = legUp[0] + legUp[1] > 0 ? (legUp[0] + legUp[1]) * 0.08 : 0;
+      b.g.position.y = b.y + (bob + hop + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0)) * b.scale;
+      b.body.rotation.x = -0.12 * runW;
+
+      // the face: wide eyes all the way through, mouth open from the "No!" on
+      var shout = reacting && rt >= BY_SAY ? clamp(Math.min((rt - BY_SAY) / 0.08, (endRun + BY_SETTLE - rt) / BY_SETTLE), 0, 1) : 0;
+      var shake = reacting && rt >= BY_SAY ? clamp(1 - (rt - b.bubbleAt) / 0.6, 0, 1) : 0;
+      b.head.rotation.y = Math.sin(b.t * 26) * 0.35 * shake + Math.sin(b.t * 0.8) * 0.06;
+      b.head.rotation.x = -0.1 * act;
+      b.mouth.scale.y = lerp(0.22, 1.25, Math.max(shout, act * 0.35)); b.mouth.scale.x = lerp(1.3, 0.95, shout);
+      for (var k = 0; k < 2; k++) {
+        var e = b.eyes[k], u = e.userData, sc = 1 + act * 0.35;
+        e.scale.set(sc, sc, sc);
+        u.brow.position.y = 0.17 + act * 0.07; u.brow.rotation.z = u.side * act * 0.35;
+        u.pupil.position.x = -b.side * 0.03;                            // eyes on the head being smacked
+      }
+
+      // the speech bubble pops above them from the "No!" until they calm down
       var bb = b.bubble;
-      bb.visible = env > 0.02;
+      bb.visible = shout > 0.02;
       if (bb.visible) {
         var hp = b.head.getWorldPosition(new T.Vector3());
-        var pop = 1 + Math.sin(Math.min(1, (BY_REACT - b.react) / 0.2) * Math.PI) * 0.25;
+        var pop = 1 + Math.sin(Math.min(1, (rt - b.bubbleAt) / 0.2) * Math.PI) * 0.25;
         // above them but pulled toward the middle, so it never runs off a narrow screen
-        var bw = Math.min(2.3, Math.abs(b.x) * 1.05);
-        bb.position.set(hp.x * 0.42, hp.y + 1.0, hp.z + 0.6);
+        var hn = hp.clone().project(this.camera);
+        var at = this._ndcAt(clamp(hn.x - b.side * 0.34, -0.66, 0.66), clamp(hn.y + 0.06, -0.8, 0.82), BY_Z + 0.6);
+        var bw = b.perX * 0.5;                      // half the screen width wide
+        bb.position.copy(at);
         bb.scale.set(bw * pop, bw * 0.54 * pop, 1);
-        bb.material.opacity = Math.min(1, env * 1.5);
+        bb.material.opacity = Math.min(1, shout * 1.5);
       }
     },
 
@@ -770,8 +853,10 @@
       c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
       c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
       c.fill(); c.stroke();
-      var fs = text.length > 6 ? 84 : 120;
-      c.font = '900 ' + fs + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+      // as big as fits: "NO!" fills the bubble, "OH NOOOO!" shrinks to fit inside it
+      var fs = 124;
+      do { c.font = '900 ' + fs + 'px system-ui, -apple-system, Segoe UI, sans-serif'; fs -= 4; }
+      while (fs > 40 && c.measureText(text).width > w - 56);
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillStyle = '#e8203c'; c.fillText(text, x + w / 2, y + h / 2 + 6);
       var tex = new T.CanvasTexture(cv); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; return tex;
