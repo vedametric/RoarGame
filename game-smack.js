@@ -44,11 +44,12 @@
   // The onlooker's routine, as Sienna choreographed (and acted out for a
   // photo): they turn side-on to the head, swing the left arm back, then the
   // right, then lean right forward — slanted, one leg on the floor and the
-  // other up behind, arms swept back — and hold it, shouting "Nooooo!"; then
-  // they run back and forth with their hands up. Times in seconds.
+  // other up behind, arms swept back — and hop along in it toward the head,
+  // shouting "Nooooo!"; then they run back and forth with their hands up.
+  // Times in seconds.
   var BY_STEP = 0.3;         // each arm beat
   var BY_SAY = BY_STEP * 2;  // into the lean, and the "Nooooo!"
-  var BY_HOLD = 1.3;         // how long the lean is held
+  var BY_HOLD = 1.5;         // how long they hop along in the lean
   var BY_RUNAT = BY_SAY + BY_HOLD;
   var BY_RUN = 2.0;          // how long they run about
   var BY_SETTLE = 0.4;       // calming back down
@@ -805,7 +806,8 @@
         a.rotation.z = lerp(lerp(sd * 0.12, sd * 0.4, bk), sd * 2.7 + Math.sin(b.t * 14 + i) * 0.18, runW);
         var stride = Math.sin(ph * 15 + (sd > 0 ? Math.PI : 0)) * 0.9 * runW;
         // the left leg stays on the floor, the right goes up behind
-        b.legs[i].rotation.x = (i === 0 ? -0.3 : 0.95) * pose + stride;
+        var flap = i === 1 ? Math.sin((rt - BY_SAY) * 9) * 0.18 * pose : 0;
+        b.legs[i].rotation.x = (i === 0 ? -0.3 : 0.95) * pose + flap + stride;
         b.legs[i].rotation.z = 0;
       }
       b.up.rotation.x = 0.55 * pose + 0.12 * runW;     // the slant from the hips
@@ -813,10 +815,15 @@
       // run back and forth behind the head, turning to face the way they go
       var swing = Math.sin(ph * 2.6), dir = clamp(Math.cos(ph * 2.6) * 3, -1, 1);
       var face = -b.side * Math.PI / 2;               // side-on, looking at the head
-      b.g.position.x = b.x + swing * b.amp * runW;
+      // hop along toward the head in the lean, then drift home while running
+      var tIn = reacting ? ease((rt - BY_SAY) / BY_HOLD) : 0;
+      var tOut = reacting ? ease((rt - BY_RUNAT) / (b.runLen * 0.6)) : 1;
+      var travel = -b.side * b.amp * 0.65 * tIn * (1 - tOut);   // not so far they vanish behind a hat
+      b.g.position.x = b.x + travel + swing * b.amp * runW;
       b.g.rotation.y = lerp(lerp(-b.side * 0.28, face, turn * settle), dir * Math.PI / 2, runW);
       b.g.rotation.x = 0.12 * pose;                    // the whole body tips a little too
       var bob = runW > 0 ? Math.abs(Math.sin(ph * 15)) * 0.14 * runW : 0;
+      if (pose > 0) bob += Math.abs(Math.sin((rt - BY_SAY) * 9)) * 0.22 * pose;   // hop, hop, hop
       b.g.position.y = b.y + (bob + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0)) * b.scale;
 
       // the face: wide eyes all the way through, mouth open from the "No!" on
