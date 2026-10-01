@@ -432,7 +432,7 @@ spotlight and a hand follows your finger — tap to smack it.** The head is
 knocked round on its neck on springs, squashes, pulls a face — real eyelids
 squint, the mouth drops open, the brows knit — a red hand-print sticks to the
 cheek right where the hand landed, sweat and tears fly, and a comic "SMACK!"
-pops at the point of impact. Knock its hat clean off. And somebody is always watching: **one person stands up on a ledge at the back**, and every smack they do the routine Sienna choreographed — **left arm out, right arm out, left leg up, right leg up**, then **"No!"** or **"Oh no!"** in their own voice, then **running back and forth with their hands up** — before calming down for the next one. They stay for as long as the face does; a new face (🎲 **NEW FACE**, or a new game) brings a **different person**. Quick smacks chain into a
+pops at the point of impact. Knock its hat clean off. And somebody is always watching: **one person stands up on a ledge at the back**, and every smack they do the routine Sienna choreographed (and acted out for a photo) — they turn side-on to the head, swing their **left arm back, then their right**, then **lean right forward, slanted, one leg on the floor and the other up behind, arms swept back**, and hold it shouting **"Nooooo!"** in their own voice — then **run back and forth with their hands up** before calming down for the next one. They stay for as long as the face does; a new face (🎲 **NEW FACE**, or a new game) brings a **different person**. Quick smacks chain into a
 **combo** worth more each hit, and a big combo leaves it dizzy — eyes spinning,
 stars orbiting — until it shakes itself off. A fast **swipe** across the face
 is a harder backhand. You hear it too: a slap or a heavier punch, and the face

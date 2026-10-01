@@ -38,15 +38,19 @@
   var HAIRDOS = ['short', 'puff', 'spikes', 'mohawk', 'bun', 'long', 'curly', 'bald'];
   var HATS = ['none', 'none', 'top', 'cap', 'party', 'crown'];
   var NOSES = ['button', 'round', 'long'];
-  var NOS = ['No!', 'Oh no!', 'Nooo!', 'Oh noooo!', 'No no no!', 'Oh no!'];
+  var NOS = ['Nooooo!', 'Nooooo!', 'Oh nooooo!', 'Noooo!', 'Oh no!'];
   var PANTS = [0x2b3a67, 0x333333, 0x5a3e2b, 0x1e5b4a, 0x6b2f5a];
   var BY_STYLES = ['short', 'long', 'bun', 'bald', 'puff', 'cap'];
-  // The onlooker's routine, as Sienna choreographed it: left arm out, right arm
-  // out, left leg up, right leg up — then "No!" — then running back and forth
-  // with their hands up. Times in seconds.
-  var BY_STEP = 0.28;        // each arm/leg beat
-  var BY_SAY = BY_STEP * 4;  // the "No!" comes after the four beats
-  var BY_RUN = 2.4;          // how long they run about
+  // The onlooker's routine, as Sienna choreographed (and acted out for a
+  // photo): they turn side-on to the head, swing the left arm back, then the
+  // right, then lean right forward — slanted, one leg on the floor and the
+  // other up behind, arms swept back — and hold it, shouting "Nooooo!"; then
+  // they run back and forth with their hands up. Times in seconds.
+  var BY_STEP = 0.3;         // each arm beat
+  var BY_SAY = BY_STEP * 2;  // into the lean, and the "Nooooo!"
+  var BY_HOLD = 1.3;         // how long the lean is held
+  var BY_RUNAT = BY_SAY + BY_HOLD;
+  var BY_RUN = 2.0;          // how long they run about
   var BY_SETTLE = 0.4;       // calming back down
   var BY_Z = -5.5;           // how far back the ledge they stand on is
   var BY_TALL = 3.95;        // the onlooker's height before scaling
@@ -666,19 +670,20 @@
         var shoe = new T.Mesh(new T.SphereGeometry(0.22, 10, 8), dark); shoe.scale.set(1, 0.6, 1.4); shoe.position.set(0, -1.18, 0.08); hip.add(shoe);
         hip.userData.side = sd; g.add(hip); legs.push(hip);
       });
-      var body = new T.Mesh(new T.CapsuleGeometry(0.55, 0.9, 6, 16), shirt); body.position.y = 2.05; body.scale.set(P.wide, 1, 0.72); g.add(body);
-      var neck = new T.Mesh(new T.CylinderGeometry(0.16, 0.19, 0.35, 10), skin); neck.position.y = 2.85; g.add(neck);
+      var up = new T.Group(); up.position.y = 1.3; g.add(up);          // pivots at the hips
+      var body = new T.Mesh(new T.CapsuleGeometry(0.55, 0.9, 6, 16), shirt); body.position.y = 0.75; body.scale.set(P.wide, 1, 0.72); up.add(body);
+      var neck = new T.Mesh(new T.CylinderGeometry(0.16, 0.19, 0.35, 10), skin); neck.position.y = 1.55; up.add(neck);
 
-      // arms hang from the shoulders; the reaction swings them up to the cheeks
+      // arms hang from the shoulders; the routine swings them back, then up
       var arms = [];
       [-1, 1].forEach(function (sd) {
-        var sh = new T.Group(); sh.position.set(sd * 0.64 * P.wide, 2.6, 0);
+        var sh = new T.Group(); sh.position.set(sd * 0.64 * P.wide, 1.3, 0);
         var arm = new T.Mesh(new T.CapsuleGeometry(0.13, 0.8, 4, 10), shirt); arm.position.y = -0.52; sh.add(arm);
         var hand = new T.Mesh(new T.SphereGeometry(0.17, 12, 8), skin); hand.position.y = -1.1; sh.add(hand);
-        sh.userData.side = sd; g.add(sh); arms.push(sh);
+        sh.userData.side = sd; up.add(sh); arms.push(sh);
       });
 
-      var head = new T.Group(); head.position.y = 3.38; g.add(head);
+      var head = new T.Group(); head.position.y = 2.08; up.add(head);
       var skull = new T.Mesh(new T.SphereGeometry(0.55, 28, 20), skin); skull.scale.set(1, P.tall, 0.95); head.add(skull);
       [-1, 1].forEach(function (sd) { var ear = new T.Mesh(new T.SphereGeometry(0.13, 10, 8), skin); ear.scale.set(0.5, 1, 0.8); ear.position.set(sd * 0.54, 0, 0); head.add(ear); });
       var eyes = [];
@@ -706,7 +711,8 @@
       this.scene.add(bubble);
 
       this.scene.add(g);
-      this.by = { g: g, head: head, arms: arms, legs: legs, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
+      g.rotation.order = 'YXZ';                     // lean in their own frame, then turn
+      this.by = { g: g, up: up, head: head, arms: arms, legs: legs, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
                   pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', pop: 0, scale: 1,
                   rt: 0, runLen: BY_RUN, run: 0, said: false, saidAt: -9, bubbleAt: 0, t: 0 };
       this._byPlace();
@@ -747,8 +753,8 @@
     _byReact: function () {
       var b = this.by; if (!b) return;
       if (b.state !== 'react') { b.state = 'react'; b.rt = 0; b.runLen = BY_RUN; b.said = false; return; }
-      if (b.rt < BY_SAY) return;
-      b.runLen = Math.max(b.runLen, b.rt - BY_SAY + 1.6);
+      if (b.rt < BY_RUNAT) return;
+      b.runLen = Math.max(b.runLen, b.rt - BY_RUNAT + 1.6);
       if (b.t - b.saidAt > 0.9) this._bySay();
     },
 
@@ -757,7 +763,7 @@
       b.said = true; b.saidAt = b.t; b.bubbleAt = b.rt;
       if (b.bubble.material.map) b.bubble.material.map.dispose();
       b.bubble.material.map = this._bubbleTex(word.toUpperCase()); b.bubble.material.needsUpdate = true;
-      try { global.Say.speak(word, { pitch: b.pitch, rate: b.rate }); } catch (e) {}
+      try { global.Say.speak(word, { pitch: b.pitch, rate: b.rate * (word.length > 5 ? 0.82 : 1) }); } catch (e) {}
     },
 
     _byStep: function (dt) {
@@ -770,52 +776,54 @@
       if (b.state === 'react') {
         b.rt += dt; rt = b.rt;
         if (!b.said && rt >= BY_SAY) this._bySay();
-        var end = BY_SAY + b.runLen;
+        var end = BY_RUNAT + b.runLen;
         if (rt >= end + BY_SETTLE) { b.state = 'idle'; b.run = 0; }
         else act = clamp(Math.min(rt / 0.08, (end + BY_SETTLE - rt) / BY_SETTLE), 0, 1);
       }
       var ease = function (v) { v = clamp(v, 0, 1); return v * v * (3 - 2 * v); };
       var reacting = b.state === 'react';
-      var endRun = BY_SAY + b.runLen;
+      var endRun = BY_RUNAT + b.runLen;
 
-      // the beats: each limb snaps out on its count
-      var armOut = [reacting ? ease(rt / 0.12) : 0, reacting ? ease((rt - BY_STEP) / 0.12) : 0];
-      var legUp = [reacting ? Math.sin(clamp((rt - BY_STEP * 2) / BY_STEP, 0, 1) * Math.PI) : 0,
-                   reacting ? Math.sin(clamp((rt - BY_STEP * 3) / BY_STEP, 0, 1) * Math.PI) : 0];
+      // turn side-on to the head, the way Sienna stands in the photo
+      var turn = reacting ? ease(rt / 0.22) : 0;
+      // the beats: left arm back, then right
+      var armBack = [reacting ? ease(rt / 0.15) : 0, reacting ? ease((rt - BY_STEP) / 0.15) : 0];
+      // the lean: slanted forward, one leg planted, the other up behind — held
+      var pose = reacting ? ease((rt - BY_SAY) / 0.18) * (1 - ease((rt - BY_RUNAT) / 0.2)) : 0;
       // then running about with hands up
-      var runW = reacting ? clamp(Math.min((rt - BY_SAY) / 0.15, (endRun - rt) / 0.3), 0, 1) : 0;
+      var runW = reacting ? clamp(Math.min((rt - BY_RUNAT) / 0.15, (endRun - rt) / 0.3), 0, 1) : 0;
       if (runW > 0) b.run += dt;
       var ph = b.run;
       var settle = reacting && rt > endRun ? 1 - clamp((rt - endRun) / BY_SETTLE, 0, 1) : 1;
 
       for (var i = 0; i < 2; i++) {
         var a = b.arms[i], sd = a.userData.side;
-        var outW = armOut[i] * settle;
-        var z = lerp(sd * 0.12, sd * 1.45, outW);                       // flung out sideways
-        z = lerp(z, sd * 2.7 + Math.sin(b.t * 14 + i) * 0.18, runW);     // up over the head, waving
-        a.rotation.z = z;
-        a.rotation.x = lerp(0.05, 0, outW) + (runW > 0 ? -0.2 * runW : 0);
-        var L = b.legs[i];
-        var kick = legUp[i];
+        var bk = armBack[i] * settle;
+        // swept back behind them like wings, then up over the head when running
+        // (less swing while leaning, so with the slant they still point back and down)
+        a.rotation.x = lerp(lerp(lerp(0.05, 1.25, bk), 0.8, pose), -0.2, runW);
+        a.rotation.z = lerp(lerp(sd * 0.12, sd * 0.4, bk), sd * 2.7 + Math.sin(b.t * 14 + i) * 0.18, runW);
         var stride = Math.sin(ph * 15 + (sd > 0 ? Math.PI : 0)) * 0.9 * runW;
-        L.rotation.z = sd * 0.85 * kick;                                  // leg up and out
-        L.rotation.x = -0.5 * kick + stride;
+        // the left leg stays on the floor, the right goes up behind
+        b.legs[i].rotation.x = (i === 0 ? -0.3 : 0.95) * pose + stride;
+        b.legs[i].rotation.z = 0;
       }
+      b.up.rotation.x = 0.55 * pose + 0.12 * runW;     // the slant from the hips
 
       // run back and forth behind the head, turning to face the way they go
       var swing = Math.sin(ph * 2.6), dir = clamp(Math.cos(ph * 2.6) * 3, -1, 1);
+      var face = -b.side * Math.PI / 2;               // side-on, looking at the head
       b.g.position.x = b.x + swing * b.amp * runW;
-      b.g.rotation.y = -b.side * 0.28 + dir * 1.3 * runW;
+      b.g.rotation.y = lerp(lerp(-b.side * 0.28, face, turn * settle), dir * Math.PI / 2, runW);
+      b.g.rotation.x = 0.12 * pose;                    // the whole body tips a little too
       var bob = runW > 0 ? Math.abs(Math.sin(ph * 15)) * 0.14 * runW : 0;
-      var hop = legUp[0] + legUp[1] > 0 ? (legUp[0] + legUp[1]) * 0.08 : 0;
-      b.g.position.y = b.y + (bob + hop + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0)) * b.scale;
-      b.body.rotation.x = -0.12 * runW;
+      b.g.position.y = b.y + (bob + (b.state === 'idle' ? Math.abs(Math.sin(b.t * 2.2)) * 0.04 : 0)) * b.scale;
 
       // the face: wide eyes all the way through, mouth open from the "No!" on
       var shout = reacting && rt >= BY_SAY ? clamp(Math.min((rt - BY_SAY) / 0.08, (endRun + BY_SETTLE - rt) / BY_SETTLE), 0, 1) : 0;
       var shake = reacting && rt >= BY_SAY ? clamp(1 - (rt - b.bubbleAt) / 0.6, 0, 1) : 0;
       b.head.rotation.y = Math.sin(b.t * 26) * 0.35 * shake + Math.sin(b.t * 0.8) * 0.06;
-      b.head.rotation.x = -0.1 * act;
+      b.head.rotation.x = -0.1 * act - 0.45 * pose;     // chin up, looking ahead, while leaning
       b.mouth.scale.y = lerp(0.22, 1.25, Math.max(shout, act * 0.35)); b.mouth.scale.x = lerp(1.3, 0.95, shout);
       for (var k = 0; k < 2; k++) {
         var e = b.eyes[k], u = e.userData, sc = 1 + act * 0.35;
