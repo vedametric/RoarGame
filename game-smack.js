@@ -15,7 +15,7 @@
  * primitives in code; there are no image assets.
  *
  * Somebody is always watching: one onlooker stands at the back, peeking over
- * the head's shoulder. Every smack they turn side-on, throw one hand out in
+ * the floor behind them. Every smack they turn side-on, throw one hand out in
  * front and sweep the other back behind, lean into a slanted pose with one leg
  * up, and shout "Nooooo!" — all stock still on the spot. It's the same person
  * for as long as the face lasts; a new face brings a different onlooker.
@@ -53,9 +53,16 @@
   var BY_HANDSAT = BY_SAY + BY_HOLD;
   var BY_HANDS = 1.2;        // hands up, on the spot
   var BY_SETTLE = 0.4;       // calming back down
-  var BY_Z = -4.2;           // how far back the ledge they stand on is
-  var BY_OFF = 0.32;         // how far off centre, as a fraction of half the screen
+  var BY_Z = -2.5;           // how far behind the head they stand
+  var BY_OFF = 0.68;         // how far to one side, as a fraction of half the screen
   var BY_TALL = 3.95;        // the onlooker's height before scaling
+  var BY_H = 5.4;            // how tall they stand; they are further back, so on
+                             // screen this reads as an ordinary person behind
+  var BY_FACE = 1.0;         // turned most of the way side-on, but angled enough
+                             // toward us that the lean carries their head forward
+                             // rather than straight behind the big head
+  var CAM_Z = 11.5;          // far enough back to get both of them in shot
+  var CAM_LOOK = -1.0;       // what the camera is pointed at
   var WORDS = ['SMACK!', 'WHAP!', 'SLAP!', 'POW!', 'THWACK!'];
   var EXPR = ['ow', 'dizzy', 'shock', 'wince', 'tongue'];
 
@@ -137,8 +144,8 @@
       var scene = this.scene = new T.Scene();
       scene.background = new T.Color(0x1d0f3a);
       this.camera = new T.PerspectiveCamera(38, 1, 0.1, 60);
-      this.camera.position.set(0, 0.3, 7.6);
-      this.camera.lookAt(0, -0.1, 0);
+      this.camera.position.set(0, 0.6, CAM_Z);
+      this.camera.lookAt(0, CAM_LOOK, 0);
       this.camBase = this.camera.position.clone();
 
       // a lit backdrop and a floor to catch the shadow
@@ -147,12 +154,6 @@
       var floor = new T.Mesh(new T.PlaneGeometry(40, 30), new T.MeshStandardMaterial({ color: 0x2a1656, roughness: 0.6, metalness: 0.1 }));
       floor.material._own = true; floor.rotation.x = -Math.PI / 2; floor.position.y = -3.2; floor.receiveShadow = true; scene.add(floor);
       this.floorY = -3.2;
-      // a ledge along the back wall, up where the onlooker can be seen whole
-      var ledge = this.ledge = new T.Group();
-      var top = new T.Mesh(new T.BoxGeometry(40, 0.3, 1.6), new T.MeshStandardMaterial({ color: 0x4a2c86, roughness: 0.7 }));
-      var lip = new T.Mesh(new T.BoxGeometry(40, 0.08, 0.08), new T.MeshStandardMaterial({ color: 0xb58cff, roughness: 0.5, emissive: 0x2a1060 }));
-      lip.position.set(0, 0.16, 0.8); ledge.add(top); ledge.add(lip);
-      ledge.position.set(0, 2.2, BY_Z); scene.add(ledge);
 
       scene.add(new T.HemisphereLight(0xffffff, 0x3a2a66, 0.55));
       var key = new T.SpotLight(0xfff1dc, 1.35, 40, 0.7, 0.5, 1);
@@ -163,7 +164,7 @@
       var rim = new T.DirectionalLight(0xff9de2, 0.8); rim.position.set(-2, 3, -5); scene.add(rim);
 
       this.raycaster = new T.Raycaster();
-      this.handPlane = new T.Plane(new T.Vector3(0, 0, 1), -2.0);
+      this.handPlane = new T.Plane(new T.Vector3(0, 0, 1), -1.3);
       this._buildHand();
     },
 
@@ -293,7 +294,8 @@
       // torso, which stays put while the head takes the hits
       var torso = this.torso = new T.Group();
       var shirt = new T.MeshStandardMaterial({ color: F.shirt, roughness: 0.8 });
-      var body = new T.Mesh(new T.CapsuleGeometry(1.15, 1.2, 8, 20), shirt); body.rotation.z = Math.PI / 2; body.position.set(0, -2.2, 0); body.scale.set(1, 1, 0.75); body.castShadow = true; body.receiveShadow = true; torso.add(body);
+      // narrow enough that the onlooker behind isn't swallowed by the belly
+      var body = new T.Mesh(new T.CapsuleGeometry(0.92, 0.85, 8, 20), shirt); body.rotation.z = Math.PI / 2; body.position.set(0, -2.15, 0); body.scale.set(1, 1, 0.8); body.castShadow = true; body.receiveShadow = true; torso.add(body);
       var collar = new T.Mesh(new T.CylinderGeometry(0.5, 0.55, 0.2, 18), shirt); collar.position.set(0, -1.15, 0); torso.add(collar);
       this.scene.add(torso);
 
@@ -369,12 +371,12 @@
       var thumb = new T.Mesh(new T.CapsuleGeometry(0.13, 0.5, 6, 12), skin); thumb.position.set(-0.62, 0.05, 0.05); thumb.rotation.z = 0.75; thumb.castShadow = true; g.add(thumb);
       var wrist = new T.Mesh(new T.CapsuleGeometry(0.3, 1.4, 6, 12), skin); wrist.position.set(0, -1.35, 0.5); wrist.rotation.x = 0.55; wrist.castShadow = true; g.add(wrist);
       var cuff = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 0.3, 16), new T.MeshStandardMaterial({ color: 0x2f7bd9 })); cuff.position.set(0, -1.9, 0.85); cuff.rotation.x = 0.55; g.add(cuff);
-      g.position.set(1.5, -1.4, 2.0);
-      this.handBase = 0.74;
+      g.position.set(0, -4.0, 1.3);
+      this.handBase = 0.62;
       g.scale.setScalar(this.handBase);
       this.scene.add(g);
       this.hand = g;
-      this.handT = new T.Vector3(1.5, -1.4, 2.0);
+      this.handT = new T.Vector3(0, -4.0, 1.3);
       this.handRest = new T.Quaternion().setFromEuler(new T.Euler(0.15, -0.35, 0.1));
       g.quaternion.copy(this.handRest);
       this.swing = null;
@@ -636,13 +638,13 @@
       // camera shake
       var sh = this.shake;
       this.camera.position.set(this.camBase.x + rand(-sh, sh), this.camBase.y + rand(-sh, sh), this.camBase.z);
-      this.camera.lookAt(0, -0.1, 0);
+      this.camera.lookAt(0, CAM_LOOK, 0);
       this.renderer.render(this.scene, this.camera);
     },
 
     /* ── the person at the back ────────────────────────────────────
-       One onlooker at a time, standing on a ledge just behind the head and a
-       little to one side of it. A smack sets off their routine (Sienna's choreography): left
+       One onlooker at a time, standing on the floor a few steps behind the
+       head, off to one side of its belly. A smack sets off their routine (Sienna's choreography): left
        arm out, right arm out, left leg up, right leg up, then "No!" or "Oh
        no!" in their own voice, then running back and forth with their hands
        up, before calming down to wait for the next one. They stay for as long as the face does: a new face
@@ -721,20 +723,19 @@
     },
 
     // Stand them just outside the head's silhouette, whatever the screen shape.
-    // Stand them on the ledge up at the back, off to one side of the head and
-    // above its shoulders, so every arm and leg of the routine can be seen —
-    // worked out in screen terms, so it fits whatever the shape of the screen.
+    // Stand them on the floor, their feet on the same ground, a few steps
+    // behind the head and far enough to one side to clear its big belly. Their
+    // legs end up hidden behind it, the way they would if you really were
+    // standing behind someone this close to the camera.
     _byPlace: function () {
       var b = this.by, cam = this.camera; if (!b || !cam) return;
-      // Just behind the head and a little to one side — near enough to read as
-      // right behind them, far enough over that even the tallest party hat
-      // doesn't spear through them.
-      var feet = this._ndcAt(b.side * BY_OFF, 0.44, BY_Z);
-      var perY = (this.camBase.z - BY_Z) * Math.tan(cam.fov * Math.PI / 360), perX = perY * cam.aspect;
-      b.scale = clamp(0.5 * perY / BY_TALL, 0.3, 0.9);    // about a quarter of the screen tall
-      b.x = feet.x; b.y = feet.y;                           // they hold this spot
-      b.perX = perX;
-      if (this.ledge) this.ledge.position.y = feet.y - 0.15;
+      var perY = (this.camBase.z - BY_Z) * Math.tan(cam.fov * Math.PI / 360);
+      b.perX = perY * cam.aspect;
+      b.scale = BY_H / BY_TALL;
+      // measured across the screen, so they sit clear of the head on a wide
+      // screen and tuck in without being clipped on a narrow one
+      b.x = b.side * clamp(BY_OFF * b.perX, 2.8, 5.5);
+      b.y = this.floorY;
       b.g.position.set(b.x, b.y, BY_Z);
       b.g.rotation.y = -b.side * 0.28;               // turned toward the head
     },
@@ -744,11 +745,11 @@
     _ndcAt: function (nx, ny, zPlane) {
       var T = global.THREE, cam = this.camera;
       var keep = cam.position.clone();
-      cam.position.copy(this.camBase); cam.lookAt(0, -0.1, 0); cam.updateMatrixWorld(true);
+      cam.position.copy(this.camBase); cam.lookAt(0, CAM_LOOK, 0); cam.updateMatrixWorld(true);
       var ray = new T.Raycaster(); ray.setFromCamera(new T.Vector2(nx, ny), cam);
       var hit = new T.Vector3();
       ray.ray.intersectPlane(new T.Plane(new T.Vector3(0, 0, 1), -zPlane), hit);
-      cam.position.copy(keep); cam.lookAt(0, -0.1, 0); cam.updateMatrixWorld(true);
+      cam.position.copy(keep); cam.lookAt(0, CAM_LOOK, 0); cam.updateMatrixWorld(true);
       return hit;
     },
 
@@ -817,7 +818,7 @@
 
       // They keep to their one spot the whole way through — no hopping and no
       // running about — so only the pose itself moves.
-      var face = -b.side * Math.PI / 2;                // side-on, looking at the head
+      var face = -b.side * BY_FACE;                    // side-on, looking at the head
       b.g.position.x = b.x;
       b.g.rotation.y = lerp(-b.side * 0.28, face, turn * settle);
       b.g.rotation.x = 0.12 * pose;                    // the whole body tips a little too
