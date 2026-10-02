@@ -292,11 +292,36 @@
 
       this.scene.add(H);
       // torso, which stays put while the head takes the hits
+      // A whole little body under that big head: chest, two arms with hands,
+      // two legs standing on the floor. Kept narrow so the onlooker behind
+      // isn't swallowed by it.
       var torso = this.torso = new T.Group();
       var shirt = new T.MeshStandardMaterial({ color: F.shirt, roughness: 0.8 });
-      // narrow enough that the onlooker behind isn't swallowed by the belly
-      var body = new T.Mesh(new T.CapsuleGeometry(0.92, 0.85, 8, 20), shirt); body.rotation.z = Math.PI / 2; body.position.set(0, -2.15, 0); body.scale.set(1, 1, 0.8); body.castShadow = true; body.receiveShadow = true; torso.add(body);
-      var collar = new T.Mesh(new T.CylinderGeometry(0.5, 0.55, 0.2, 18), shirt); collar.position.set(0, -1.15, 0); torso.add(collar);
+      var trews = new T.MeshStandardMaterial({ color: pick(PANTS), roughness: 0.85 });
+      var shoes = new T.MeshStandardMaterial({ color: 0x2a2a32, roughness: 0.55 });
+      var chest = new T.Mesh(new T.CapsuleGeometry(0.5, 0.5, 8, 18), shirt);
+      chest.position.set(0, -1.95, 0); chest.scale.set(1.25, 1, 0.85);
+      chest.castShadow = true; chest.receiveShadow = true; torso.add(chest);
+      var collar = new T.Mesh(new T.CylinderGeometry(0.34, 0.42, 0.24, 18), shirt);
+      collar.position.set(0, -1.28, 0); torso.add(collar);
+      this.bodyArms = [];
+      [-1, 1].forEach(function (sd) {
+        var sh = new T.Group(); sh.position.set(sd * 0.68, -1.78, 0);
+        var arm = new T.Mesh(new T.CapsuleGeometry(0.15, 0.5, 6, 12), shirt);
+        arm.position.y = -0.4; arm.castShadow = true; sh.add(arm);
+        var hand = new T.Mesh(new T.SphereGeometry(0.19, 12, 9), skin);
+        hand.position.y = -0.84; hand.castShadow = true; sh.add(hand);
+        sh.rotation.z = sd * 0.16;
+        sh.userData.side = sd; torso.add(sh); self.bodyArms.push(sh);
+      });
+      [-1, 1].forEach(function (sd) {
+        var hip = new T.Group(); hip.position.set(sd * 0.28, -2.5, 0);
+        var leg = new T.Mesh(new T.CapsuleGeometry(0.18, 0.34, 6, 12), trews);
+        leg.position.y = -0.32; leg.castShadow = true; hip.add(leg);
+        var ft = new T.Mesh(new T.SphereGeometry(0.23, 12, 9), shoes);
+        ft.scale.set(1, 0.5, 1.5); ft.position.set(0, -0.62, 0.12); ft.castShadow = true; hip.add(ft);
+        torso.add(hip);
+      });
       this.scene.add(torso);
 
       H.updateMatrixWorld(true);
@@ -587,6 +612,12 @@
       var sx = 1 / Math.sqrt(this.sq);
       H.scale.set(sx, this.sq, sx);
       var breathe = 1 + Math.sin(t * 1.6) * 0.012; this.torso.scale.set(breathe, 1, breathe);
+      // the arms swing a touch with the knocks, so the body doesn't look stuck on
+      for (var ai = 0; ai < this.bodyArms.length; ai++) {
+        var ba = this.bodyArms[ai], bs = ba.userData.side;
+        ba.rotation.z = bs * 0.16 + this.roll * 0.5;
+        ba.rotation.x = Math.sin(t * 1.4 + ai) * 0.04 - this.pitch * 0.35;
+      }
 
       // expression
       var ex = this.expr, up = -1.2, lo = 1.2, open = 0.08, smile = true, teeth = false, tongue = false, browK = F.browAngle;
