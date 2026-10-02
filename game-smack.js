@@ -53,7 +53,8 @@
   var BY_HANDSAT = BY_SAY + BY_HOLD;
   var BY_HANDS = 1.2;        // hands up, on the spot
   var BY_SETTLE = 0.4;       // calming back down
-  var BY_Z = -5.5;           // how far back the ledge they stand on is
+  var BY_Z = -4.2;           // how far back the ledge they stand on is
+  var BY_OFF = 0.32;         // how far off centre, as a fraction of half the screen
   var BY_TALL = 3.95;        // the onlooker's height before scaling
   var WORDS = ['SMACK!', 'WHAP!', 'SLAP!', 'POW!', 'THWACK!'];
   var EXPR = ['ow', 'dizzy', 'shock', 'wince', 'tongue'];
@@ -640,8 +641,8 @@
     },
 
     /* ── the person at the back ────────────────────────────────────
-       One onlooker at a time, standing behind the head and peeking over its
-       shoulder. A smack sets off their routine (Sienna's choreography): left
+       One onlooker at a time, standing on a ledge just behind the head and a
+       little to one side of it. A smack sets off their routine (Sienna's choreography): left
        arm out, right arm out, left leg up, right leg up, then "No!" or "Oh
        no!" in their own voice, then running back and forth with their hands
        up, before calming down to wait for the next one. They stay for as long as the face does: a new face
@@ -725,9 +726,12 @@
     // worked out in screen terms, so it fits whatever the shape of the screen.
     _byPlace: function () {
       var b = this.by, cam = this.camera; if (!b || !cam) return;
-      var feet = this._ndcAt(b.side * 0.62, 0.4, BY_Z);
+      // Just behind the head and a little to one side — near enough to read as
+      // right behind them, far enough over that even the tallest party hat
+      // doesn't spear through them.
+      var feet = this._ndcAt(b.side * BY_OFF, 0.44, BY_Z);
       var perY = (this.camBase.z - BY_Z) * Math.tan(cam.fov * Math.PI / 360), perX = perY * cam.aspect;
-      b.scale = clamp(0.44 * perY / BY_TALL, 0.3, 0.9);   // about a fifth of the screen tall
+      b.scale = clamp(0.5 * perY / BY_TALL, 0.3, 0.9);    // about a quarter of the screen tall
       b.x = feet.x; b.y = feet.y;                           // they hold this spot
       b.perX = perX;
       if (this.ledge) this.ledge.position.y = feet.y - 0.15;
