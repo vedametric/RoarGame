@@ -53,16 +53,19 @@
   var BY_HANDSAT = BY_SAY + BY_HOLD;
   var BY_HANDS = 1.2;        // hands up, on the spot
   var BY_SETTLE = 0.4;       // calming back down
-  var BY_Z = -2.5;           // how far behind the head they stand
+  var BY_Z = -2.2;           // how far behind the head they stand
+  var VICT_SHIFT = 0.6;      // the one being smacked leans away from the onlooker,
+                             // so the pair of them share the width of the screen
   var BY_OFF = 0.68;         // how far to one side, as a fraction of half the screen
   var BY_TALL = 3.95;        // the onlooker's height before scaling
+  var FACE_K = 0.55;         // the head, as a share of the body it sits on
   var BY_H = 5.4;            // how tall they stand; they are further back, so on
                              // screen this reads as an ordinary person behind
   var BY_FACE = 1.0;         // turned most of the way side-on, but angled enough
                              // toward us that the lean carries their head forward
                              // rather than straight behind the big head
-  var CAM_Z = 11.5;          // far enough back to get both of them in shot
-  var CAM_LOOK = -1.0;       // what the camera is pointed at
+  var CAM_Z = 9.5;           // far enough back to get both of them in shot
+  var CAM_LOOK = -0.5;       // what the camera is pointed at
   var WORDS = ['SMACK!', 'WHAP!', 'SLAP!', 'POW!', 'THWACK!'];
   var EXPR = ['ow', 'dizzy', 'shock', 'wince', 'tongue'];
 
@@ -164,7 +167,7 @@
       var rim = new T.DirectionalLight(0xff9de2, 0.8); rim.position.set(-2, 3, -5); scene.add(rim);
 
       this.raycaster = new T.Raycaster();
-      this.handPlane = new T.Plane(new T.Vector3(0, 0, 1), -1.3);
+      this.handPlane = new T.Plane(new T.Vector3(0, 0, 1), -1.0);
       this._buildHand();
     },
 
@@ -175,7 +178,7 @@
         if (o.material) { var ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(function (m) { if (m && m.map) m.map.dispose(); if (m) m.dispose(); }); }
       });
       while (this.scene.children.length) this.scene.remove(this.scene.children[0]);
-      this.scene = null; this.pivot = null; this.hand = null; this.by = null;
+      this.scene = null; this.pivot = null; this.victim = null; this.hand = null; this.by = null;
     },
 
     _newGame: function () {
@@ -198,8 +201,7 @@
 
     newFace: function () {
       var T = global.THREE, self = this;
-      if (this.pivot) { this._disposeGroup(this.pivot); this.scene.remove(this.pivot); }
-      if (this.torso) { this._disposeGroup(this.torso); this.scene.remove(this.torso); }
+      if (this.victim) { this._disposeGroup(this.victim); this.scene.remove(this.victim); }
       this.marks = []; this.stars.forEach(function (s) { self.scene.remove(s.s); }); this.stars = [];
       this.hatLoose = null;
 
@@ -217,12 +219,16 @@
       F.skinM = skin; F.hairM = hairM;
 
       // H pivots at the neck, so a smack turns the head on its neck
-      var H = this.pivot = new T.Group(); H.position.set(0, -1.15, 0);
-      var face = this.face = new T.Group(); face.position.set(0, 1.15, 0); H.add(face);
+      // Built to the same bones and the same height as the onlooker, so the two
+      // of them are the same size: feet at 0, 3.95 tall before scaling, with the
+      // head a set share of that rather than a giant ball with a body under it.
+      var H = this.pivot = new T.Group(); H.position.set(0, 2.6, 0);   // turns at the neck
+      var face = this.face = new T.Group(); face.position.set(0, 0.78, 0);
+      face.scale.setScalar(FACE_K); H.add(face);
       var head = this.head = new T.Mesh(new T.SphereGeometry(1, 56, 40), skin);
       head.scale.set(F.wide, F.tall, F.depth); head.castShadow = true; head.receiveShadow = true; face.add(head);
       var chin = new T.Mesh(new T.SphereGeometry(0.55, 24, 16), skin); chin.position.set(0, -F.tall * 0.62, 0.22); chin.scale.set(1.15, 0.8, 0.9); face.add(chin);
-      var neck = new T.Mesh(new T.CylinderGeometry(0.34, 0.4, 1.1, 18), skin); neck.position.set(0, 0.35, -0.05); neck.castShadow = true; H.add(neck);
+      var neck = new T.Mesh(new T.CylinderGeometry(0.16, 0.19, 0.42, 12), skin); neck.position.set(0, 0.16, 0); neck.castShadow = true; H.add(neck);
 
       function on(nx, ny, nz, out) {
         var l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
@@ -292,37 +298,35 @@
 
       this.scene.add(H);
       // torso, which stays put while the head takes the hits
-      // A whole little body under that big head: chest, two arms with hands,
-      // two legs standing on the floor. Kept narrow so the onlooker behind
-      // isn't swallowed by it.
+      // the body under it, bone for bone the same as the onlooker's
       var torso = this.torso = new T.Group();
       var shirt = new T.MeshStandardMaterial({ color: F.shirt, roughness: 0.8 });
       var trews = new T.MeshStandardMaterial({ color: pick(PANTS), roughness: 0.85 });
       var shoes = new T.MeshStandardMaterial({ color: 0x2a2a32, roughness: 0.55 });
-      var chest = new T.Mesh(new T.CapsuleGeometry(0.5, 0.5, 8, 18), shirt);
-      chest.position.set(0, -1.95, 0); chest.scale.set(1.25, 1, 0.85);
-      chest.castShadow = true; chest.receiveShadow = true; torso.add(chest);
-      var collar = new T.Mesh(new T.CylinderGeometry(0.34, 0.42, 0.24, 18), shirt);
-      collar.position.set(0, -1.28, 0); torso.add(collar);
-      this.bodyArms = [];
       [-1, 1].forEach(function (sd) {
-        var sh = new T.Group(); sh.position.set(sd * 0.68, -1.78, 0);
-        var arm = new T.Mesh(new T.CapsuleGeometry(0.15, 0.5, 6, 12), shirt);
-        arm.position.y = -0.4; arm.castShadow = true; sh.add(arm);
-        var hand = new T.Mesh(new T.SphereGeometry(0.19, 12, 9), skin);
-        hand.position.y = -0.84; hand.castShadow = true; sh.add(hand);
-        sh.rotation.z = sd * 0.16;
-        sh.userData.side = sd; torso.add(sh); self.bodyArms.push(sh);
-      });
-      [-1, 1].forEach(function (sd) {
-        var hip = new T.Group(); hip.position.set(sd * 0.28, -2.5, 0);
-        var leg = new T.Mesh(new T.CapsuleGeometry(0.18, 0.34, 6, 12), trews);
-        leg.position.y = -0.32; leg.castShadow = true; hip.add(leg);
-        var ft = new T.Mesh(new T.SphereGeometry(0.23, 12, 9), shoes);
-        ft.scale.set(1, 0.5, 1.5); ft.position.set(0, -0.62, 0.12); ft.castShadow = true; hip.add(ft);
+        var hip = new T.Group(); hip.position.set(sd * 0.26, 1.3, 0);
+        var leg = new T.Mesh(new T.CapsuleGeometry(0.2, 1.0, 4, 10), trews); leg.position.y = -0.58; leg.castShadow = true; hip.add(leg);
+        var ft = new T.Mesh(new T.SphereGeometry(0.22, 10, 8), shoes); ft.scale.set(1, 0.6, 1.4); ft.position.set(0, -1.18, 0.08); ft.castShadow = true; hip.add(ft);
         torso.add(hip);
       });
-      this.scene.add(torso);
+      var chest = new T.Mesh(new T.CapsuleGeometry(0.55, 0.9, 6, 16), shirt);
+      chest.position.y = 2.05; chest.scale.set(F.wide, 1, 0.72);
+      chest.castShadow = true; chest.receiveShadow = true; torso.add(chest);
+      this.bodyArms = [];
+      [-1, 1].forEach(function (sd) {
+        var sh = new T.Group(); sh.position.set(sd * 0.64 * F.wide, 2.6, 0);
+        var arm = new T.Mesh(new T.CapsuleGeometry(0.13, 0.8, 4, 10), shirt); arm.position.y = -0.52; arm.castShadow = true; sh.add(arm);
+        var hnd = new T.Mesh(new T.SphereGeometry(0.17, 12, 8), skin); hnd.position.y = -1.1; hnd.castShadow = true; sh.add(hnd);
+        sh.userData.side = sd; torso.add(sh); self.bodyArms.push(sh);
+      });
+
+      // both halves ride in one group, stood on the floor at the shared height
+      var victim = this.victim = new T.Group();
+      victim.add(torso); victim.add(H);
+      victim.position.set(0, this.floorY, 0);
+      victim.scale.setScalar(BY_H / BY_TALL);
+      this.faceK = FACE_K * BY_H / BY_TALL;     // how big a face unit is in the world
+      this.scene.add(victim);
 
       H.updateMatrixWorld(true);
       this._resetPose();
@@ -340,7 +344,7 @@
         case 'puff': for (i = 0; i < 11; i++) { s = new T.Mesh(new T.SphereGeometry(rand(0.3, 0.46), 14, 10), hairM); s.position.copy(on(rand(-0.8, 0.8), rand(0.55, 1), rand(-0.6, 0.5), 0.1)); s.castShadow = true; face.add(s); } break;
         case 'curly': for (i = 0; i < 26; i++) { s = new T.Mesh(new T.SphereGeometry(rand(0.16, 0.26), 10, 8), hairM); s.position.copy(on(rand(-1, 1), rand(0.35, 1), rand(-0.9, 0.7), 0.02)); face.add(s); } break;
         case 'spikes': for (i = 0; i < 9; i++) { var a = (i / 9) * TAU; var d = [Math.cos(a) * 0.55, 0.85, Math.sin(a) * 0.55]; s = new T.Mesh(new T.ConeGeometry(0.17, 0.8, 8), hairM); s.position.copy(on(d[0], d[1], d[2], 0.25)); aim(s, d[0], d[1], d[2]); s.rotateX(Math.PI / 2); s.castShadow = true; face.add(s); } face.add(cap(Math.PI * 0.3)); break;
-        case 'mohawk': for (i = 0; i < 7; i++) { var z = 0.75 - i * 0.28; var dd = [0, 1, z]; s = new T.Mesh(new T.BoxGeometry(0.16, 0.9 - Math.abs(z) * 0.35, 0.26), hairM); s.position.copy(on(dd[0], dd[1], dd[2], 0.3)); aim(s, 0, 1, z * 0.6); s.rotateX(Math.PI / 2); s.castShadow = true; face.add(s); } break;
+        case 'mohawk': for (i = 0; i < 7; i++) { var z = 0.75 - i * 0.28; var dd = [0, 1, z]; s = new T.Mesh(new T.BoxGeometry(0.3, 0.75 - Math.abs(z) * 0.3, 0.3), hairM); s.position.copy(on(dd[0], dd[1], dd[2], 0.16)); aim(s, 0, 1, z * 0.6); s.rotateX(Math.PI / 2); s.castShadow = true; face.add(s); } break;
         default: break;
       }
     },
@@ -396,12 +400,12 @@
       var thumb = new T.Mesh(new T.CapsuleGeometry(0.13, 0.5, 6, 12), skin); thumb.position.set(-0.62, 0.05, 0.05); thumb.rotation.z = 0.75; thumb.castShadow = true; g.add(thumb);
       var wrist = new T.Mesh(new T.CapsuleGeometry(0.3, 1.4, 6, 12), skin); wrist.position.set(0, -1.35, 0.5); wrist.rotation.x = 0.55; wrist.castShadow = true; g.add(wrist);
       var cuff = new T.Mesh(new T.CylinderGeometry(0.42, 0.42, 0.3, 16), new T.MeshStandardMaterial({ color: 0x2f7bd9 })); cuff.position.set(0, -1.9, 0.85); cuff.rotation.x = 0.55; g.add(cuff);
-      g.position.set(0, -4.0, 1.3);
-      this.handBase = 0.62;
+      g.position.set(1.15, -1.5, 1.0);
+      this.handBase = 0.42;
       g.scale.setScalar(this.handBase);
       this.scene.add(g);
       this.hand = g;
-      this.handT = new T.Vector3(0, -4.0, 1.3);
+      this.handT = new T.Vector3(1.15, -1.5, 1.0);
       this.handRest = new T.Quaternion().setFromEuler(new T.Euler(0.15, -0.35, 0.1));
       g.quaternion.copy(this.handRest);
       this.swing = null;
@@ -482,7 +486,7 @@
         var c = this.face.getWorldPosition(new T.Vector3()), ray = this.raycaster.ray;
         var closest = ray.closestPointToPoint(c, new T.Vector3());
         var d = closest.distanceTo(c);
-        if (d > 1.9) landed = false;
+        if (d > 1.9 * this.faceK) landed = false;
         normal = closest.clone().sub(c).normalize(); if (normal.length() < 0.01) normal.set(0, 0, 1);
         point = c.clone().add(new T.Vector3(normal.x * this.F.wide, normal.y * this.F.tall, normal.z * this.F.depth));
       }
@@ -502,7 +506,7 @@
       this.score += Math.min(this.combo, 5);
       if (this.score > this.best) { this.best = this.score; save(SAVED, String(this.best)); }
 
-      var side = sw.side, hy = sw.point.y - this.face.getWorldPosition(new T.Vector3()).y;
+      var side = sw.side, hy = (sw.point.y - this.face.getWorldPosition(new T.Vector3()).y) / this.faceK;
       this.yawV   += side * 5.2 * power;
       this.rollV  += -side * 3.6 * power;
       this.pitchV += -hy * 4.5 * power + rand(-1, 1);
@@ -573,7 +577,7 @@
         hg.rotation.x += hat.sx * dt; hg.rotation.z += hat.sz * dt;
         if (hg.position.y < this.floorY + 0.2) { hg.position.y = this.floorY + 0.2; hat.vy = -hat.vy * 0.35; hat.vx *= 0.6; hat.vz *= 0.6; hat.sx *= 0.4; hat.sz *= 0.4; }
         hat.t -= dt;
-        if (hat.t <= 0) { this.scene.remove(hg); this.face.add(hg); hg.position.copy(hat.home); hg.rotation.copy(hat.rot); hat.loose = false; this._pop(this.face.getWorldPosition(new T.Vector3()).add(new T.Vector3(0, 1.4, 0)), 'hat back on!', false); }
+        if (hat.t <= 0) { this.face.attach(hg); hg.position.copy(hat.home); hg.rotation.copy(hat.rot); hg.scale.setScalar(1); hat.loose = false; this._pop(this.face.getWorldPosition(new T.Vector3()).add(new T.Vector3(0, 1.4 * this.faceK, 0)), 'hat back on!', false); }
       }
 
       for (i = this.marks.length - 1; i >= 0; i--) {
@@ -590,8 +594,9 @@
       }
       for (i = this.stars.length - 1; i >= 0; i--) {
         o = this.stars[i]; o.a += dt * 4.5;
-        var top = this.face.getWorldPosition(new T.Vector3()); top.y += this.F.tall * 1.05 + 0.3;
-        o.s.position.set(top.x + Math.cos(o.a) * 1.1, top.y + Math.sin(o.a * 2) * 0.12, top.z + Math.sin(o.a) * 1.1);
+        var top = this.face.getWorldPosition(new T.Vector3()); top.y += (this.F.tall * 1.05 + 0.3) * this.faceK;
+        var orb = 1.1 * this.faceK;
+        o.s.position.set(top.x + Math.cos(o.a) * orb, top.y + Math.sin(o.a * 2) * 0.12 * this.faceK, top.z + Math.sin(o.a) * orb);
         o.s.material.rotation += dt * 3;
         if (this.dizzy <= 0) { o.s.material.opacity -= dt * 3; if (o.s.material.opacity <= 0) { this.scene.remove(o.s); o.s.material.map.dispose(); o.s.material.dispose(); this.stars.splice(i, 1); } }
       }
@@ -615,7 +620,7 @@
       // the arms swing a touch with the knocks, so the body doesn't look stuck on
       for (var ai = 0; ai < this.bodyArms.length; ai++) {
         var ba = this.bodyArms[ai], bs = ba.userData.side;
-        ba.rotation.z = bs * 0.16 + this.roll * 0.5;
+        ba.rotation.z = bs * 0.1 + this.roll * 0.5;
         ba.rotation.x = Math.sin(t * 1.4 + ai) * 0.04 - this.pitch * 0.35;
       }
 
@@ -765,8 +770,10 @@
       b.scale = BY_H / BY_TALL;
       // measured across the screen, so they sit clear of the head on a wide
       // screen and tuck in without being clipped on a narrow one
-      b.x = b.side * clamp(BY_OFF * b.perX, 2.8, 5.5);
+      b.x = b.side * clamp(BY_OFF * b.perX, 2.3, 5.5);
       b.y = this.floorY;
+      // stand the smacked one a little to the other side, so neither crowds
+      if (this.victim) this.victim.position.x = -b.side * VICT_SHIFT;
       b.g.position.set(b.x, b.y, BY_Z);
       b.g.rotation.y = -b.side * 0.28;               // turned toward the head
     },
@@ -876,7 +883,9 @@
         var pop = 1 + Math.sin(Math.min(1, (rt - b.bubbleAt) / 0.2) * Math.PI) * 0.25;
         // above them but pulled toward the middle, so it never runs off a narrow screen
         var hn = hp.clone().project(this.camera);
-        var at = this._ndcAt(clamp(hn.x - b.side * 0.34, -0.66, 0.66), clamp(hn.y + 0.06, -0.8, 0.82), BY_Z + 0.6);
+        // out past their own shoulder and up, so it never covers the face
+        // the player is trying to tap
+        var at = this._ndcAt(clamp(hn.x + b.side * 0.3, -0.72, 0.72), clamp(hn.y + 0.26, -0.8, 0.86), BY_Z + 0.6);
         var bw = b.perX * 0.5;                      // half the screen width wide
         bb.position.copy(at);
         bb.scale.set(bw * pop, bw * 0.54 * pop, 1);
@@ -930,7 +939,7 @@
     _sweat: function (point, normal, side, n) {
       var T = global.THREE;
       for (var i = 0; i < n; i++) {
-        var m = new T.Mesh(new T.SphereGeometry(rand(0.04, 0.09), 6, 5), new T.MeshBasicMaterial({ color: i % 3 ? 0xbfe9ff : 0xffe066, transparent: true }));
+        var m = new T.Mesh(new T.SphereGeometry(rand(0.04, 0.09) * this.faceK * 1.6, 6, 5), new T.MeshBasicMaterial({ color: i % 3 ? 0xbfe9ff : 0xffe066, transparent: true }));
         m.position.copy(point);
         var v = rand(2, 5);
         this.scene.add(m);
@@ -943,8 +952,8 @@
       for (var e = 0; e < 2; e++) {
         var wp = this.eyes[e].g.getWorldPosition(new T.Vector3());
         for (var i = 0; i < 3; i++) {
-          var m = new T.Mesh(new T.SphereGeometry(0.06, 6, 5), new T.MeshBasicMaterial({ color: 0x7fd3ff, transparent: true }));
-          m.scale.y = 1.6; m.position.copy(wp); m.position.z += 0.25;
+          var m = new T.Mesh(new T.SphereGeometry(0.06 * this.faceK * 1.6, 6, 5), new T.MeshBasicMaterial({ color: 0x7fd3ff, transparent: true }));
+          m.scale.y = 1.6; m.position.copy(wp); m.position.z += 0.25 * this.faceK;
           this.scene.add(m);
           this.bits.push({ m: m, vx: this.eyes[e].side * rand(0.5, 2.5), vy: rand(0.5, 2.5), vz: rand(0.5, 1.5), life: rand(0.7, 1.1), max: 1.1 });
         }
@@ -956,7 +965,7 @@
       if (this.stars.length) return;
       for (var i = 0; i < 5; i++) {
         var s = new T.Sprite(new T.SpriteMaterial({ map: this._textTex('⭐', 128, '#ffd24c'), transparent: true, depthTest: false }));
-        s.scale.set(0.55, 0.55, 1);
+        s.scale.set(0.8 * this.faceK, 0.8 * this.faceK, 1);
         this.scene.add(s);
         this.stars.push({ s: s, a: i / 5 * TAU });
       }
@@ -964,9 +973,7 @@
 
     _knockHat: function (side, power) {
       var hat = this.hat, T = global.THREE;
-      var wp = hat.g.getWorldPosition(new T.Vector3()), wq = hat.g.getWorldQuaternion(new T.Quaternion());
-      this.face.remove(hat.g); this.scene.add(hat.g);
-      hat.g.position.copy(wp); hat.g.quaternion.copy(wq);
+      this.scene.attach(hat.g);                       // keeps its size and place
       hat.loose = true; hat.vx = side * rand(2, 4) * power; hat.vy = rand(4, 6) * power; hat.vz = rand(0.5, 2); hat.sx = rand(-6, 6); hat.sz = rand(-6, 6); hat.t = 3;
       try { global.RoarAudio.sfx('bust'); } catch (e) {}
     },
@@ -976,7 +983,7 @@
       var T = global.THREE;
       var s = new T.Sprite(new T.SpriteMaterial({ map: this._textTex(word, 512, big ? '#ffd24c' : '#ff3b5b', true), transparent: true, depthTest: false }));
       s.position.copy(point).add(new T.Vector3(0, 0.5, 0.6));
-      var base = big ? 1.0 : 0.72;
+      var base = (big ? 1.0 : 0.72) * clamp(this.faceK * 1.5, 0.7, 1.4);
       s.scale.set(base * 2.2, base, 1); s.material.rotation = rand(-0.2, 0.2);
       this.scene.add(s);
       this.pops.push({ s: s, t: 0, base: base, vx: rand(-0.4, 0.4) });
