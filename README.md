@@ -427,8 +427,8 @@ and confetti when it's done. The ★ counts everything you get up to.
 
 ## ✋ THE SMACK GAME
 
-Also on the shelf, and pure daft fun. **A big silly 3D head sits in a
-spotlight and a hand follows your finger — tap to smack it.** The head is
+Also on the shelf, and pure daft fun. **A daft 3D character stands in a
+spotlight and a hand follows your finger — tap to smack them in the face.** The head is
 knocked round on its neck on springs, squashes, pulls a face — real eyelids
 squint, the mouth drops open, the brows knit — a red hand-print sticks to the
 cheek right where the hand landed, sweat and tears fly, and a comic "SMACK!"
