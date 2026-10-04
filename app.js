@@ -79,7 +79,7 @@
     { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' },
     { id: 'slice', emoji: '🍉', name: 'SLICE IT!',   note: 'swipe the fruit',      kind: 'mini' },
     { id: 'animal', emoji: '🐐', name: 'ANIMAL WORLD', note: 'roam · eat · poop',    kind: 'mini' },
-    { id: 'smack', emoji: '✋', name: 'THE SMACK GAME', note: 'smack the silly face', kind: 'mini' }
+    { id: 'smack', emoji: '🔒', name: 'NO SMACK GAME', note: 'needs a password',     kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -125,7 +125,7 @@
     ws:      function () { RoarAudio.resume(); startWordSearch(); },
     slice:   function () { RoarAudio.resume(); startSlice(); },
     animal:  function () { RoarAudio.resume(); stopEverything(); show('screen-animal-pick'); },
-    smack:   function () { RoarAudio.resume(); startSmack(); }
+    smack:   function () { RoarAudio.resume(); askPin(startSmack); }
   };
 
   var MINI_IDS = {};   // filled from MINIS, so the list stays the one truth
@@ -325,7 +325,7 @@
     'screen-odd': 'Odd one out', 'screen-cups': 'Which cup?',
     'screen-colour': 'Colouring', 'screen-draw': 'Drawing', 'screen-ws': 'Word search',
     'screen-slice': 'Slice it!', 'screen-animal': 'Animal world', 'screen-animal-pick': 'Animal world',
-    'screen-smack': 'The smack game'
+    'screen-smack': 'No smack game'
   };
 
   function showBar(id) {
@@ -1677,6 +1677,61 @@
   }
   on('sm-new', function () { SmackGame.again(); });
   miniLeave('screen-smack', { emoji: '✋', title: 'Stop smacking?', stay: 'KEEP SMACKING' });
+
+  /* ── the password on NO SMACK GAME ───────────────────────────
+     A grown-up's PIN, asked every time the tile is tapped, so the game can't
+     be opened by a small person on their own. It is only a number kept in the
+     page — it stops a child, not a determined grown-up, which is all it is
+     meant to do. */
+
+  var PIN = '999666111';
+  var pinGo = null, pinTyped = '';
+
+  function askPin(onOk) {
+    pinGo = onOk; pinTyped = '';
+    $('pin-msg').textContent = 'Ask a grown-up for the password';
+    drawPinDots();
+    $('pin-sheet').hidden = false;
+  }
+
+  function closePin() {
+    $('pin-sheet').hidden = true;
+    pinGo = null; pinTyped = '';
+  }
+
+  function drawPinDots() {
+    var d = $('pin-dots'), out = '';
+    for (var i = 0; i < PIN.length; i++) out += '<i' + (i < pinTyped.length ? ' class="is-on"' : '') + '></i>';
+    d.innerHTML = out;
+  }
+
+  function pinKey(k) {
+    if (k === 'del') { pinTyped = pinTyped.slice(0, -1); drawPinDots(); return; }
+    if (pinTyped.length >= PIN.length) return;
+    pinTyped += k;
+    drawPinDots();
+    try { RoarAudio.sfx('tick'); } catch (e) {}
+    if (pinTyped.length < PIN.length) return;
+    var go = pinGo;
+    if (pinTyped === PIN) {
+      try { RoarAudio.sfx('win'); } catch (e) {}
+      closePin();
+      if (go) go();
+    } else {
+      var card = $('pin-sheet').querySelector('.pin-card');
+      $('pin-msg').textContent = 'That is not it — try again';
+      pinTyped = ''; drawPinDots();
+      try { RoarAudio.sfx('spellbad'); } catch (e) {}
+      card.classList.remove('is-wrong'); void card.offsetWidth; card.classList.add('is-wrong');
+    }
+  }
+
+  $('pin-pad').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-k]') : null;
+    if (b) pinKey(b.getAttribute('data-k'));
+  });
+  on('pin-cancel', closePin);
+  $('pin-sheet').addEventListener('click', function (e) { if (e.target === $('pin-sheet')) closePin(); });
 
   function startAnimal(kind) {
     stopEverything();

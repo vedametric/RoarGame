@@ -425,9 +425,16 @@ you poop, and a little **quest** in the corner — "eat 5 flowers", "scare 3
 sheep", "fly over the pond" — gives you something to aim at, with a fanfare
 and confetti when it's done. The ★ counts everything you get up to.
 
-## ✋ THE SMACK GAME
+## 🔒 NO SMACK GAME
 
-Also on the shelf, and pure daft fun. **A daft 3D character stands in a
+**Behind a password.** Its tile on the shelf is a 🔒, and tapping it asks for a
+grown-up's PIN on a number pad before the game will open — every time, so it
+can't be opened by a small person on their own. (It is only a number kept in
+the page: it stops a child, not a determined grown-up, which is all it is for.)
+The PIN lives at the top of the password section in `app.js` if you want to
+change it.
+
+Otherwise, pure daft fun. **A daft 3D character stands in a
 spotlight and a hand follows your finger — tap to smack them in the face.** The head is
 knocked round on its neck on springs, squashes, pulls a face — real eyelids
 squint, the mouth drops open, the brows knit — a red hand-print sticks to the
@@ -645,7 +652,7 @@ game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
-game-smack.js   THE SMACK GAME — a random 3D head (Three.js) and a hand to smack it
+game-smack.js   NO SMACK GAME — a random 3D character (Three.js) and a hand to smack
 vendor/         three.min.js, the one library the site uses
 app.js          screen flow, photos, results
 ```
