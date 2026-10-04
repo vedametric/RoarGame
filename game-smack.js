@@ -1,29 +1,32 @@
 /*
- * game-smack.js — "THE SMACK GAME"
+ * game-smack.js — "NO SMACK GAME"
  *
- * A big daft 3D head in a spotlight, and a hand that follows your finger. Tap
- * and the hand winds up and slaps it. Built on Three.js (vendor/), so the head
- * is a real lit, shadowed ball with real eyelids that squint, a mouth that
- * opens, brows that knit and a hat that gets knocked clean off — and when a
- * smack lands the head is knocked round on its neck on angular springs, red
- * hand-prints stick to the cheek where the hand hit, tears fly, stars orbit
- * when it's dizzy, and a comic "SMACK!" pops at the point of impact.
+ * A game that teaches the opposite of its name: smacking is not ok.
  *
- * A fresh face is rolled every time the game loads, and on 🎲 NEW FACE: skin,
- * hair colour and style, eye size and spacing and colour, brows, nose, ears,
- * freckles, glasses, a moustache or beard, a hat. Everything is built from
- * primitives in code; there are no image assets.
+ * A person stands in a spotlight and a hand follows your finger. Touch them
+ * gently — a plain tap — and they light up, hearts float off them, the person
+ * behind cheers "That is kind!", and that is the only thing in the game that
+ * scores. Swipe your hand across them instead and it lands as a smack: no
+ * points at all, "NO SMACKING!" pops up, their face falls, they cry, and the
+ * person standing behind shouts "No smacking!" out loud. Your run of kind
+ * touches goes back to nothing and you start being gentle again.
  *
- * Somebody is always watching: one onlooker stands at the back, peeking over
- * the floor behind them. Every smack they turn side-on, throw one hand out in
- * front and sweep the other back behind, lean into a slanted pose with one leg
- * up, and shout "Nooooo!" — all stock still on the spot. It's the same person
- * for as long as the face lasts; a new face brings a different onlooker.
+ * Nothing is ever damaged. There are no marks, no bruises and no blood — a
+ * smack leaves someone upset, and that is the whole point being made.
  *
- * Gameplay: it counts your smacks, and quick smacks chain into a combo worth
- * more each hit. A big combo leaves the head dizzy, eyes spinning, until it
- * shakes itself off. A fast swipe across the face is a harder backhand. The ★
- * keeps your best. Nothing to lose.
+ * Built on Three.js (vendor/), so they are really lit and shadowed, with real
+ * eyelids that squint, a mouth that opens and brows that knit. A fresh person
+ * is rolled every time the game loads, and on 🎲 NEW FACE: skin, hair colour
+ * and style, eye size and spacing and colour, brows, nose, ears, freckles,
+ * glasses, a moustache or beard, a hat. Everything is built from primitives in
+ * code; there are no image assets.
+ *
+ * Somebody is always watching: one onlooker stands on the floor right behind.
+ * On a smack they turn side-on, throw one hand out in front and sweep the
+ * other back behind, lean into a slanted pose with one leg up, and shout "No
+ * smacking!" — all stock still on the spot. On a kind touch they skip the lean
+ * and just throw their hands up and cheer. It's the same person for as long as
+ * the face lasts; a new face brings a different onlooker.
  */
 (function (global) {
   'use strict';
@@ -38,7 +41,9 @@
   var HAIRDOS = ['short', 'puff', 'spikes', 'mohawk', 'bun', 'long', 'curly', 'bald'];
   var HATS = ['none', 'none', 'top', 'cap', 'party', 'crown'];
   var NOSES = ['button', 'round', 'long'];
-  var NOS = ['Nooooo!', 'Nooooo!', 'Oh nooooo!', 'Noooo!', 'Oh no!'];
+  // what the onlooker says out loud, on a smack and on a kind touch
+  var NOS = ['No smacking!', 'No! Not right!', 'We do not smack!', 'Smacking is not ok!', 'Be gentle!'];
+  var CHEERS = ['That is kind!', 'Well done!', 'Lovely!', 'That is the way!', 'So gentle!'];
   var PANTS = [0x2b3a67, 0x333333, 0x5a3e2b, 0x1e5b4a, 0x6b2f5a];
   var BY_STYLES = ['short', 'long', 'bun', 'bald', 'puff', 'cap'];
   // The onlooker's routine, as Sienna choreographed (and acted out for a
@@ -66,8 +71,9 @@
                              // rather than straight behind the big head
   var CAM_Z = 9.5;           // far enough back to get both of them in shot
   var CAM_LOOK = -0.5;       // what the camera is pointed at
-  var WORDS = ['SMACK!', 'WHAP!', 'SLAP!', 'POW!', 'THWACK!'];
-  var EXPR = ['ow', 'dizzy', 'shock', 'wince', 'tongue'];
+  var SORRY = ['NO SMACKING!', 'NOT RIGHT!', 'THAT HURTS!', 'NO!'];
+  var KINDPOP = ['THANK YOU!', 'SO KIND!', 'LOVELY!', 'GENTLE!'];
+  var EXPR = ['sad', 'ow', 'wince'];
 
   function rand(a, b) { return a + Math.random() * (b - a); }
   function pick(a) { return a[(Math.random() * a.length) | 0]; }
@@ -182,8 +188,8 @@
     },
 
     _newGame: function () {
-      this.score = 0; this.combo = 0; this.lastHit = -9;
-      this.marks = []; this.bits = []; this.stars = []; this.pops = [];
+      this.score = 0; this.kindRun = 0; this.sad = 0;
+      this.bits = []; this.pops = [];
       this.time = 0; this.shake = 0;
       this.newFace();
       this._render();
@@ -193,7 +199,7 @@
       if (!this.running) return;
       this.newFace();
       try { global.RoarAudio.sfx('sparkle'); } catch (e) {}
-      try { global.Say.speak('New face!'); } catch (e) {}
+      try { global.Say.speak('Be gentle!'); } catch (e) {}
       this._render();
     },
 
@@ -202,8 +208,7 @@
     newFace: function () {
       var T = global.THREE, self = this;
       if (this.victim) { this._disposeGroup(this.victim); this.scene.remove(this.victim); }
-      this.marks = []; this.stars.forEach(function (s) { self.scene.remove(s.s); }); this.stars = [];
-      this.hatLoose = null;
+      this.kindRun = 0; this.sad = 0;
 
       var F = this.F = {
         skin: pick(SKIN), hair: pick(HAIRC), hairdo: pick(HAIRDOS), hat: pick(HATS), eyeC: pick(EYEC), shirt: pick(SHIRT),
@@ -385,7 +390,7 @@
         for (var i = 0; i < 6; i++) { var a = i / 6 * TAU; var pt = new T.Mesh(new T.ConeGeometry(0.1, 0.32, 6), gm); pt.position.set(Math.cos(a) * 0.55, 0.42, Math.sin(a) * 0.55); g.add(pt); var gem = new T.Mesh(new T.SphereGeometry(0.06, 8, 6), new T.MeshStandardMaterial({ color: pick([0xff3b5b, 0x3bb6ff, 0x4be08a]), roughness: 0.2 })); gem.position.set(Math.cos(a + 0.5) * 0.6, 0.12, Math.sin(a + 0.5) * 0.6); g.add(gem); }
       }
       face.add(g);
-      this.hat = { g: g, home: g.position.clone(), rot: g.rotation.clone(), loose: false };
+      this.hat = { g: g };
     },
 
     _buildHand: function () {
@@ -418,7 +423,7 @@
     _resetPose: function () {
       this.yaw = 0; this.yawV = 0; this.pitch = 0; this.pitchV = 0; this.roll = 0; this.rollV = 0;
       this.sq = 1; this.sqV = 0;
-      this.expr = null; this.exprT = 0; this.dizzy = 0; this.shakeOff = 0;
+      this.expr = null; this.exprT = 0;
       this.blink = 0;
     },
 
@@ -434,16 +439,17 @@
         var p = ndc(e);
         self._aimHand(p);
         self.press = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId, fired: false };
-        self._smack(p, 1);
+        self._reach(p, true);                 // a plain touch is a gentle one
       };
       this._move = function (e) {
         if (!self.running || self.paused) return;
         var p = ndc(e);
         self._aimHand(p);
-        // a fast swipe across the face is a harder backhand
+        // dragging your hand hard across them is a smack — and the game has
+        // something to say about that
         if (self.press && self.press.id === e.pointerId && !self.press.fired) {
           var dx = e.clientX - self.press.x, dt = performance.now() - self.press.t;
-          if (Math.abs(dx) > self.W * 0.3 && dt < 220) { self.press.fired = true; self._smack(p, 1.55); }
+          if (Math.abs(dx) > self.W * 0.3 && dt < 320) { self.press.fired = true; self._reach(p, false); }
         }
       };
       this._up = function () { self.press = null; };
@@ -469,13 +475,17 @@
       if (this.raycaster.ray.intersectPlane(this.handPlane, hit)) this.handT.copy(hit);
     },
 
-    // Where would this tap land? Ray-cast onto the head; a tap that just misses
-    // still aims for the nearest bit of cheek, so a small child never whiffs.
-    _smack: function (p, power) {
+    // Where would this touch land? Ray-cast onto the head; a tap that just
+    // misses still aims for the nearest bit of cheek, so a small child never
+    // whiffs. `kind` is the whole difference between the two things you can do.
+    _reach: function (p, kind) {
       var T = global.THREE;
-      if (this.swing && this.swing.t < this.swing.dur * 0.6) return;
+      // A gentle touch always gets through, and a swipe cuts in on one, so the
+      // moment it turns into a smack the game can say so. Only a second smack
+      // has to wait for the first to finish.
+      if (!kind && this.swing && !this.swing.kind && this.swing.t < this.swing.dur * 0.6) return;
       this.raycaster.setFromCamera(new T.Vector2(p.x, p.y), this.camera);
-      var targets = [this.head]; if (this.hat && !this.hat.loose) targets.push(this.hat.g);
+      var targets = [this.head]; if (this.hat) targets.push(this.hat.g);
       var hits = this.raycaster.intersectObjects(targets, true);
       var point, normal, landed = true;
       if (hits.length) {
@@ -492,45 +502,56 @@
       }
       var side = point.x >= 0 ? 1 : -1;
       var start = this.hand.position.clone();
-      var windup = start.clone().add(new T.Vector3(side * 1.1, 0.5, 0.9));
-      this.swing = { t: 0, dur: 0.26, start: start, windup: windup, point: point, normal: normal, side: side, power: power * rand(0.9, 1.15), hit: false, landed: landed };
-      try { global.RoarAudio.sfx('whoosh'); } catch (e) {}
+      // a kind hand reaches straight in, slowly, with no wind-up at all
+      var windup = kind ? start.clone() : start.clone().add(new T.Vector3(side * 1.1, 0.5, 0.9));
+      this.swing = { t: 0, dur: kind ? 0.34 : 0.24, start: start, windup: windup, point: point, normal: normal,
+                     side: side, power: kind ? 1 : rand(0.95, 1.3), kind: !!kind, hit: false, landed: landed };
+      if (!kind) { try { global.RoarAudio.sfx('whoosh'); } catch (e) {} }
     },
 
+    // A smack. There is nothing to win here. No points, nothing marked on them,
+    // no bruises and no blood — just somebody who has been hurt and is upset,
+    // and everybody saying the same thing: no smacking, that is not right.
     _hit: function (sw) {
       var T = global.THREE, now = this.time;
-      var quick = now - this.lastHit < 0.85;
-      this.combo = quick ? this.combo + 1 : 1;
-      this.lastHit = now;
-      var power = sw.power, hard = power > 1.3;
-      this.score += Math.min(this.combo, 5);
-      if (this.score > this.best) { this.best = this.score; save(SAVED, String(this.best)); }
-
       var side = sw.side, hy = (sw.point.y - this.face.getWorldPosition(new T.Vector3()).y) / this.faceK;
-      this.yawV   += side * 5.2 * power;
-      this.rollV  += -side * 3.6 * power;
-      this.pitchV += -hy * 4.5 * power + rand(-1, 1);
-      this.sqV    -= 5.5 * power;
-      this.shake   = 0.22 * power;
 
-      this.expr = pick(EXPR); this.exprT = rand(0.7, 1.1);
-      if (this.combo >= 4 || hard) { this.dizzy = 2.6; this.expr = 'dizzy'; this.exprT = 2.6; this._stars(); }
+      this.kindRun = 0;              // being kind has to start again
+      this.sad = 2.6;
+      this.yawV   += side * 4.0 * sw.power;
+      this.rollV  += -side * 2.6 * sw.power;
+      this.pitchV += -hy * 3.2 * sw.power;
+      this.sqV    -= 4.0 * sw.power;
+      this.shake   = 0.15 * sw.power;
 
-      this._mark(sw.point, sw.normal);
-      this._pop(sw.point, hard ? 'POW!' : pick(WORDS), hard);
-      this._sweat(sw.point, sw.normal, side, hard ? 9 : 5);
-      if (hard || Math.random() < 0.5) this._tears();
-      if (this.hat && !this.hat.loose && (hard || this.combo >= 3 || Math.random() < 0.3)) this._knockHat(side, power);
-
-      try { global.RoarAudio.sfx(hard ? 'punch' : 'smack'); } catch (e) {}
-      // the face cries (or whimpers) — throttled so a flurry of taps doesn't
-      // stack a dozen wails — and the person at the back shouts "No!"
+      this.expr = pick(EXPR); this.exprT = 2.2;
+      this._pop(sw.point, pick(SORRY), false);
+      this._tears();
+      try { global.RoarAudio.sfx('thud'); } catch (e) {}
+      // they cry — throttled so a flurry of taps doesn't stack a dozen wails
       if (now - (this._lastVoice || -1) > 0.35) {
         this._lastVoice = now;
-        var cry = hard || this.combo >= 3 || Math.random() < 0.55;
-        try { global.RoarAudio.sfx(cry ? 'cry' : 'whimper'); } catch (e) {}
+        try { global.RoarAudio.sfx(Math.random() < 0.6 ? 'cry' : 'whimper'); } catch (e) {}
       }
-      this._byReact();
+      this._byReact(false);          // and the person behind says it out loud
+      this._render();
+    },
+
+    // A gentle hand. This is the whole game: being kind is the only thing that
+    // scores, and keeping it up scores more.
+    _kind: function (sw) {
+      var now = this.time;
+      this.kindRun += 1;
+      this.score += Math.min(this.kindRun, 5);
+      if (this.score > this.best) { this.best = this.score; save(SAVED, String(this.best)); }
+      this.sad = 0;
+      this.pitchV += 0.7; this.sqV -= 0.8;      // a little nod, nothing knocked
+
+      this.expr = 'happy'; this.exprT = 1.4;
+      this._pop(sw.point, pick(KINDPOP), true);
+      this._hearts(sw.point);
+      try { global.RoarAudio.sfx('sparkle'); } catch (e) {}
+      if (now - (this._lastVoice || -1) > 0.9) { this._lastVoice = now; this._byReact(true); }
       this._render();
     },
 
@@ -556,54 +577,35 @@
       this.shake *= Math.exp(-dt * 8); if (this.shake < 0.004) this.shake = 0;
 
       if (this.exprT > 0) { this.exprT -= dt; if (this.exprT <= 0) this.expr = null; }
-      if (this.dizzy > 0) { this.dizzy -= dt; if (this.dizzy <= 0) { this.shakeOff = 0.6; try { global.RoarAudio.sfx('puff'); } catch (e) {} } }
-      if (this.shakeOff > 0) { this.shakeOff -= dt; this.yaw += Math.sin(this.time * 40) * 0.09 * (this.shakeOff / 0.6); }
+      if (this.sad > 0) { this.sad -= dt; if (this.sad <= 0) this._render(); }
       this.blinkT -= dt; if (this.blinkT <= 0) { this.blink = 0.13; this.blinkT = rand(2, 5); }
       if (this.blink > 0) this.blink -= dt;
 
       // the swing
       if (this.swing) {
         var sw = this.swing; sw.t += dt; var k = clamp(sw.t / sw.dur, 0, 1);
-        if (!sw.hit && k >= 0.5) { sw.hit = true; if (sw.landed) this._hit(sw); }
+        if (!sw.hit && k >= 0.5) { sw.hit = true; if (sw.landed) { if (sw.kind) this._kind(sw); else this._hit(sw); } }
         if (k >= 1) this.swing = null;
       }
       this._byStep(dt);
 
-      // the loose hat falls, bounces, then pops back on
-      var hat = this.hat;
-      if (hat && hat.loose) {
-        var hg = hat.g; hat.vy -= 16 * dt;
-        hg.position.x += hat.vx * dt; hg.position.y += hat.vy * dt; hg.position.z += hat.vz * dt;
-        hg.rotation.x += hat.sx * dt; hg.rotation.z += hat.sz * dt;
-        if (hg.position.y < this.floorY + 0.2) { hg.position.y = this.floorY + 0.2; hat.vy = -hat.vy * 0.35; hat.vx *= 0.6; hat.vz *= 0.6; hat.sx *= 0.4; hat.sz *= 0.4; }
-        hat.t -= dt;
-        if (hat.t <= 0) { this.face.attach(hg); hg.position.copy(hat.home); hg.rotation.copy(hat.rot); hg.scale.setScalar(1); hat.loose = false; this._pop(this.face.getWorldPosition(new T.Vector3()).add(new T.Vector3(0, 1.4 * this.faceK, 0)), 'hat back on!', false); }
-      }
-
-      for (i = this.marks.length - 1; i >= 0; i--) {
-        o = this.marks[i]; o.life -= dt * 0.22;
-        o.g.children.forEach(function (c) { c.material.opacity = Math.max(0, Math.min(0.8, o.life * 0.8)); });
-        if (o.life <= 0) { this.face.remove(o.g); this._disposeGroup(o.g); this.marks.splice(i, 1); }
-      }
+      // tears fall; hearts float up and never touch the floor
       for (i = this.bits.length - 1; i >= 0; i--) {
-        o = this.bits[i]; o.life -= dt; o.vy -= 9 * dt;
+        o = this.bits[i]; o.life -= dt;
+        if (o.float) { o.vy += 1.4 * dt; o.m.material.rotation += dt * 1.2; }
+        else {
+          o.vy -= 9 * dt;
+          if (o.m.position.y + o.vy * dt < this.floorY + 0.05) { o.m.position.y = this.floorY + 0.05; o.vy = -o.vy * 0.25; o.vx *= 0.5; o.vz *= 0.5; }
+        }
         o.m.position.x += o.vx * dt; o.m.position.y += o.vy * dt; o.m.position.z += o.vz * dt;
-        if (o.m.position.y < this.floorY + 0.05) { o.m.position.y = this.floorY + 0.05; o.vy = -o.vy * 0.25; o.vx *= 0.5; o.vz *= 0.5; }
         o.m.material.opacity = clamp(o.life / o.max, 0, 1);
-        if (o.life <= 0) { this.scene.remove(o.m); o.m.geometry.dispose(); o.m.material.dispose(); this.bits.splice(i, 1); }
-      }
-      for (i = this.stars.length - 1; i >= 0; i--) {
-        o = this.stars[i]; o.a += dt * 4.5;
-        var top = this.face.getWorldPosition(new T.Vector3()); top.y += (this.F.tall * 1.05 + 0.3) * this.faceK;
-        var orb = 1.1 * this.faceK;
-        o.s.position.set(top.x + Math.cos(o.a) * orb, top.y + Math.sin(o.a * 2) * 0.12 * this.faceK, top.z + Math.sin(o.a) * orb);
-        o.s.material.rotation += dt * 3;
-        if (this.dizzy <= 0) { o.s.material.opacity -= dt * 3; if (o.s.material.opacity <= 0) { this.scene.remove(o.s); o.s.material.map.dispose(); o.s.material.dispose(); this.stars.splice(i, 1); } }
+        // sprites share one geometry between them, so only a mesh's is ours to drop
+        if (o.life <= 0) { this.scene.remove(o.m); if (!o.m.isSprite && o.m.geometry) o.m.geometry.dispose(); if (o.m.material.map) o.m.material.map.dispose(); o.m.material.dispose(); this.bits.splice(i, 1); }
       }
       for (i = this.pops.length - 1; i >= 0; i--) {
-        o = this.pops[i]; o.t += dt; o.s.position.y += dt * 1.4; o.s.position.x += o.vx * dt;
+        o = this.pops[i]; o.t += dt; o.s.position.y += dt * 0.9; o.s.position.x += o.vx * dt;
         var kk = o.t / 0.75; o.s.material.opacity = Math.max(0, 1 - kk * kk); var sc = o.base * (1 + Math.sin(Math.min(1, kk * 3) * Math.PI / 2) * 0.35);
-        o.s.scale.set(sc * 2.2, sc, 1);
+        o.s.scale.set(sc * 4, sc, 1);
         if (o.t > 0.75) { this.scene.remove(o.s); o.s.material.map.dispose(); o.s.material.dispose(); this.pops.splice(i, 1); }
       }
     },
@@ -628,18 +630,18 @@
       var ex = this.expr, up = -1.2, lo = 1.2, open = 0.08, smile = true, teeth = false, tongue = false, browK = F.browAngle;
       if (ex === 'ow') { up = -0.45; lo = 0.45; open = 1; teeth = true; browK = 0.5; smile = false; }
       else if (ex === 'wince') { up = -0.1; lo = 0.15; open = 0.35; browK = 0.6; smile = false; }
-      else if (ex === 'shock') { up = -1.6; lo = 1.6; open = 1.1; browK = -0.55; smile = false; }
-      else if (ex === 'tongue') { up = -0.35; lo = 0.8; open = 0.7; tongue = true; browK = F.browAngle; }
-      else if (ex === 'dizzy') { up = -0.7; lo = 0.7; open = 0.5; browK = 0.3; smile = false; }
+      else if (ex === 'sad') { up = -0.3; lo = 0.32; open = 0.3; browK = 0.78; smile = false; }
+      else if (ex === 'happy') { up = -1.3; lo = 1.3; open = 0.4; teeth = true; browK = -0.18; }
       if (this.blink > 0) { up = -0.05; lo = 0.1; }
-      // pupils follow the hand a little, or spin when dizzy
+      // pupils follow the hand a little; they look down when they're upset
       var hp = this.hand.position;
       for (i = 0; i < 2; i++) {
         e = this.eyes[i];
         e.up.rotation.x = lerp(e.up.rotation.x, up, 0.35); e.lo.rotation.x = lerp(e.lo.rotation.x, lo, 0.35);
-        var px, py;
-        if (ex === 'dizzy') { px = Math.cos(t * 9 + i) * e.r * 0.45; py = Math.sin(t * 9 + i) * e.r * 0.45; }
-        else { var wp = e.g.getWorldPosition(new T.Vector3()); px = clamp((hp.x - wp.x) * 0.05, -e.r * 0.35, e.r * 0.35); py = clamp((hp.y - wp.y) * 0.05, -e.r * 0.3, e.r * 0.3); }
+        var wp = e.g.getWorldPosition(new T.Vector3());
+        var px = clamp((hp.x - wp.x) * 0.05, -e.r * 0.35, e.r * 0.35);
+        var py = clamp((hp.y - wp.y) * 0.05, -e.r * 0.3, e.r * 0.3);
+        if (ex === 'sad') py = -e.r * 0.3;
         e.iris.position.x = lerp(e.iris.position.x, px, 0.25); e.iris.position.y = lerp(e.iris.position.y, py, 0.25);
         e.pupil.position.x = e.iris.position.x; e.pupil.position.y = e.iris.position.y;
         var want = Math.PI * 0.075 + e.side * -browK;
@@ -657,12 +659,12 @@
       if (this.swing) {
         var sw = this.swing, k = clamp(sw.t / sw.dur, 0, 1), eIn = Math.sin(k * Math.PI);
         var pos = new T.Vector3();
-        if (k < 0.5) { var a = k / 0.5; pos.lerpVectors(sw.start, sw.point.clone().add(sw.normal.clone().multiplyScalar(0.34)), a * a); pos.lerp(sw.windup, Math.sin(a * Math.PI) * 0.6); }
+        if (k < 0.5) { var a = k / 0.5; pos.lerpVectors(sw.start, sw.point.clone().add(sw.normal.clone().multiplyScalar(0.34)), sw.kind ? a : a * a); if (!sw.kind) pos.lerp(sw.windup, Math.sin(a * Math.PI) * 0.6); }
         else { var b = (k - 0.5) / 0.5; pos.lerpVectors(sw.point.clone().add(sw.normal.clone().multiplyScalar(0.34)), this.handT, 1 - (1 - b) * (1 - b)); }
         hand.position.copy(pos);
         var q = new T.Quaternion(), m4 = new T.Matrix4(); m4.lookAt(pos.clone().sub(sw.normal), pos, new T.Vector3(0, 1, 0)); q.setFromRotationMatrix(m4);
         hand.quaternion.slerpQuaternions(this.handRest, q, eIn);
-        var hs = this.handBase * (1 + eIn * 0.15); hand.scale.set(hs, hs, hs);
+        var hs = this.handBase * (1 + eIn * (sw.kind ? 0.04 : 0.15)); hand.scale.set(hs, hs, hs);
       } else {
         hand.position.lerp(this.handT, Math.min(1, 12 * dt));
         hand.position.y += Math.sin(t * 2.2) * 0.004;
@@ -753,7 +755,7 @@
       this.scene.add(g);
       g.rotation.order = 'YXZ';                     // lean in their own frame, then turn
       this.by = { g: g, up: up, head: head, arms: arms, legs: legs, eyes: eyes, mouth: mouth, body: body, bubble: bubble, P: P, side: side,
-                  pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', pop: 0, scale: 1,
+                  pitch: rand(0.55, 1.9), rate: rand(0.9, 1.25), state: 'rise', pop: 0, scale: 1, kind: false,
                   rt: 0, upLen: BY_HANDS, said: false, saidAt: -9, bubbleAt: 0, t: 0 };
       this._byPlace();
     },
@@ -791,19 +793,27 @@
       return hit;
     },
 
-    // A smack: start the routine. Smacks during the arm-and-leg beats just let
-    // it play out; smacks while they're running keep them running, and they
-    // shout again once they've drawn breath rather than gabbling.
-    _byReact: function () {
+    // A smack starts the whole routine: the arm beats, the slanted lean, the
+    // "No smacking!". A kind touch skips straight to hands-up — the slanted
+    // pose belongs to the "No", not to a well done. Smacks during the beats
+    // just let it play out, and they shout again once they've drawn breath
+    // rather than gabbling.
+    _byReact: function (kind) {
       var b = this.by; if (!b) return;
-      if (b.state !== 'react') { b.state = 'react'; b.rt = 0; b.upLen = BY_HANDS; b.said = false; return; }
+      b.kind = !!kind;
+      if (b.state !== 'react' || kind) {
+        b.state = 'react'; b.upLen = BY_HANDS; b.said = false;
+        b.rt = kind ? BY_HANDSAT + 0.2 : 0;     // past the lean, straight to the cheer
+        if (kind) this._bySay();
+        return;
+      }
       if (b.rt < BY_HANDSAT) return;
       b.upLen = Math.max(b.upLen, b.rt - BY_HANDSAT + 1.2);
       if (b.t - b.saidAt > 0.9) this._bySay();
     },
 
     _bySay: function () {
-      var b = this.by, word = pick(NOS);
+      var b = this.by, word = pick(b.kind ? CHEERS : NOS);
       b.said = true; b.saidAt = b.t; b.bubbleAt = b.rt;
       if (b.bubble.material.map) b.bubble.material.map.dispose();
       b.bubble.material.map = this._bubbleTex(word.toUpperCase()); b.bubble.material.needsUpdate = true;
@@ -885,7 +895,7 @@
         var hn = hp.clone().project(this.camera);
         // out past their own shoulder and up, so it never covers the face
         // the player is trying to tap
-        var at = this._ndcAt(clamp(hn.x + b.side * 0.3, -0.72, 0.72), clamp(hn.y + 0.26, -0.8, 0.86), BY_Z + 0.6);
+        var at = this._ndcAt(clamp(hn.x + b.side * 0.3, -0.66, 0.66), clamp(hn.y + 0.26, -0.8, 0.8), BY_Z + 0.6);
         var bw = b.perX * 0.5;                      // half the screen width wide
         bb.position.copy(at);
         bb.scale.set(bw * pop, bw * 0.54 * pop, 1);
@@ -906,46 +916,33 @@
       c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
       c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
       c.fill(); c.stroke();
-      // as big as fits: "NO!" fills the bubble, "OH NOOOO!" shrinks to fit inside it
-      var fs = 124;
-      do { c.font = '900 ' + fs + 'px system-ui, -apple-system, Segoe UI, sans-serif'; fs -= 4; }
-      while (fs > 40 && c.measureText(text).width > w - 56);
+      // As big as fits: "NO!" fills the bubble; a whole sentence like "SMACKING
+      // IS NOT OK!" shrinks, and then breaks over two lines rather than running
+      // out past the sides of the bubble it is meant to be inside.
+      var maxW = w - 56, font = function (n) { c.font = '900 ' + n + 'px system-ui, -apple-system, Segoe UI, sans-serif'; };
+      var fs = 124, lines = [text];
+      font(fs);
+      while (fs > 56 && c.measureText(text).width > maxW) { fs -= 4; font(fs); }
+      if (c.measureText(text).width > maxW) {
+        // break at the gap that leaves the two halves most even
+        var ws = text.split(' '), at = 1, diff = 1e9;
+        for (var i = 1; i < ws.length; i++) {
+          var d = Math.abs(ws.slice(0, i).join(' ').length - ws.slice(i).join(' ').length);
+          if (d < diff) { diff = d; at = i; }
+        }
+        lines = ws.length > 1 ? [ws.slice(0, at).join(' '), ws.slice(at).join(' ')] : [text];
+        fs = 96; font(fs);
+        while (fs > 28 && Math.max(c.measureText(lines[0]).width, c.measureText(lines[lines.length - 1]).width) > maxW) { fs -= 4; font(fs); }
+      }
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = '#e8203c'; c.fillText(text, x + w / 2, y + h / 2 + 6);
+      c.fillStyle = '#e8203c';
+      var cy = y + h / 2 + 6, lh = fs * 1.06;
+      if (lines.length < 2) c.fillText(lines[0], x + w / 2, cy);
+      else { c.fillText(lines[0], x + w / 2, cy - lh / 2); c.fillText(lines[1], x + w / 2, cy + lh / 2); }
       var tex = new T.CanvasTexture(cv); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; return tex;
     },
 
     /* ── effects ───────────────────────────────────────────────── */
-
-    // A red hand-print stuck to the face where the hand landed.
-    _mark: function (point, normal) {
-      var T = global.THREE, g = new T.Group();
-      var m = new T.MeshStandardMaterial({ color: 0xff2e4d, transparent: true, opacity: 0.8, roughness: 1, depthWrite: false });
-      var palm = new T.Mesh(new T.SphereGeometry(0.19, 12, 8), m); palm.scale.set(1, 1.1, 0.25); palm.position.y = -0.06; g.add(palm);
-      for (var i = 0; i < 4; i++) { var f = new T.Mesh(new T.SphereGeometry(0.07, 8, 6), m); f.scale.set(1, 1.9, 0.25); f.position.set(-0.13 + i * 0.087, 0.22, 0); g.add(f); }
-      var th = new T.Mesh(new T.SphereGeometry(0.07, 8, 6), m); th.scale.set(1, 1.5, 0.25); th.position.set(-0.24, 0.02, 0); th.rotation.z = 0.7; g.add(th);
-      var local = this.face.worldToLocal(point.clone().add(normal.clone().multiplyScalar(0.035)));
-      g.position.copy(local);
-      var dirLocal = this.face.worldToLocal(point.clone().add(normal)).sub(this.face.worldToLocal(point.clone())).normalize();
-      g.lookAt(g.position.clone().add(dirLocal));
-      // lookAt in a child uses world space; fix by aiming in local space instead
-      var q = new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 0, 1), dirLocal); g.quaternion.copy(q);
-      g.rotateZ(rand(-0.5, 0.5));
-      this.face.add(g);
-      this.marks.push({ g: g, life: 1 });
-      if (this.marks.length > 7) { var old = this.marks.shift(); this.face.remove(old.g); this._disposeGroup(old.g); }
-    },
-
-    _sweat: function (point, normal, side, n) {
-      var T = global.THREE;
-      for (var i = 0; i < n; i++) {
-        var m = new T.Mesh(new T.SphereGeometry(rand(0.04, 0.09) * this.faceK * 1.6, 6, 5), new T.MeshBasicMaterial({ color: i % 3 ? 0xbfe9ff : 0xffe066, transparent: true }));
-        m.position.copy(point);
-        var v = rand(2, 5);
-        this.scene.add(m);
-        this.bits.push({ m: m, vx: (normal.x + side * 0.6) * v + rand(-1, 1), vy: rand(1.5, 4), vz: normal.z * v + rand(0, 2), life: rand(0.5, 0.9), max: 0.9 });
-      }
-    },
 
     _tears: function () {
       var T = global.THREE;
@@ -960,43 +957,73 @@
       }
     },
 
-    _stars: function () {
+    // Hearts, for a kind hand. They drift up and away; nothing falls.
+    _hearts: function (point) {
       var T = global.THREE;
-      if (this.stars.length) return;
-      for (var i = 0; i < 5; i++) {
-        var s = new T.Sprite(new T.SpriteMaterial({ map: this._textTex('⭐', 128, '#ffd24c'), transparent: true, depthTest: false }));
-        s.scale.set(0.8 * this.faceK, 0.8 * this.faceK, 1);
+      for (var i = 0; i < 7; i++) {
+        var s = new T.Sprite(new T.SpriteMaterial({ map: this._heartTex(), transparent: true, depthTest: false }));
+        var sc = rand(0.3, 0.55) * clamp(this.faceK * 1.5, 0.7, 1.4);
+        s.scale.set(sc, sc, 1);
+        s.position.copy(point).add(new T.Vector3(rand(-0.3, 0.3), rand(-0.2, 0.3), rand(0.2, 0.5)));
         this.scene.add(s);
-        this.stars.push({ s: s, a: i / 5 * TAU });
+        this.bits.push({ m: s, vx: rand(-0.7, 0.7), vy: rand(0.6, 1.6), vz: rand(0, 0.5), life: rand(0.9, 1.5), max: 1.5, float: true });
       }
     },
 
-    _knockHat: function (side, power) {
-      var hat = this.hat, T = global.THREE;
-      this.scene.attach(hat.g);                       // keeps its size and place
-      hat.loose = true; hat.vx = side * rand(2, 4) * power; hat.vy = rand(4, 6) * power; hat.vz = rand(0.5, 2); hat.sx = rand(-6, 6); hat.sz = rand(-6, 6); hat.t = 3;
-      try { global.RoarAudio.sfx('bust'); } catch (e) {}
-    },
-
-    // A comic word at the point of impact.
-    _pop: function (point, word, big) {
+    // A comic word, above the head so it never covers the face you're touching.
+    // `kind` picks pink and small for a thank you, red and big for the telling-off.
+    _pop: function (point, word, kind) {
       var T = global.THREE;
-      var s = new T.Sprite(new T.SpriteMaterial({ map: this._textTex(word, 512, big ? '#ffd24c' : '#ff3b5b', true), transparent: true, depthTest: false }));
-      s.position.copy(point).add(new T.Vector3(0, 0.5, 0.6));
-      var base = (big ? 1.0 : 0.72) * clamp(this.faceK * 1.5, 0.7, 1.4);
-      s.scale.set(base * 2.2, base, 1); s.material.rotation = rand(-0.2, 0.2);
+      var s = new T.Sprite(new T.SpriteMaterial({ map: this._textTex(word, kind ? '#ff4f9c' : '#e8203c'), transparent: true, depthTest: false }));
+      // sized and placed off the screen itself, so the whole strip is always in
+      // shot — "NO SMACKING!" is a long word to fit on a phone held upright.
+      // Half the visible width is measured rather than worked out, so a tilted
+      // camera or an odd canvas shape can't push the ends off the edges.
+      var zp = this.face.getWorldPosition(new T.Vector3()).z + 1.0;
+      var mid = this._ndcAt(0, 0, zp);
+      var half = Math.abs(this._ndcAt(1, 0, zp).x - mid.x);
+      // the pop swells by about a third as it lands, so size it to its widest
+      // and keep a sliver of margin at the edges
+      var w = Math.min(half * 1.45, 4.2), base = w / 4 / 1.36;
+      var lim = Math.max(0, 0.95 - (w / 2) / half);
+      var nx = (point.x - mid.x) / (half || 1);
+      s.position.copy(this._ndcAt(clamp(nx, -lim, lim), 0.6, zp));
+      s.scale.set(base * 4, base, 1); s.material.rotation = rand(-0.1, 0.1);
       this.scene.add(s);
-      this.pops.push({ s: s, t: 0, base: base, vx: rand(-0.4, 0.4) });
+      this.pops.push({ s: s, t: 0, base: base, vx: rand(-0.12, 0.12) });
     },
 
-    _textTex: function (text, size, color, outline) {
-      var T = global.THREE, cv = document.createElement('canvas'); cv.width = size; cv.height = size / (outline ? 2 : 1);
+    // Drawn rather than typed, so a heart is a heart on every device — an emoji
+    // would be a tofu box wherever the font is missing.
+    _heartTex: function () {
+      var T = global.THREE, cv = document.createElement('canvas'); cv.width = cv.height = 96;
       var c = cv.getContext('2d');
-      c.font = '900 ' + Math.round(cv.height * 0.72) + 'px system-ui, -apple-system, Segoe UI, sans-serif';
+      c.beginPath();
+      c.moveTo(48, 84);
+      c.bezierCurveTo(6, 54, 10, 20, 30, 16);
+      c.bezierCurveTo(42, 14, 48, 24, 48, 30);
+      c.bezierCurveTo(48, 24, 54, 14, 66, 16);
+      c.bezierCurveTo(86, 20, 90, 54, 48, 84);
+      c.closePath();
+      c.fillStyle = '#ff6fae'; c.fill();
+      c.lineWidth = 5; c.strokeStyle = '#ffd9ea'; c.stroke();
+      var tex = new T.CanvasTexture(cv); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; return tex;
+    },
+
+    // The word, shrunk until it fits: "NO!" fills the strip, "NO SMACKING!"
+    // steps down to sit inside it rather than running off the ends.
+    _textTex: function (text, color) {
+      var T = global.THREE, cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256;
+      var c = cv.getContext('2d');
+      var fs = 190;
+      do { c.font = '900 ' + fs + 'px system-ui, -apple-system, Segoe UI, sans-serif'; fs -= 6; }
+      while (fs > 40 && c.measureText(text).width > cv.width - 70);
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      if (outline) { c.lineWidth = cv.height * 0.12; c.strokeStyle = '#fff'; c.strokeText(text, cv.width / 2, cv.height / 2); c.lineWidth = cv.height * 0.05; c.strokeStyle = '#2a0a1a'; c.strokeText(text, cv.width / 2, cv.height / 2); }
-      c.fillStyle = color; c.fillText(text, cv.width / 2, cv.height / 2);
-      return new T.CanvasTexture(cv);
+      c.lineJoin = 'round';
+      c.lineWidth = 26; c.strokeStyle = '#fff'; c.strokeText(text, 512, 134);
+      c.lineWidth = 10; c.strokeStyle = '#2a0a1a'; c.strokeText(text, 512, 134);
+      c.fillStyle = color; c.fillText(text, 512, 134);
+      var tex = new T.CanvasTexture(cv); if ('colorSpace' in tex) tex.colorSpace = T.SRGBColorSpace; return tex;
     },
 
     _glowTex: function (inner, outer) {
@@ -1011,8 +1038,10 @@
       if (e.score) e.score.textContent = this.score;
       if (e.best) e.best.textContent = '★ ' + this.best;
       if (e.note) {
-        e.note.textContent = this.combo >= 2 ? '🔥 x' + this.combo + ' COMBO!' : '✋ smacks';
-        e.note.classList.toggle('is-combo', this.combo >= 2);
+        var sad = this.sad > 0;
+        e.note.textContent = sad ? '🚫 no smacking!' : this.kindRun >= 2 ? '💗 x' + this.kindRun + ' kind!' : '💗 be gentle';
+        e.note.classList.toggle('is-kind', !sad && this.kindRun >= 2);
+        e.note.classList.toggle('is-no', sad);
       }
     }
   };
