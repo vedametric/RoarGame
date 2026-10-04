@@ -444,7 +444,7 @@
     <p class="mg-hint">swipe to slice the fruit</p>
   </section>
 
-  <!-- ═════════════════════ THE SMACK GAME ═════════════════════
+  <!-- ═════════════════════ NO SMACK GAME ═════════════════════
        A randomly-generated 3D head (Three.js) and a hand you control. Tap to
        smack it; the head is knocked round on its neck, pulls a face, and a
        hand-print sticks to its cheek. Quick smacks chain into a combo. A person
@@ -1033,6 +1033,32 @@
       <ol class="add-steps" id="add-steps"></ol>
       <button class="btn btn--go" id="add-go" type="button" hidden>ADD IT</button>
       <button class="btn btn--ghost" id="add-done" type="button">GOT IT</button>
+    </div>
+  </div>
+
+  <!-- The lock on NO SMACK GAME. A grown-up's PIN, so the game can't be
+       opened by tapping its tile. Not real security — it only keeps a small
+       person out, which is all it is for. -->
+  <div class="sheet sheet--pin" id="pin-sheet" hidden>
+    <div class="sheet-card pin-card">
+      <div class="pin-emoji" aria-hidden="true">🔒</div>
+      <h2 class="heading heading--sm">NO SMACK GAME</h2>
+      <p class="subheading" id="pin-msg">Ask a grown-up for the password</p>
+      <div class="pin-dots" id="pin-dots" aria-hidden="true"></div>
+      <div class="pin-pad" id="pin-pad">
+        <button class="pin-key" data-k="1" type="button">1</button>
+        <button class="pin-key" data-k="2" type="button">2</button>
+        <button class="pin-key" data-k="3" type="button">3</button>
+        <button class="pin-key" data-k="4" type="button">4</button>
+        <button class="pin-key" data-k="5" type="button">5</button>
+        <button class="pin-key" data-k="6" type="button">6</button>
+        <button class="pin-key" data-k="7" type="button">7</button>
+        <button class="pin-key" data-k="8" type="button">8</button>
+        <button class="pin-key" data-k="9" type="button">9</button>
+        <button class="pin-key pin-key--wide" data-k="del" type="button">⌫</button>
+        <button class="pin-key" data-k="0" type="button">0</button>
+      </div>
+      <button class="btn btn--ghost" id="pin-cancel" type="button">NEVER MIND</button>
     </div>
   </div>
 
