@@ -425,25 +425,35 @@ you poop, and a little **quest** in the corner — "eat 5 flowers", "scare 3
 sheep", "fly over the pond" — gives you something to aim at, with a fanfare
 and confetti when it's done. The ★ counts everything you get up to.
 
-## 🔒 NO SMACK GAME
+## 💗 NO SMACK GAME
 
-**Behind a password.** Its tile on the shelf is a 🔒, and tapping it asks for a
-grown-up's PIN on a number pad before the game will open — every time, so it
-can't be opened by a small person on their own. (It is only a number kept in
-the page: it stops a child, not a determined grown-up, which is all it is for.)
-The PIN lives at the top of the password section in `app.js` if you want to
-change it.
+**A game that teaches the opposite of its name: smacking is not ok.** A daft 3D
+person stands in a spotlight and a hand follows your finger.
 
-Otherwise, pure daft fun. **A daft 3D character stands in a
-spotlight and a hand follows your finger — tap to smack them in the face.** The head is
-knocked round on its neck on springs, squashes, pulls a face — real eyelids
-squint, the mouth drops open, the brows knit — a red hand-print sticks to the
-cheek right where the hand landed, sweat and tears fly, and a comic "SMACK!"
-pops at the point of impact. Knock its hat clean off. And somebody is always watching: **one person stands on the floor right behind them**, a few steps back, and every smack they do the routine Sienna choreographed (and acted out for a photo) — they turn side-on to the head, throw **one hand out in front and sweep the other back behind**, then **lean right forward, slanted, with one leg on the floor and the other up behind**, and hold it there shouting **"Nooooo!"** in their own voice, then put their **hands up** — all of it **stock still on one spot**, no hopping and no running about — before calming down for the next one. They stay for as long as the face does; a new face (🎲 **NEW FACE**, or a new game) brings a **different person**. Quick smacks chain into a
-**combo** worth more each hit, and a big combo leaves it dizzy — eyes spinning,
-stars orbiting — until it shakes itself off. A fast **swipe** across the face
-is a harder backhand. You hear it too: a slap or a heavier punch, and the face
-crying or whimpering back at you. Nothing to lose: the ★ keeps your best.
+**Touch them gently — a plain tap — and that is the only thing in the game that
+scores.** They light up and beam, **hearts float off them**, "THANK YOU!" pops
+up, and the person standing behind throws their hands up and cheers *"That is
+kind!"* out loud. Keep being gentle and each kind touch is worth more than the
+last.
+
+**Swipe your hand across them and it lands as a smack — and the game has
+something to say about that.** You get **no points at all**, **"NO SMACKING!"**
+pops up in red, their head is knocked round on its neck on springs, their face
+falls — real eyelids droop, the brows knit, the eyes look down — **they cry**,
+the HUD reads *🚫 no smacking!*, and your run of kind touches goes back to
+nothing. **Nothing is ever damaged: no marks, no bruises and no blood.** A smack
+leaves somebody upset, and that is the whole point being made.
+
+And somebody is always watching: **one person stands on the floor right behind
+them**. On a smack they do the routine Sienna choreographed (and acted out for a
+photo) — they turn side-on, throw **one hand out in front and sweep the other
+back behind**, then **lean right forward, slanted, with one leg on the floor and
+the other up behind**, and hold it there shouting **"No smacking!"** in their own
+voice, then put their **hands up** — all of it **stock still on one spot**, no
+hopping and no running about. On a kind touch they skip the lean and just cheer:
+the slanted pose belongs to the "No", not to a well done. They stay for as long
+as the face does; a new face (🎲 **NEW FACE**, or a new game) brings a
+**different person**. The ★ keeps the best run of kindness.
 
 Built on the same Three.js as Animal World, so it's a real lit, shadowed head
 with a hand that casts a shadow on it. **A fresh face is rolled every time the
@@ -652,7 +662,7 @@ game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
-game-smack.js   NO SMACK GAME — a random 3D character (Three.js) and a hand to smack
+game-smack.js   NO SMACK GAME — be gentle to a random 3D person (Three.js); a smack scores nothing
 vendor/         three.min.js, the one library the site uses
 app.js          screen flow, photos, results
 ```
