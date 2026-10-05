@@ -436,23 +436,27 @@ up, and the person standing behind throws their hands up and cheers *"That is
 kind!"* out loud. Keep being gentle and each kind touch is worth more than the
 last.
 
-**Swipe your hand across them and it lands as a smack — and the game has
-something to say about that.** You get **no points at all**, **"NO SMACKING!"**
-pops up in red, their head is knocked round on its neck on springs, their face
-falls — real eyelids droop, the brows knit, the eyes look down — **they cry**,
-the HUD reads *🚫 no smacking!*, and your run of kind touches goes back to
-nothing. **Nothing is ever damaged: no marks, no bruises and no blood.** A smack
-leaves somebody upset, and that is the whole point being made.
+**You cannot smack anybody in this game.** Swing your hand at them — a swipe —
+and it never reaches them: **their hand comes up and meets yours, palm to palm,
+a high five instead**. "HIGH FIVE!" pops up, gold sparks burst where the two
+palms meet, and **they say it straight back, in their own voice**: *"No, we
+don't smack! I'm telling the teacher."* (or *"...I'm telling my parents."*),
+with the words in a speech bubble over their head. The HUD reads *✋ we do not
+smack!*. It scores **nothing**, and your run of kind touches goes back to
+nothing — but **nobody is hurt, ever**. Their head is never knocked about, there
+are no marks, no bruises, no blood and no tears. They stand there, look you
+straight in the eye, and tell you.
 
 And somebody is always watching: **one person stands on the floor right behind
-them**. On a smack they do the routine Sienna choreographed (and acted out for a
-photo) — they turn side-on, throw **one hand out in front and sweep the other
-back behind**, then **lean right forward, slanted, with one leg on the floor and
-the other up behind**, and hold it there shouting **"No smacking!"** in their own
-voice, then put their **hands up** — all of it **stock still on one spot**, no
-hopping and no running about. On a kind touch they skip the lean and just cheer:
-the slanted pose belongs to the "No", not to a well done. They stay for as long
-as the face does; a new face (🎲 **NEW FACE**, or a new game) brings a
+them**. When a hand is swung they do the routine Sienna choreographed (and acted
+out for a photo) — they turn side-on, throw **one hand out in front and sweep
+the other back behind**, then **lean right forward, slanted, with one leg on the
+floor and the other up behind**, and hold it there, then put their **hands up** —
+all of it **stock still on one spot**, no hopping and no running about. They
+hold it **without a word**, because only one voice can be heard at a time and
+that moment belongs to the person it was aimed at. On a kind touch they skip the
+lean, throw their hands up and cheer *"That is kind!"* out loud. They stay for as
+long as the face does; a new face (🎲 **NEW FACE**, or a new game) brings a
 **different person**. The ★ keeps the best run of kindness.
 
 Built on the same Three.js as Animal World, so it's a real lit, shadowed head
@@ -662,7 +666,7 @@ game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
-game-smack.js   NO SMACK GAME — be gentle to a random 3D person (Three.js); a smack scores nothing
+game-smack.js   NO SMACK GAME — be gentle to a random 3D person (Three.js); a swing becomes a high five
 vendor/         three.min.js, the one library the site uses
 app.js          screen flow, photos, results
 ```

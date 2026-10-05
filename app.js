@@ -79,7 +79,7 @@
     { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' },
     { id: 'slice', emoji: '🍉', name: 'SLICE IT!',   note: 'swipe the fruit',      kind: 'mini' },
     { id: 'animal', emoji: '🐐', name: 'ANIMAL WORLD', note: 'roam · eat · poop',    kind: 'mini' },
-    { id: 'smack', emoji: '💗', name: 'NO SMACK GAME', note: 'be gentle, never smack', kind: 'mini' }
+    { id: 'smack', emoji: '💗', name: 'NO SMACK GAME', note: 'be gentle · we do not smack', kind: 'mini' }
   ];
 
   function tileHTML(g) {

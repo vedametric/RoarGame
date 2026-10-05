@@ -294,8 +294,8 @@ body.has-topbar .screen--flat { padding-top: 0; }
 }
 .sm-new { padding: 8px 16px; font-size: 13px; }
 #sm-note.is-kind { color: #8bf0a8; animation: an-full .35s ease-in-out infinite alternate; }
-/* the telling-off when they smack: no smacking, that is not right */
-#sm-note.is-no { color: #ff6b8a; animation: an-full .25s ease-in-out infinite alternate; }
+/* a hand swung at them turns into a high five, and they say so */
+#sm-note.is-five { color: #ffd24c; animation: an-full .25s ease-in-out infinite alternate; }
 
 /* ── colouring and drawing ────────────────────────────────────
    One row of colours shared by both, big enough for a finger, and the one
