@@ -78,8 +78,13 @@
     { id: 'draw',  emoji: '🎨', name: 'DRAWING',     note: 'a page and a finger', kind: 'mini' },
     { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' },
     { id: 'slice', emoji: '🍉', name: 'SLICE IT!',   note: 'swipe the fruit',      kind: 'mini' },
-    { id: 'animal', emoji: '🐐', name: 'ANIMAL WORLD', note: 'roam · eat · poop',    kind: 'mini' },
-    { id: 'smack', emoji: '💗', name: 'NO SMACK GAME', note: 'be gentle · we do not smack', kind: 'mini' }
+    { id: 'animal', emoji: '🐐', name: 'ANIMAL WORLD', note: 'roam · eat · poop',    kind: 'mini' }
+    // Retired, on purpose: NO SMACK GAME. Whatever it taught, a game with a
+    // person and a hand in it was the wrong thing to put in front of a small
+    // child, so it is off the shelf. The game itself is untouched and still in
+    // the page — game-smack.js, #screen-smack, startSmack() below — so bringing
+    // it back is putting this line back here and its line back in LAUNCH:
+    //   { id: 'smack', emoji: '💗', name: 'NO SMACK GAME', note: 'be gentle · we do not smack', kind: 'mini' }
   ];
 
   function tileHTML(g) {
@@ -124,8 +129,10 @@
     draw:    function () { RoarAudio.resume(); startDraw(); },
     ws:      function () { RoarAudio.resume(); startWordSearch(); },
     slice:   function () { RoarAudio.resume(); startSlice(); },
-    animal:  function () { RoarAudio.resume(); stopEverything(); show('screen-animal-pick'); },
-    smack:   function () { RoarAudio.resume(); startSmack(); }
+    animal:  function () { RoarAudio.resume(); stopEverything(); show('screen-animal-pick'); }
+    // Retired with its tile (see MINIS). Nothing launches the smack game, so
+    // nothing can reach it. To bring it back, put this line back:
+    //   smack:   function () { RoarAudio.resume(); startSmack(); }
   };
 
   var MINI_IDS = {};   // filled from MINIS, so the list stays the one truth
@@ -1665,6 +1672,8 @@
   }
   miniLeave('screen-slice', { emoji: '🍉', title: 'Stop slicing?', stay: 'KEEP SLICING' });
 
+  // Retired: nothing calls this any more (see MINIS and LAUNCH). It is left
+  // whole and working so the game is one line away from coming back.
   function startSmack() {
     stopEverything();
     show('screen-smack');
