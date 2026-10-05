@@ -425,7 +425,15 @@ you poop, and a little **quest** in the corner — "eat 5 flowers", "scare 3
 sheep", "fly over the pond" — gives you something to aim at, with a fanfare
 and confetti when it's done. The ★ counts everything you get up to.
 
-## 💗 NO SMACK GAME
+## 💗 NO SMACK GAME — retired
+
+> **Not on the shelf.** This one has been retired. Whatever it taught, a game
+> with a person and a hand in it was the wrong thing to put in front of a small
+> child. It has no tile and nothing launches it, so there is no way into it from
+> the page. The code is all still here and still works — `game-smack.js`, the
+> `#screen-smack` section and `startSmack()` — so bringing it back is putting one
+> line back in `MINIS` and one back in `LAUNCH`, both marked in `app.js`. What
+> follows is what it did.
 
 **A game that teaches the opposite of its name: smacking is not ok.** A daft 3D
 person stands in a spotlight and a hand follows your finger.
@@ -666,7 +674,7 @@ game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
-game-smack.js   NO SMACK GAME — be gentle to a random 3D person (Three.js); a swing becomes a high five
+game-smack.js   NO SMACK GAME — retired; kept whole but off the shelf, nothing launches it
 vendor/         three.min.js, the one library the site uses
 app.js          screen flow, photos, results
 ```
