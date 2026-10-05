@@ -444,6 +444,25 @@
     <p class="mg-hint">swipe to slice the fruit</p>
   </section>
 
+  <!-- ═════════════════════ MAKE IT GAME ══════════════════════
+       Sienna's game. A plant in a pot asks for weather in a speech bubble —
+       SUN, WATER, RAIN, SNOW, WIND, THUNDER, NIGHT, RAINBOW — and you drag it
+       up from the tray at the bottom. Whatever you drag really happens; the
+       right one makes the plant grow. ❓ HELP points at the right one and says
+       it out loud, free and as often as you like. -->
+  <section class="screen" id="screen-make">
+    <div class="mg-head">
+      <div class="mg-score" id="mk-score">0</div>
+      <div class="mg-note" id="mk-note">🌱 make it grow</div>
+      <div class="mg-best" id="mk-best">★ 0</div>
+    </div>
+    <canvas id="make-canvas"></canvas>
+    <div class="mg-hint mg-hint--row">
+      <span>drag what it asks for onto the plant</span>
+      <button class="btn btn--ghost mk-help" id="mk-help" type="button">❓ HELP</button>
+    </div>
+  </section>
+
   <!-- ═══════════════ NO SMACK GAME — RETIRED ═══════════════
        Off the shelf and unreachable: it has no tile and nothing launches it
        (see MINIS and LAUNCH in app.js). The screen and the game are left here
@@ -1085,6 +1104,7 @@
 <script src="game-wordsearch.js?v=dev"></script>
 <script src="game-slice.js?v=dev"></script>
 <script src="vendor/three.min.js"></script>
+<script src="game-make.js?v=dev"></script>
 <script src="game-animal.js?v=dev"></script>
 <script src="game-smack.js?v=dev"></script>
 <script src="stats.js?v=dev"></script>
