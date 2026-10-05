@@ -425,6 +425,36 @@ you poop, and a little **quest** in the corner — "eat 5 flowers", "scare 3
 sheep", "fly over the pond" — gives you something to aim at, with a fanfare
 and confetti when it's done. The ★ counts everything you get up to.
 
+## 🌱 MAKE IT GAME — *a game by Sienna 🦄*
+
+**Sienna's game, her idea and her rules.** A little plant stands in a pot under
+an empty sky, and a **speech bubble over its head says what it wants**: SUN,
+WATER, RAIN, SNOW, WIND, THUNDER, NIGHT or a RAINBOW. Along the bottom is a
+**tray of weather to drag** — four at a time, drawn in code, no pictures. Pick
+the one it asked for, drag it up onto the plant, and let go.
+
+**Whatever you drag, that weather really happens.** The sky changes colour, rain
+falls, snow drifts and settles on the ground, the wind blows the leaves sideways
+and shoves the clouds along, lightning cracks and the whole screen shakes, the
+stars come out and the ground goes dark, a rainbow arcs over the pot. Making
+the weather is the toy, so **dragging the wrong one is never punished** — the
+weather still happens, you just don't get the point and the plant asks again.
+
+**Drag the right one and the plant grows.** Seed, sprout, leaves up the stem, a
+bud, and finally a big pink flower. That is the whole reward, and **it never
+grows back down**.
+
+### ❓ HELP
+
+Sienna's own idea, and the thing she was most insistent about — *"just in case
+you don't know what happened"*. Tap **❓ HELP** and the right one **jumps up and
+down with a gold ring round it**, while a voice says *"It wants sun. Drag the
+sun!"* It is free, it never runs out, it costs you nothing and you can tap it as
+many times as you like.
+
+Nothing to lose here: no timer, no lives, no wrong answer that ends anything.
+The ★ keeps the most things you have ever made.
+
 ## 💗 NO SMACK GAME — retired
 
 > **Not on the shelf.** This one has been retired. Whatever it taught, a game
@@ -674,6 +704,7 @@ game-draw.js    DRAWING — pens, stickers, undo, and save-with-a-photo
 game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
+game-make.js    MAKE IT GAME — a plant asks for weather; drag it up and make it
 game-smack.js   NO SMACK GAME — retired; kept whole but off the shelf, nothing launches it
 vendor/         three.min.js, the one library the site uses
 app.js          screen flow, photos, results
