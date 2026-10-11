@@ -49,6 +49,12 @@
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]; }); }
   function hsl(h, s, l) { return 'hsl(' + h + ',' + s + '%,' + l + '%)'; }
+  function hsl2rgb(h, s, l) {
+    var k = function (n) { return (n + h / 30) % 12; };
+    var a = s * Math.min(l, 1 - l);
+    var f = function (n) { return l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); };
+    return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+  }
   function ago(t) {
     var s = Math.max(0, (Date.now() - t) / 1000);
     if (s < 60) return 'just now';
@@ -143,7 +149,10 @@
     c.restore();
   }
 
-  function pictures() { return (global.ColourGame && global.ColourGame.PICTURES) || []; }
+  // The COLOURING game's twelve, then our own (colorgoods-pages.js).
+  function pictures() {
+    return ((global.ColourGame && global.ColourGame.PICTURES) || []).concat(global.ColorGoodsPages || []);
+  }
   function picture(id) {
     var ps = pictures();
     for (var i = 0; i < ps.length; i++) if (ps[i].id === id) return ps[i];
@@ -202,7 +211,6 @@
     down:   '<svg viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M8 10l4 4 4-4"/><path d="M4 15v4h16v-4"/></svg>',
     heart:  '<svg viewBox="0 0 24 24"><path d="M12 20c-5-3.5-8-7-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 13 17 16.5 12 20z"/></svg>',
     heartF: '<svg viewBox="0 0 24 24" fill="#ff5c7a"><path d="M12 20c-5-3.5-8-7-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 13 17 16.5 12 20z"/></svg>',
-    play:   '<svg viewBox="0 0 24 24"><path d="M9 7v10l8-5z" stroke-linejoin="round"/></svg>',
     tiktok: '<svg viewBox="0 0 24 24" fill="#fff"><path d="M13 3h3c.3 2.4 1.7 3.8 4 4v3c-1.5 0-2.9-.5-4-1.3V15a5 5 0 1 1-5-5v3a2 2 0 1 0 2 2z"/></svg>',
     // dialogs
     dHome:  '<svg viewBox="0 0 24 24"><path d="M12 3 3 11h2.5v9h5v-6h3v6h5v-9H21z"/></svg>',
@@ -235,31 +243,6 @@
   var PASTEL = ['#ffd6e8', '#fff3b0', '#d6f5e3', '#d6e9ff', '#ead6ff', '#ffe4c9', '#e0f7fa'];
   var EMOJI = ['🌈', '🦋', '🌸', '⭐', '🚀', '🐠', '🍦', '🎈', '🧸', '🦄', '🌻', '🐱'];
   var EMOJI_FONT = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif';
-
-  // A wall of little squares: animal faces, emoji, and colouring pages, so the
-  // slideshow looks like a wall of other people's pictures.
-  function drawCollage(cv, seed) {
-    var W = cv.width = 1120, H = cv.height = 540, c = cv.getContext('2d');
-    var n = 7, t = W / n, r = seed;
-    function rnd() { r = (r * 9301 + 49297) % 233280; return r / 233280; }
-    var faces = global.Animals ? global.Animals.list() : [], pics = pictures();
-    for (var y = 0; y < Math.ceil(H / t); y++) for (var x = 0; x < n; x++) {
-      var px = x * t, py = y * t, k = Math.floor(rnd() * 3);
-      c.fillStyle = PASTEL[Math.floor(rnd() * PASTEL.length)];
-      c.fillRect(px, py, t, t);
-      if (k === 0 && faces.length) {
-        global.Animals.draw(c, faces[Math.floor(rnd() * faces.length)].key, px + t / 2, py + t * 0.54, t * 0.3);
-      } else if (k === 1 && pics.length) {
-        paintLines(c, pics[Math.floor(rnd() * pics.length)], t * 0.84, t * 0.84, 2.6, px + t * 0.08, py + t * 0.08);
-      } else {
-        c.font = Math.round(t * 0.55) + 'px ' + EMOJI_FONT;
-        c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(EMOJI[Math.floor(rnd() * EMOJI.length)], px + t / 2, py + t * 0.55);
-      }
-    }
-    c.fillStyle = 'rgba(255,255,255,.18)';
-    c.fillRect(0, 0, W, H);
-  }
 
   // The SPOTLIGHT when there is nothing saved yet: a cat by a pond.
   function drawPond(cv) {
@@ -360,10 +343,7 @@
         else if (b.hasAttribute('data-tool')) { self.pickTool(b.getAttribute('data-tool')); sfx('tick'); }
         else if (b.hasAttribute('data-set')) { self.pickSet(+b.getAttribute('data-set')); sfx('tick'); }
         else if (b.hasAttribute('data-colour')) { self.pickColour(b.getAttribute('data-colour')); sfx('tick'); }
-      });
-      // The wheel is an <input type=color> behind the rainbow circle.
-      this.strip.addEventListener('input', function (e) {
-        if (e.target && e.target.type === 'color') self.pickColour(e.target.value);
+        else if (b.hasAttribute('data-wheel')) { sfx('tick'); self.openWheel(); }
       });
 
       this.stage.addEventListener('pointerdown', function (e) { self.down(e); });
@@ -436,8 +416,7 @@
       var set = SETS[i];
       this.strip.innerHTML = set.colours.map(function (col) {
         if (col === 'wheel') {
-          return '<button class="cg-swatch cg-swatch--wheel" type="button" aria-label="any colour">' +
-                 '<input type="color" value="#ff66aa" aria-label="pick any colour"></button>';
+          return '<button class="cg-swatch cg-swatch--wheel" type="button" data-wheel="1" aria-label="any colour"></button>';
         }
         return '<button class="cg-swatch" type="button" data-colour="' + col + '" style="background:' + col + '" aria-label="colour"></button>';
       }).join('');
@@ -448,6 +427,78 @@
       // Swapping the box is a way of picking a colour, so it is the pen again.
       if (this.tool !== 'pen') this.pickTool('pen', true);
       self.strip.scrollTo && self.strip.scrollTo({ left: 0 });
+    },
+
+    /* ── the rainbow wheel ───────────────────────────────────
+       Any colour at all. A disc of every hue, paler towards the middle,
+       and a bar underneath from dark to light — drag on either and the
+       big circle shows what you have. The phone's own colour picker was
+       tried first and is wrong for a small finger: a modal full of
+       sliders and hex codes. This is two things to touch. */
+    openWheel: function () {
+      var self = this, R = 120, D = R * 2;
+      var h = 330, sat = 0.9, lig = 0.6;
+      var m = /hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/.exec(self.colour);
+      if (m) { h = +m[1]; sat = m[2] / 100; lig = m[3] / 100; }
+      App.dialog({
+        icon: '', title: 'PICK A COLOUR', no: 'NO', yes: 'YES', cls: 'cg-picker',
+        body: '<div class="cg-wheel-wrap"><canvas class="cg-wheel" width="' + D + '" height="' + D + '"></canvas><i class="cg-wheel-dot"></i></div>' +
+              '<div class="cg-light"><i class="cg-light-dot"></i></div>' +
+              '<div class="cg-preview"></div>',
+        onBody: function (box) {
+          var cv = box.querySelector('.cg-wheel'), wrap = box.querySelector('.cg-wheel-wrap');
+          var dot = box.querySelector('.cg-wheel-dot'), bar = box.querySelector('.cg-light'), bdot = box.querySelector('.cg-light-dot');
+          var prev = box.querySelector('.cg-preview');
+          // The disc: hue round the edge, washing out to white in the middle.
+          var c = cv.getContext('2d'), img = c.createImageData(D, D), d = img.data;
+          for (var y = 0; y < D; y++) for (var x = 0; x < D; x++) {
+            var dx = x - R, dy = y - R, r = Math.sqrt(dx * dx + dy * dy), o = (y * D + x) * 4;
+            if (r > R) { d[o + 3] = 0; continue; }
+            var hue = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360, s2 = Math.min(1, r / R);
+            var rgb = hsl2rgb(hue, s2, 0.55);
+            d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = r > R - 1.5 ? 255 * (R - r + 0.5) : 255;
+          }
+          c.putImageData(img, 0, 0);
+          function show() {
+            var col = 'hsl(' + Math.round(h) + ',' + Math.round(sat * 100) + '%,' + Math.round(lig * 100) + '%)';
+            var a = h * Math.PI / 180, rr = sat * R, pw = wrap.clientWidth / D;
+            dot.style.left = (R + Math.cos(a) * rr) * pw + 'px';
+            dot.style.top = (R + Math.sin(a) * rr) * pw + 'px';
+            dot.style.background = col;
+            bar.style.background = 'linear-gradient(90deg, #000, hsl(' + Math.round(h) + ',' + Math.round(sat * 100) + '%,50%), #fff)';
+            bdot.style.left = (lig * 100) + '%';
+            bdot.style.background = col;
+            prev.style.background = col;
+            self._wheelColour = col;
+          }
+          function onWheel(e) {
+            var rect = cv.getBoundingClientRect(), sc = D / rect.width;
+            var dx = (e.clientX - rect.left) * sc - R, dy = (e.clientY - rect.top) * sc - R;
+            h = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+            sat = Math.min(1, Math.sqrt(dx * dx + dy * dy) / R);
+            show();
+          }
+          function onBar(e) {
+            var rect = bar.getBoundingClientRect();
+            lig = clamp((e.clientX - rect.left) / rect.width, 0.06, 0.96);
+            show();
+          }
+          function drag(el, fn) {
+            var on = false;
+            el.addEventListener('pointerdown', function (e) { on = true; try { el.setPointerCapture(e.pointerId); } catch (x) {} fn(e); e.preventDefault(); });
+            el.addEventListener('pointermove', function (e) { if (on) fn(e); });
+            el.addEventListener('pointerup', function () { on = false; });
+            el.addEventListener('pointercancel', function () { on = false; });
+            el.addEventListener('touchstart', function (e) { e.preventDefault(); }, { passive: false });
+            el.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+          }
+          drag(wrap, onWheel);
+          drag(bar, onBar);
+          show();
+          setTimeout(show, 50);        // once the dialog has its real size
+        },
+        onYes: function () { if (self._wheelColour) self.pickColour(self._wheelColour); sfx('tick'); }
+      });
     },
 
     pickColour: function (col) {
@@ -720,7 +771,6 @@
     running: false,
     root: null, opts: {},
     page: 'home', tab: 'saved',
-    slide: 0, slideTimer: 0,
 
     open: function (opts) {
       var self = this;
@@ -741,7 +791,6 @@
 
     close: function () {
       this.closeEditor();
-      clearInterval(this.slideTimer);
       this.running = false;
       if (this.root) this.root.hidden = true;
     },
@@ -797,7 +846,6 @@
       for (var i = 0; i < pages.length; i++) pages[i].classList.toggle('is-on', pages[i].getAttribute('data-page') === page);
       var nav = this.root.querySelectorAll('[data-nav]');
       for (var k = 0; k < nav.length; k++) nav[k].classList.toggle('is-on', nav[k].getAttribute('data-nav') === page);
-      clearInterval(this.slideTimer);
       if (page === 'home') this.renderHome();
       else if (page === 'color') this.renderColor();
       else if (page === 'feed') this.renderFeed();
@@ -820,32 +868,12 @@
 
     /* ── home ────────────────────────────────────────────────── */
 
-    SLIDES: [
-      { id: 'color', kicker: 'ColorGoods', title: 'Color', text: 'Pages to colour in.', seed: 11, go: 'color' },
-      { id: 'spot', kicker: 'ColorGoods', title: 'Spotlight', text: 'Your newest picture.', seed: 23, go: 'gallery' },
-      { id: 'replay', replay: true, go: 'home' },
-      { id: 'canvas', kicker: 'ColorGoods', title: 'Canvas', text: 'Your cozy space for new Creations.', seed: 7, go: 'canvas' },
-      { id: 'feed', kicker: 'ColorGoods', title: 'Feed', text: 'Everything you have made.', seed: 31, go: 'feed' },
-      { id: 'gallery', kicker: 'ColorGoods', title: 'Gallery', text: 'Saved, Canvas and Drawing.', seed: 41, go: 'gallery' },
-      { id: 'signin', kicker: 'ColorGoods', title: 'Sign in', text: 'Pick your name and your face.', seed: 53, go: 'signin' }
-    ],
-
     renderHome: function () {
       var self = this, box = this.root.querySelector('[data-page="home"] .cg-col');
       var gal = this.gallery(), latest = gal[0];
       var pics = pictures();
+      // No banners: she asked for the tiles and nothing sliding about above them.
       box.innerHTML =
-        '<div class="cg-hero"><div class="cg-hero-track">' +
-          this.SLIDES.map(function (s) {
-            if (s.replay) {
-              return '<div class="cg-slide cg-slide--replay" data-go="home"><div class="cg-play">' + I.play + '</div>' +
-                     '<b>REPLAY</b><small>COMING SOON</small></div>';
-            }
-            return '<div class="cg-slide" data-go="' + s.go + '"><canvas></canvas>' +
-                   '<div class="cg-slide-card"><i>' + s.kicker + '<sup>™</sup></i><b>' + s.title + '</b><p>' + s.text + '</p></div></div>';
-          }).join('') +
-        '</div></div>' +
-        '<div class="cg-dots">' + this.SLIDES.map(function () { return '<i></i>'; }).join('') + '</div>' +
         '<div class="cg-grid">' +
           '<button class="cg-tile" data-go="gallery" data-tab="' + (latest && latest.kind === 'saved' ? 'saved' : 'canvas') + '" aria-label="spotlight">' +
             (latest ? '<img src="' + latest.img + '" alt="">' : '<canvas data-draw="pond"></canvas>') +
@@ -856,48 +884,10 @@
           '<button class="cg-tile" data-go="color" aria-label="colour a page"><canvas data-draw="page"></canvas></button>' +
         '</div>';
 
-      // The pictures, painted now the canvases exist.
-      var slides = box.querySelectorAll('.cg-slide canvas');
-      for (var i = 0, k = 0; i < this.SLIDES.length; i++) {
-        if (this.SLIDES[i].replay) continue;
-        drawCollage(slides[k++], this.SLIDES[i].seed);
-      }
       var pond = box.querySelector('[data-draw="pond"]');
       if (pond) drawPond(pond);
       var page = box.querySelector('[data-draw="page"]');
       if (page) drawPage(page, picture('dino') || pics[0], '#ead6ff');
-
-      // The slideshow: swipe it, tap it, or leave it to turn by itself.
-      var hero = box.querySelector('.cg-hero'), track = box.querySelector('.cg-hero-track');
-      var dots = box.querySelectorAll('.cg-dots i');
-      this.slide = 3;
-      function show(n, snap) {
-        self.slide = (n + self.SLIDES.length) % self.SLIDES.length;
-        track.style.transition = snap ? 'none' : '';
-        track.style.transform = 'translateX(' + (-self.slide * 100) + '%)';
-        for (var d = 0; d < dots.length; d++) dots[d].classList.toggle('is-on', d === self.slide);
-      }
-      show(this.slide, true);
-      function arm() { clearInterval(self.slideTimer); self.slideTimer = setInterval(function () { show(self.slide + 1); }, 4500); }
-      arm();
-      var sx = 0, sy = 0, dx = 0, swiping = false;
-      hero.addEventListener('touchstart', function (e) {
-        var t = e.touches[0]; sx = t.clientX; sy = t.clientY; dx = 0; swiping = false;
-        clearInterval(self.slideTimer);
-        track.style.transition = 'none';
-      }, { passive: true });
-      hero.addEventListener('touchmove', function (e) {
-        var t = e.touches[0]; dx = t.clientX - sx;
-        if (!swiping && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(t.clientY - sy)) swiping = true;
-        if (swiping) track.style.transform = 'translateX(calc(' + (-self.slide * 100) + '% + ' + dx + 'px))';
-      }, { passive: true });
-      hero.addEventListener('touchend', function () {
-        track.style.transition = '';
-        if (swiping && Math.abs(dx) > 40) show(self.slide + (dx < 0 ? 1 : -1)); else show(self.slide);
-        if (swiping) { hero.dataset.swiped = '1'; setTimeout(function () { delete hero.dataset.swiped; }, 50); }
-        arm();
-      });
-      hero.addEventListener('click', function (e) { if (hero.dataset.swiped) { e.stopPropagation(); e.preventDefault(); } }, true);
     },
 
     /* ── colour: the pages ───────────────────────────────────── */
@@ -1119,7 +1109,6 @@
     /* ── the canvas ──────────────────────────────────────────── */
 
     openEditor: function (picId, img) {
-      clearInterval(this.slideTimer);
       Editor.open(picId);
       if (img) {
         // Opening a saved picture puts it back on the page to carry on with.
@@ -1146,8 +1135,8 @@
     dialog: function (o) {
       var self = this, dim = document.createElement('div');
       dim.className = 'cg-dim';
-      dim.innerHTML = '<div class="cg-dialog">' +
-        '<div class="cg-dlg-icon">' + (o.icon || '') + '</div>' +
+      dim.innerHTML = '<div class="cg-dialog' + (o.cls ? ' ' + o.cls : '') + '">' +
+        (o.icon ? '<div class="cg-dlg-icon">' + o.icon + '</div>' : '') +
         '<h2>' + o.title + '</h2>' +
         (o.body ? '<div class="cg-dlg-body">' + o.body + '</div>' : '') +
         '<div class="cg-dlg-row"><button class="cg-pill" data-dlg="no">' + (o.no || 'NO') + '</button>' +
