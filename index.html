@@ -23,6 +23,7 @@
      the home screen gives you a blurry screenshot of whatever was on screen. -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=dev" />
 <link rel="stylesheet" href="styles.css?v=dev" />
+<link rel="stylesheet" href="colorgoods.css?v=dev" />
 </head>
 <body>
 
@@ -54,6 +55,12 @@
   <div class="launch-word" id="launch-word"></div>
   <button class="launch-skip" id="launch-skip" type="button">skip ›</button>
 </div>
+
+<!-- ═════════════════════ COLORING GOODS ═════════════════════
+     A whole app rather than a screen: it sits over everything, the bar
+     included, with its own ✕ EXIT at the top that brings you back to the
+     MINI GAMES shelf. colorgoods.js builds everything inside it. -->
+<div id="goods" hidden></div>
 
 <main id="app">
 
@@ -1105,6 +1112,7 @@
 <script src="game-slice.js?v=dev"></script>
 <script src="vendor/three.min.js"></script>
 <script src="game-make.js?v=dev"></script>
+<script src="colorgoods.js?v=dev"></script>
 <script src="game-animal.js?v=dev"></script>
 <script src="game-smack.js?v=dev"></script>
 <script src="stats.js?v=dev"></script>

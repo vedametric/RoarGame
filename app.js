@@ -79,7 +79,8 @@
     { id: 'ws',    emoji: '🔤', name: 'WORD SEARCH', note: 'find the hidden words', kind: 'mini' },
     { id: 'slice', emoji: '🍉', name: 'SLICE IT!',   note: 'swipe the fruit',      kind: 'mini' },
     { id: 'animal', emoji: '🐐', name: 'ANIMAL WORLD', note: 'roam · eat · poop',    kind: 'mini' },
-    { id: 'make',  emoji: '🌱', name: 'MAKE IT GAME', note: 'make the weather',       kind: 'mini' }
+    { id: 'make',  emoji: '🌱', name: 'MAKE IT GAME', note: 'make the weather',       kind: 'mini' },
+    { id: 'goods', emoji: '🖌️', name: 'COLORING GOODS', note: 'the colouring app',     kind: 'mini' }
     // Retired, on purpose: NO SMACK GAME. Whatever it taught, a game with a
     // person and a hand in it was the wrong thing to put in front of a small
     // child, so it is off the shelf. The game itself is untouched and still in
@@ -131,7 +132,8 @@
     ws:      function () { RoarAudio.resume(); startWordSearch(); },
     slice:   function () { RoarAudio.resume(); startSlice(); },
     animal:  function () { RoarAudio.resume(); stopEverything(); show('screen-animal-pick'); },
-    make:    function () { RoarAudio.resume(); startMake(); }
+    make:    function () { RoarAudio.resume(); startMake(); },
+    goods:   function () { RoarAudio.resume(); startGoods(); }
     // Retired with its tile (see MINIS). Nothing launches the smack game, so
     // nothing can reach it. To bring it back, put this line back:
     //   smack:   function () { RoarAudio.resume(); startSmack(); }
@@ -1688,6 +1690,24 @@
   }
   on('mk-help', function () { MakeGame.help(); });
   miniLeave('screen-make', { emoji: '🌱', title: 'Stop making things?', stay: 'KEEP MAKING' });
+
+  /* ── COLORING GOODS ───────────────────────────────────────────
+     Not a screen but a whole app laid over the page, bar and all, so it has
+     the full canvas to itself. Its own ✕ EXIT closes it and lands back on
+     the shelf it came from. Nothing of hers is lost by leaving: the canvas
+     and every colouring page are kept as she goes. */
+  function startGoods() {
+    stopEverything();
+    show('screen-minis');
+    keepAwake();
+    RoarAudio.releaseMic();
+    ColorGoods.open({
+      root: $('goods'),
+      standaloneURL: 'colorgoods.html',
+      onExit: function () { show('screen-minis'); }
+    });
+    try { Track.screen('goods', 'Coloring Goods'); } catch (e) {}
+  }
 
   // Retired: nothing calls this any more (see MINIS and LAUNCH). It is left
   // whole and working so the game is one line away from coming back.

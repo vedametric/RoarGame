@@ -455,6 +455,48 @@ many times as you like.
 Nothing to lose here: no timer, no lives, no wrong answer that ends anything.
 The ★ keeps the most things you have ever made.
 
+## 🖌️ COLORING GOODS — *the colouring app, rebuilt*
+
+The app Sienna likes, made 1:1 as a page of our own — on the **MINI GAMES**
+shelf, and launched from there it takes **the whole screen**, bar and all,
+with its own **✕ EXIT** at the top that hands you back to the shelf. No
+account, no feed from anywhere, no adverts: everything in it lives on the
+phone.
+
+- **HOME** — the slideshow (swipe it, or leave it to turn), the SPOTLIGHT
+  tile (her newest saved picture), the **Canvas** tile, and a page to colour.
+- **COLOR** — the twelve line drawings from COLOURING, each a page to open
+  on the canvas. A ✓ marks the ones she has saved.
+- **FEED** — every picture she has saved, as posts under her name, with a
+  heart to tap.
+- **GALLERY** — **SAVED** (colouring pages), **CANVAS** (free drawings) and
+  **DRAWING** (the pictures from Roar's own DRAWING game); each card has
+  download, bin and **♡ SHARE** (the share sheet), and tapping the picture
+  opens it on the canvas to carry on.
+- **SETTINGS** — sound, sign in, clear, and how to put it on the home screen.
+- **SIGN IN** — a name and one of the ten animal faces, nothing more.
+
+**The canvas** is the heart of it: home · bin · undo · redo along the top and
+✓ **Save** at the right; a white page; the four brush sizes on the left
+(the chosen one shows the colour) and a strip of markers to the right, with
+the rainbow wheel for any colour at all; and the row of tools — the rubber,
+the **potion** (tap a patch and it fills to the lines), the dropper, the
+**smudge** finger, and the marker boxes that swap the strip (markers, soft,
+bright, earth, skin tones). Going home asks **GO BACK HOME? NO / YES**, as
+the real one does. Nothing is lost by leaving: the canvas and every
+colouring page are kept as she goes, in localStorage, and Save adds a copy
+to the gallery.
+
+### On its own, on the home screen
+
+She wants *this* app on the home screen, not Roar Battle. So it has its own
+page, **`colorgoods.html`**, with its own manifest and icon: open that page
+in Safari, Share → **Add to Home Screen**, and the icon opens full screen
+straight into Coloring Goods. SETTINGS inside Roar has **OPEN AS ITS OWN
+APP**, which takes you to that page. The same `colorgoods.js` runs either
+way; the only difference is where EXIT goes — the shelf inside Roar, Roar's
+page from the stand-alone one.
+
 ## 💗 NO SMACK GAME — retired
 
 > **Not on the shelf.** This one has been retired. Whatever it taught, a game
@@ -705,6 +747,9 @@ game-wordsearch.js  WORD SEARCH — the grid, and the drag
 game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
 game-make.js    MAKE IT GAME — a plant asks for weather; drag it up and make it
+colorgoods.js   COLORING GOODS — the colouring app: home, pages, feed, gallery, canvas
+colorgoods.css  everything visual for it, all under .cg
+colorgoods.html the stand-alone page for the home screen (+ colorgoods.webmanifest, colorgoods-icon.png)
 game-smack.js   NO SMACK GAME — retired; kept whole but off the shelf, nothing launches it
 vendor/         three.min.js, the one library the site uses
 app.js          screen flow, photos, results
