@@ -1,0 +1,16 @@
+{
+  "name": "Coloring Goods",
+  "short_name": "ColorGoods",
+  "description": "A cozy canvas and pages to colour in.",
+  "id": "./colorgoods.html",
+  "start_url": "./colorgoods.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    { "src": "colorgoods-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "colorgoods-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

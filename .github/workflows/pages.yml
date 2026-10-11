@@ -30,8 +30,10 @@ jobs:
         run: |
           BUILD="$(git rev-parse --short HEAD)"
           echo "Stamping build $BUILD"
-          sed -i "s/?v=dev/?v=$BUILD/g; s/name=\"build\" content=\"dev\"/name=\"build\" content=\"$BUILD\"/" index.html
-          grep -c "?v=$BUILD" index.html
+          for PAGE in index.html colorgoods.html; do
+            sed -i "s/?v=dev/?v=$BUILD/g; s/name=\"build\" content=\"dev\"/name=\"build\" content=\"$BUILD\"/" "$PAGE"
+            grep -c "?v=$BUILD" "$PAGE"
+          done
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
