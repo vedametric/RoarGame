@@ -463,10 +463,13 @@ with its own **✕ EXIT** at the top that hands you back to the shelf. No
 account, no feed from anywhere, no adverts: everything in it lives on the
 phone.
 
-- **HOME** — the slideshow (swipe it, or leave it to turn), the SPOTLIGHT
-  tile (her newest saved picture), the **Canvas** tile, and a page to colour.
-- **COLOR** — the twelve line drawings from COLOURING, each a page to open
-  on the canvas. A ✓ marks the ones she has saved.
+- **HOME** — four tiles and nothing sliding about above them: SPOTLIGHT
+  (her newest saved picture), **Canvas**, TikTok, and a page to colour.
+- **COLOR** — twenty-six pages: the twelve line drawings from COLOURING and
+  fourteen more of our own in `colorgoods-pages.js` (a castle, a unicorn, a
+  puppy, a bunny, a cupcake, an owl, a boat, a train, a turtle, a ladybird,
+  a snowman, a robot, a birthday cake, an apple tree). A ✓ marks the ones
+  she has saved.
 - **FEED** — every picture she has saved, as posts under her name, with a
   heart to tap.
 - **GALLERY** — **SAVED** (colouring pages), **CANVAS** (free drawings) and
@@ -478,8 +481,11 @@ phone.
 
 **The canvas** is the heart of it: home · bin · undo · redo along the top and
 ✓ **Save** at the right; a white page; the four brush sizes on the left
-(the chosen one shows the colour) and a strip of markers to the right, with
-the rainbow wheel for any colour at all; and the row of tools — the rubber,
+(the chosen one shows the colour) and a strip of markers to the right. The
+rainbow circle at its start is **the wheel**: a disc of every hue and a bar
+from dark to light, two things to drag — our own, because the phone's colour
+picker is a modal of sliders and hex codes, wrong for a small finger. Then
+the row of tools — the rubber,
 the **potion** (tap a patch and it fills to the lines), the dropper, the
 **smudge** finger, and the marker boxes that swap the strip (markers, soft,
 bright, earth, skin tones). Going home asks **GO BACK HOME? NO / YES**, as
@@ -748,6 +754,7 @@ game-slice.js   SLICE IT! — code-drawn fruit, sliced by a finger
 game-animal.js  ANIMAL WORLD — a real 3D meadow (Three.js) to roam as an animal
 game-make.js    MAKE IT GAME — a plant asks for weather; drag it up and make it
 colorgoods.js   COLORING GOODS — the colouring app: home, pages, feed, gallery, canvas
+colorgoods-pages.js  fourteen more pages to colour, drawn like COLOURING's
 colorgoods.css  everything visual for it, all under .cg
 colorgoods.html the stand-alone page for the home screen (+ colorgoods.webmanifest, colorgoods-icon.png)
 game-smack.js   NO SMACK GAME — retired; kept whole but off the shelf, nothing launches it
