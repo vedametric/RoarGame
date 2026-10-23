@@ -714,6 +714,17 @@ Then push to `main`. The site lands at
 
 ---
 
+## Halloween look
+
+Orange-and-purple colours, a moon, a pumpkin on the splash, and a few
+drifting bats and a friendly ghost. On by default through October and the
+first week of November.
+
+Too spooky? **⚙️ Settings → 🎃 Halloween look → off.** The phone remembers
+that choice for good (it also works the other way, to keep it on all year).
+
+---
+
 ## Playing on an iPhone
 
 1. Open the HTTPS URL in Safari.
