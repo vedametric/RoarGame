@@ -415,6 +415,7 @@
 
   function setLabels() {
     $('set-sound-v').textContent = RoarAudio.muted ? 'off' : 'on';
+    $('set-spooky-v').textContent = spooky() ? 'on' : 'off';
     $('set-voice-v').textContent = Say.packName();
     $('set-keys-v').textContent = SpellGame.layout === 'abc' ? 'abc' : 'qwerty';
     $('set-case-v').textContent = SpellGame.lower ? 'abc' : 'ABC';
@@ -435,6 +436,15 @@
   on('set-sound', function () {
     setSound(RoarAudio.muted); setLabels();
     setChanged('sound', RoarAudio.muted ? 'off' : 'on');
+  });
+  // The Halloween look. index.html switches it on before the first paint; this
+  // flips it and remembers, so a child who finds it too spooky never sees it again.
+  function spooky() { return document.documentElement.classList.contains('spooky'); }
+  on('set-spooky', function () {
+    var to = !spooky();
+    document.documentElement.classList.toggle('spooky', to);
+    try { localStorage.setItem('spooky', to ? 'on' : 'off'); } catch (e) {}
+    setLabels(); setChanged('halloween', to ? 'on' : 'off');
   });
   on('set-voice', function () { $('set-sheet').hidden = true; openVoices(); });
   // The choice is the spelling game's to keep, so it is set there whether or

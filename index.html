@@ -24,10 +24,33 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=dev" />
 <link rel="stylesheet" href="styles.css?v=dev" />
 <link rel="stylesheet" href="colorgoods.css?v=dev" />
+<!-- Halloween dress-up. Set here, before anything paints, so the page never
+     flashes its normal colours first. On by default through October and the
+     first week of November; a choice made in Settings wins either way. -->
+<script>
+  (function () {
+    var pick = null;
+    try { pick = localStorage.getItem('spooky'); } catch (e) {}
+    var d = new Date(), m = d.getMonth();
+    var season = m === 9 || (m === 10 && d.getDate() <= 7);
+    if (pick === 'on' || (pick === null && season)) {
+      document.documentElement.classList.add('spooky');
+    }
+  })();
+</script>
 </head>
 <body>
 
 <div class="stars" aria-hidden="true"></div>
+<!-- Only shown while the Halloween theme is on. Friendly ones: no skulls. -->
+<div class="spooks" aria-hidden="true">
+  <span class="spook k1">🦇</span>
+  <span class="spook k2">👻</span>
+  <span class="spook k3">🦇</span>
+  <span class="spook k4">🎃</span>
+  <span class="spook k5">🕸️</span>
+  <span class="spook k6">🍬</span>
+</div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 
 <!-- ═════════════════════ THE NAVIGATION BAR ═════════════════════
@@ -1020,6 +1043,9 @@
       <h2 class="heading heading--sm">Settings</h2>
       <button class="set-row" id="set-sound" type="button">
         <span class="set-what">🔊 Sound</span><b class="set-val" id="set-sound-v">on</b>
+      </button>
+      <button class="set-row" id="set-spooky" type="button">
+        <span class="set-what">🎃 Halloween look</span><b class="set-val" id="set-spooky-v">on</b>
       </button>
       <button class="set-row" id="set-voice" type="button">
         <span class="set-what">🗣️ Voice</span><b class="set-val" id="set-voice-v">…</b>

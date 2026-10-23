@@ -2502,3 +2502,81 @@ body.has-topbar .screen--flat { padding-top: 0; }
   position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
   background: rgba(255,255,255,.75); box-shadow: 0 4px 12px rgba(0,0,0,.35);
 }
+
+
+/* ══════════════════════ HALLOWEEN ══════════════════════
+   Everything here hangs off html.spooky, which index.html sets before the
+   first paint and Settings → Halloween look turns off. Colours, a pumpkin
+   glow and a few drifting bats and ghosts — nothing that changes how a game
+   plays, and nothing scarier than a cartoon ghost. */
+
+.spooks { display: none; }
+
+.spooky {
+  --bg-0: #120718;
+  --bg-1: #24092e;
+  --bg-2: #4a1a3a;
+  --go-a: #ffb13b;
+  --go-b: #ff5e00;
+  --p2:   #b98cff;
+  --p2-glow: #7cff6b;
+}
+.spooky body {
+  background:
+    radial-gradient(38px 38px at 84% 9%, #fff6d0 0%, #ffe9a0 60%, transparent 63%),
+    radial-gradient(90px 90px at 84% 9%, rgba(255,233,160,.28) 0%, transparent 70%),
+    radial-gradient(110% 60% at 50% 115%, rgba(255,110,0,.38) 0%, transparent 60%),
+    radial-gradient(120% 80% at 50% -10%, var(--bg-2) 0%, transparent 60%),
+    linear-gradient(170deg, var(--bg-1) 0%, var(--bg-0) 100%);
+}
+
+.spooky .spooks {
+  display: block;
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.spook { position: absolute; line-height: 1; opacity: .8; }
+.k1 { top: 14%; left: -10%; font-size: 30px; animation: bat 14s linear infinite; }
+.k3 { top: 34%; left: -10%; font-size: 22px; animation: bat 19s linear infinite 6s; }
+.k2 { bottom: 22%; right: 6%; font-size: 40px; opacity: .45; animation: ghost 6s ease-in-out infinite; }
+.k4 { bottom: 2%; left: 4%; font-size: 44px; opacity: .9; }
+.k5 { top: calc(env(safe-area-inset-top, 0px) + 4px); left: 2%; font-size: 46px; opacity: .35; }
+.k6 { bottom: 3%; right: 30%; font-size: 26px; opacity: .6; transform: rotate(-20deg); }
+@keyframes bat {
+  0%   { transform: translate(0, 0) scale(1); }
+  25%  { transform: translate(35vw, -6vh) scale(1.1); }
+  50%  { transform: translate(65vw, 4vh) scale(.9); }
+  75%  { transform: translate(95vw, -4vh) scale(1.05); }
+  100% { transform: translate(125vw, 0) scale(1); }
+}
+@keyframes ghost {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50%      { transform: translateY(-18px) rotate(6deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spook { animation: none !important; }
+  .k1, .k3 { left: 70%; }
+}
+
+/* the splash gets a pumpkin between the two beasts */
+.spooky .splash-beasts::after {
+  content: '🎃';
+  position: absolute; left: 50%; top: 10px; font-size: 58px;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 18px rgba(255,120,0,.7));
+  animation: bobble 2.6s ease-in-out infinite;
+}
+.spooky .tagline::after { content: ' · happy halloween!'; color: #ffb13b; }
+
+.spooky .title-word {
+  filter: drop-shadow(0 5px 0 rgba(0,0,0,.4)) drop-shadow(0 0 26px rgba(255,110,0,.6));
+}
+.spooky .title-word--2 {
+  filter: drop-shadow(0 5px 0 rgba(0,0,0,.4)) drop-shadow(0 0 26px rgba(124,255,107,.45));
+}
+
+.spooky .tile {
+  background: linear-gradient(180deg, rgba(255,140,40,.13), rgba(120,40,160,.10));
+}
+.spooky .tile--play  { border-color: rgba(255,120,20,.55); }
+.spooky .tile--learn { border-color: rgba(185,140,255,.5); }
+.spooky .tile--mini  { border-color: rgba(124,255,107,.45); }
